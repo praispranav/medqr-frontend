@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
-import { api, ApiError, type DoctorToday, type Me, type Tenant } from '@/lib/api';
+import { api, ApiError, type DoctorToday, type Me, type SubscriptionStatus, type Tenant } from '@/lib/api';
 import { HOME_FOR_ROLE } from '@/lib/staffRoutes';
 import { DoctorAvatar, Icon, LoadingPage } from '@/components/patient/ui';
 
@@ -13,6 +13,10 @@ import { DoctorAvatar, Icon, LoadingPage } from '@/components/patient/ui';
 // Access comes from the staff login (/login): reception and doctor accounts are separate, and the
 // server enforces the role on every staff API. A logged-in reception account opening a doctor
 // screen (or vice versa) gets a clear "wrong login" page instead of the screen.
+//
+// 'manage' is the clinic admin (Decision 14): a separate owner login, or a doctor given owner
+// access by MedQR. Solo-doctor clinics never need it — their doctor keeps Billing and Queue Rules;
+// with 2+ doctors those two move to the clinic admin only.
 
 export interface StaffContext {
   tenant: Tenant;
@@ -20,32 +24,67 @@ export interface StaffContext {
   /** Only set in the doctor suite. */
   doctor: DoctorToday | null;
   refreshTenant: () => Promise<void>;
+  me: Me;
 }
 
-type Variant = 'reception' | 'doctor';
+type Variant = 'reception' | 'doctor' | 'manage';
+type NavItem = { href: string; label: string; icon: string; managersOnly?: boolean };
 
-const NAV: Record<Variant, { href: string; label: string; icon: string }[]> = {
+const NAV: Record<Variant, NavItem[]> = {
   doctor: [
     { href: '/doctor/dashboard', label: 'Queue Command Center', icon: 'space_dashboard' },
     { href: '/doctor/hours', label: 'My Hours', icon: 'schedule' },
+    { href: '/doctor/profile', label: 'Public Profile', icon: 'badge' },
     { href: '/doctor/payments', label: 'Payments', icon: 'currency_rupee' },
-    { href: '/doctor/settings', label: 'Queue Rules', icon: 'tune' },
+    { href: '/doctor/settings', label: 'Queue Rules', icon: 'tune', managersOnly: true },
     { href: '/doctor/qr-poster', label: 'QR Standee', icon: 'qr_code_2' },
-    { href: '/doctor/billing', label: 'Billing & Add-ons', icon: 'account_balance_wallet' },
+    { href: '/doctor/billing', label: 'Billing & Add-ons', icon: 'account_balance_wallet', managersOnly: true },
   ],
   reception: [
     { href: '/reception', label: 'Queue Verifier', icon: 'qr_code_scanner' },
     { href: '/reception/payments', label: 'Payments', icon: 'currency_rupee' },
   ],
+  manage: [
+    { href: '/manage', label: 'Today', icon: 'monitoring' },
+    { href: '/manage/money', label: 'Money', icon: 'currency_rupee' },
+    { href: '/manage/activity', label: 'Activity', icon: 'history' },
+    { href: '/manage/team', label: 'Doctors & Staff', icon: 'group' },
+    { href: '/manage/qr', label: 'QR Standees', icon: 'qr_code_2' },
+    { href: '/manage/settings', label: 'Queue Rules', icon: 'tune' },
+    { href: '/manage/billing', label: 'Billing & Add-ons', icon: 'account_balance_wallet' },
+  ],
 };
+
+const ROLE_LABEL: Record<Me['user']['role'], string> = { doctor: 'Doctor', reception: 'Reception', owner: 'Clinic admin' };
+
+// Decision 18: the public read-only demo never shows payments or admin-ish config screens.
+const DEMO_HIDDEN_HREFS = new Set(['/doctor/payments', '/doctor/settings', '/doctor/billing', '/doctor/profile', '/reception/payments']);
+
+function navFor(variant: Variant, me: Me, isDemo: boolean): NavItem[] {
+  let items: NavItem[];
+  if (variant === 'doctor') {
+    // In a multi-doctor clinic, a doctor with owner access finds these under Clinic admin instead.
+    const soloDoctor = me.doctor_count <= 1;
+    items = NAV.doctor.filter((i) => !i.managersOnly || soloDoctor);
+    if (me.user.is_owner && !soloDoctor) items.push({ href: '/manage', label: 'Clinic admin', icon: 'admin_panel_settings' });
+  } else if (variant === 'manage' && me.user.role === 'doctor') {
+    items = [...NAV.manage, { href: '/doctor/dashboard', label: 'My queue', icon: 'space_dashboard' }];
+  } else {
+    items = NAV[variant];
+  }
+  return isDemo ? items.filter((i) => !DEMO_HIDDEN_HREFS.has(i.href)) : items;
+}
 
 export function StaffShell({
   variant,
   active,
+  managersOnly = false,
   children,
 }: {
   variant: Variant;
   active: string;
+  /** Billing / Queue Rules: solo doctor or clinic admin only (Decision 14). */
+  managersOnly?: boolean;
   children: (ctx: StaffContext) => ReactNode;
 }) {
   const router = useRouter();
@@ -54,23 +93,32 @@ export function StaffShell({
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [doctors, setDoctors] = useState<DoctorToday[] | null>(null);
   const [failed, setFailed] = useState(false);
+  const [sub, setSub] = useState<SubscriptionStatus | null>(null);
 
   const load = useCallback(async () => {
     const who = await api.me();
+    // Decision 15: a bookmarked/direct link shouldn't skip the forced password change either.
+    if (who.user.must_change_password) return who;
     const [t, ds] = await Promise.all([api.getMyTenant(), api.getDoctorsToday(who.tenant.id)]);
     setMe(who);
     setTenant(t);
     setDoctors(ds);
+    api.getSubscription().then(setSub).catch(() => undefined); // Decision 18: banner is best-effort, never blocks the shell
+    return who;
   }, []);
 
   useEffect(() => {
-    load().catch((e) => {
-      if (e instanceof ApiError && e.status === 401) {
-        router.replace(`/login?next=${encodeURIComponent(pathname)}`);
-      } else {
-        setFailed(true);
-      }
-    });
+    load()
+      .then((who) => {
+        if (who.user.must_change_password) router.replace(`/change-password?next=${encodeURIComponent(pathname)}`);
+      })
+      .catch((e) => {
+        if (e instanceof ApiError && e.status === 401) {
+          router.replace(`/login?next=${encodeURIComponent(pathname)}`);
+        } else {
+          setFailed(true);
+        }
+      });
   }, [load, router, pathname]);
 
   const refreshTenant = useCallback(async () => {
@@ -93,16 +141,17 @@ export function StaffShell({
     );
   if (!me || !tenant || !doctors) return <LoadingPage />;
 
-  if (me.user.role !== variant) {
+  const allowed = variant === 'manage' ? me.user.is_owner : me.user.role === variant;
+  if (!allowed) {
     return (
       <main className="min-h-screen flex items-center justify-center bg-surface p-4">
         <div className="w-full max-w-sm bg-surface-container-lowest rounded-2xl p-6 shadow-sm flex flex-col gap-4 text-center">
           <Icon name="lock" className="text-[36px] text-primary" />
           <h1 className="font-headline-md text-headline-md">
-            This screen is for {variant === 'doctor' ? 'doctors' : 'reception'}
+            This screen is for {variant === 'doctor' ? 'doctors' : variant === 'manage' ? 'the clinic admin' : 'reception'}
           </h1>
           <p className="font-body-md text-body-md text-on-surface-variant">
-            You&apos;re logged in as <strong>{me.user.name}</strong> ({me.user.role}).
+            You&apos;re logged in as <strong>{me.user.name}</strong> ({ROLE_LABEL[me.user.role]}).
           </p>
           <Link href={HOME_FOR_ROLE[me.user.role]} className="h-12 rounded-xl bg-primary text-on-primary font-label-lg text-label-lg flex items-center justify-center">
             Go to my screen
@@ -128,7 +177,27 @@ export function StaffShell({
     );
   }
 
+  if (managersOnly && !me.user.can_manage_clinic) {
+    return (
+      <main className="min-h-screen flex items-center justify-center bg-surface p-4">
+        <div className="w-full max-w-sm bg-surface-container-lowest rounded-2xl p-6 shadow-sm flex flex-col gap-4 text-center">
+          <Icon name="admin_panel_settings" className="text-[36px] text-primary" />
+          <h1 className="font-headline-md text-headline-md">Your clinic admin handles this</h1>
+          <p className="font-body-md text-body-md text-on-surface-variant">
+            In a clinic with several doctors, billing and clinic-wide queue rules are set by the clinic admin.
+          </p>
+          <Link href={HOME_FOR_ROLE[me.user.role]} className="h-12 rounded-xl bg-primary text-on-primary font-label-lg text-label-lg flex items-center justify-center">
+            Back to my screen
+          </Link>
+        </div>
+      </main>
+    );
+  }
+
   const clinicName = tenant.display_name ?? tenant.subdomain;
+  const nav = navFor(variant, me, !!tenant.is_demo);
+  const suiteLabel = variant === 'doctor' ? 'Doctor Suite' : variant === 'manage' ? 'Clinic Admin' : 'Front Desk';
+  const deskLabel = variant === 'manage' ? 'Clinic admin' : 'Reception desk';
 
   return (
     <div className="min-h-screen bg-surface text-on-surface lg:flex">
@@ -141,7 +210,7 @@ export function StaffShell({
           <div className="flex flex-col">
             <span className="font-headline-sm text-headline-sm text-primary leading-tight">MedQR</span>
             <span className="font-label-sm text-label-sm text-on-surface-variant uppercase">
-              {variant === 'doctor' ? 'Doctor Suite' : 'Front Desk'}
+              {suiteLabel}
             </span>
           </div>
         </div>
@@ -161,13 +230,13 @@ export function StaffShell({
             </div>
             <div className="min-w-0">
               <p className="font-label-md text-label-md text-on-surface truncate">{clinicName}</p>
-              <p className="font-body-sm text-body-sm text-on-surface-variant">Reception desk</p>
+              <p className="font-body-sm text-body-sm text-on-surface-variant">{deskLabel}</p>
             </div>
           </div>
         )}
 
         <nav className="flex flex-col gap-1">
-          {NAV[variant].map((item) => (
+          {nav.map((item) => (
             <Link
               key={item.href}
               href={item.href}
@@ -187,9 +256,16 @@ export function StaffShell({
           <div className="px-3 py-2 rounded-xl bg-surface-container-low">
             <p className="font-label-md text-label-md text-on-surface truncate">{me.user.name}</p>
             <p className="font-body-sm text-body-sm text-on-surface-variant truncate">
-              @{me.user.username} · {me.user.role === 'doctor' ? 'Doctor' : 'Reception'}
+              @{me.user.username} · {ROLE_LABEL[me.user.role]}{me.user.role === 'doctor' && me.user.is_owner ? ' · Clinic admin' : ''}
             </p>
           </div>
+          <Link
+            href="/change-password"
+            className="flex items-center gap-2 px-3 py-2 rounded-xl text-on-surface-variant hover:bg-surface-container-low font-label-md text-label-md"
+          >
+            <Icon name="lock_reset" className="text-[18px]" />
+            Change password
+          </Link>
           <button
             onClick={logout}
             className="flex items-center gap-2 px-3 py-2 rounded-xl text-on-surface-variant hover:bg-surface-container-low font-label-md text-label-md text-left"
@@ -210,10 +286,17 @@ export function StaffShell({
             <div className="min-w-0 flex-1">
               <p className="font-headline-sm text-headline-sm text-on-surface truncate">{clinicName}</p>
               <p className="font-body-sm text-body-sm text-on-surface-variant truncate">
-                {doctor ? `${doctor.name}${doctor.cabin_label ? ` · ${doctor.cabin_label}` : ''}` : 'Reception desk'}
+                {doctor ? `${doctor.name}${doctor.cabin_label ? ` · ${doctor.cabin_label}` : ''}` : deskLabel}
               </p>
             </div>
             <Clock />
+            <Link
+              href="/change-password"
+              aria-label="Change password"
+              className="lg:hidden w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container-low"
+            >
+              <Icon name="lock_reset" className="text-[20px]" />
+            </Link>
             <button
               onClick={logout}
               aria-label="Log out"
@@ -222,9 +305,9 @@ export function StaffShell({
               <Icon name="logout" className="text-[20px]" />
             </button>
           </div>
-          {NAV[variant].length > 1 && (
+          {nav.length > 1 && (
             <nav className="lg:hidden flex gap-1.5 overflow-x-auto no-scrollbar px-4 pb-2">
-              {NAV[variant].map((item) => (
+              {nav.map((item) => (
                 <Link
                   key={item.href}
                   href={item.href}
@@ -239,8 +322,64 @@ export function StaffShell({
           )}
         </header>
 
-        <main className="flex-1 p-4 lg:p-6 print:p-0">{children({ tenant, doctors, doctor, refreshTenant })}</main>
+        <main className="flex-1 p-4 lg:p-6 print:p-0">
+          {tenant.is_demo ? <DemoBanner /> : <SubscriptionBanner sub={sub} me={me} />}
+          {children({ tenant, doctors, doctor, refreshTenant, me })}
+        </main>
       </div>
+    </div>
+  );
+}
+
+/** The permanent public demo clinic — always visible so nobody mistakes sample data for a real clinic's. */
+function DemoBanner() {
+  return (
+    <div className="mb-4 rounded-xl bg-primary-container text-white px-4 py-3 flex items-center gap-3 flex-wrap">
+      <Icon name="visibility" className="text-[20px] shrink-0 text-white" />
+      <p className="font-body-md text-body-md flex-1 min-w-[200px] text-white">
+        You&apos;re viewing a live demo with sample patients — everything here is read-only.
+      </p>
+    </div>
+  );
+}
+
+/** Decision 18: trial countdown / grace / read-only — shown on every staff screen, not silently. */
+function SubscriptionBanner({ sub, me }: { sub: SubscriptionStatus | null; me: Me }) {
+  if (!sub || sub.status === 'active') return null;
+  const billingHref = !me.user.can_manage_clinic ? null : me.doctor_count <= 1 ? '/doctor/billing' : '/manage/billing';
+  const windowEnd = sub.status === 'grace' ? sub.grace_ends_at : sub.trial_ends_at;
+  const daysLeft = windowEnd ? Math.ceil((new Date(windowEnd).getTime() - Date.now()) / 86400000) : null;
+
+  if (sub.status === 'read_only') {
+    return (
+      <div className="mb-4 rounded-xl bg-error-container text-on-error-container px-4 py-3 flex items-center gap-3 flex-wrap">
+        <Icon name="lock" className="text-[20px] shrink-0" />
+        <p className="font-body-md text-body-md flex-1 min-w-[200px]">
+          This clinic&apos;s MedQR subscription payment is overdue — you can view everything, but changes are locked until it&apos;s paid.
+        </p>
+        {billingHref && (
+          <Link href={billingHref} className="h-9 px-4 rounded-full bg-on-error-container text-error-container font-label-md text-label-md flex items-center">
+            Fix billing
+          </Link>
+        )}
+      </div>
+    );
+  }
+
+  const label = sub.status === 'grace' ? 'Payment missed — grace period' : 'Free trial';
+  return (
+    <div className="mb-4 rounded-xl bg-tertiary-container text-white px-4 py-3 flex items-center gap-3 flex-wrap">
+      <Icon name={sub.status === 'grace' ? 'warning' : 'schedule'} className="text-[20px] shrink-0 text-white" />
+      <p className="font-body-md text-body-md flex-1 min-w-[200px] text-white">
+        {label}
+        {daysLeft !== null && ` — ${daysLeft >= 0 ? `${daysLeft} day${daysLeft === 1 ? '' : 's'} left` : 'ending soon'}`}
+        {sub.status === 'trial' && '. Set up autopay any time to keep going without a gap.'}
+      </p>
+      {billingHref && (
+        <Link href={billingHref} className="h-9 px-4 rounded-full bg-white text-tertiary font-label-md text-label-md flex items-center">
+          Go to Billing
+        </Link>
+      )}
     </div>
   );
 }

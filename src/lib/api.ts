@@ -41,6 +41,11 @@ export const patientDevice = {
   },
 };
 
+function toQuery(params: Record<string, string | undefined>): string {
+  const qs = new URLSearchParams(Object.entries(params).filter((e): e is [string, string] => !!e[1])).toString();
+  return qs ? `?${qs}` : '';
+}
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const patientToken = typeof window !== 'undefined' ? patientDevice.get()?.token : undefined;
   const res = await fetch(`${API_BASE}${path}`, {
@@ -81,6 +86,10 @@ export interface QueueSettings {
   offer_online_payment?: boolean;
   /** Require WhatsApp OTP before patient self check-in (doctor or admin). Missing = false. */
   require_whatsapp_otp?: boolean;
+  /** 'manual' = doctor taps Start shift (default), 'auto' = planned consulting hours. */
+  shift_start_mode?: 'manual' | 'auto';
+  /** Decision 17: how many days ahead a patient may book (0/missing = today only). Still needs an actual scheduled session that day. */
+  advance_booking_days?: number;
 }
 
 export interface Entitlements {
@@ -100,6 +109,14 @@ export interface Tenant {
   wallet_balance_inr: string;
   entitlements: Entitlements;
   queue_settings: QueueSettings;
+  /** The permanent "See the doctor suite" demo clinic — always read-only (Decision 18). */
+  is_demo?: boolean;
+  /** Public doctor/clinic directory (medqr.in/doctors) — off by default, platform admin opts a clinic in. */
+  is_publicly_listed?: boolean;
+  city?: string | null;
+  address?: string | null;
+  public_phone?: string | null;
+  public_slug?: string | null;
 }
 
 /** Decision 6 — today-only, four states. */
@@ -114,6 +131,9 @@ export interface DoctorToday {
   photo_url: string | null;
   today_status: DoctorTodayStatus;
   today_status_detail: string;
+  bio?: string | null;
+  is_publicly_listed?: boolean;
+  public_slug?: string | null;
 }
 
 export interface Patient {
@@ -191,6 +211,17 @@ export interface PaymentReport {
     unpaid_inr: number;
     duplicate_payments: number;
   };
+  by_doctor: {
+    doctor_id: string;
+    doctor_name: string;
+    visits: number;
+    paid: number;
+    cash_inr: number;
+    upi_counter_inr: number;
+    online_inr: number;
+  }[];
+  /** Cash handover: what each staff member marked collected at the counter (undo subtracts). */
+  collected_by_staff: { name: string; cash_inr: number; upi_counter_inr: number }[];
   unpaid: {
     visit_id: string;
     token_id: string | null;
@@ -218,6 +249,35 @@ export interface TokenStatusView {
   ahead_tokens: number[];
   avg_consult_mins: number;
   session_starts_at: string | null;
+  doctor_state: { state: ShiftState; detail: string; mode: 'manual' | 'auto' };
+  /** Decision 17 — booked for a future date, not today; there's no live shift state yet. */
+  is_future_booking: boolean;
+  booking_date: string | null;
+}
+
+/** Decision 17 — one bookable future day: the doctors who actually have a scheduled session on it. */
+export interface AdvanceBookingDay {
+  date: string;
+  doctors: Pick<DoctorToday, 'id' | 'name' | 'qualification' | 'specialty' | 'cabin_label' | 'photo_url'>[];
+}
+
+export type ShiftState = 'not_started' | 'live' | 'on_break' | 'ended';
+
+export interface ShiftView {
+  doctor_id: string;
+  mode: 'manual' | 'auto';
+  state: ShiftState;
+  today_status: DoctorTodayStatus;
+  today_status_detail: string;
+  planned_start: string | null;
+  started_at: string | null;
+  started_by: string | null;
+  on_break_since: string | null;
+  break_after_patients: number | null;
+  ended_at: string | null;
+  /** Decision 16: manual mode, not started, running late — "I'll start by…" (30 min per tap). */
+  delayed_until: string | null;
+  can_delay: boolean;
 }
 
 export interface DoctorSession {
@@ -291,11 +351,120 @@ async function uploadFile(file: File) {
   return (await res.json()) as { url: string; name: string };
 }
 
-export type StaffRole = 'reception' | 'doctor';
+export type StaffRole = 'reception' | 'doctor' | 'owner';
 
 export interface Me {
-  user: { id: string; name: string; username: string; role: StaffRole; doctor_id: string | null };
+  user: {
+    id: string;
+    name: string;
+    username: string;
+    role: StaffRole;
+    doctor_id: string | null;
+    /** Decision 14: clinic admin — a separate owner login, or a doctor given owner access. */
+    is_owner: boolean;
+    /** Billing, add-ons and clinic-wide Queue Rules: the solo doctor, or the clinic admin. */
+    can_manage_clinic: boolean;
+    /** Decision 15: a random password (creation, or an admin reset) forces a change before anything else. */
+    must_change_password: boolean;
+  };
+  doctor_count: number;
   tenant: { id: string; subdomain: string; display_name: string | null };
+}
+
+export interface MonthlyPlan {
+  doctor_count: number;
+  included_doctors: number;
+  extra_doctors: number;
+  extra_doctor_price_inr: number;
+  lines: { label: string; amount_inr: number }[];
+  total_inr_per_month: number;
+  wallet_balance_inr: number;
+}
+
+// Public doctor/clinic directory (medqr.in/doctors)
+export interface DirectoryDoctorSummary {
+  slug: string;
+  name: string;
+  qualification: string | null;
+  specialty: string | null;
+  photo_url: string | null;
+  clinic_name: string | null;
+  city: string | null;
+}
+
+export interface DirectoryDoctorProfile extends DirectoryDoctorSummary {
+  id: string;
+  bio: string | null;
+  clinic_subdomain: string;
+  address: string | null;
+  public_phone: string | null;
+}
+
+export interface DirectoryClinicProfile {
+  clinic_name: string | null;
+  subdomain: string;
+  city: string | null;
+  address: string | null;
+  public_phone: string | null;
+  doctors: { id: string; slug: string; name: string; qualification: string | null; specialty: string | null; photo_url: string | null; bio: string | null }[];
+}
+
+export interface SubscriptionStatus {
+  status: 'trial' | 'active' | 'grace' | 'read_only';
+  trial_ends_at: string | null;
+  current_period_end: string | null;
+  grace_ends_at: string | null;
+  autopay_active: boolean;
+  wallet_auto_recharge_enabled: boolean;
+  wallet_auto_recharge_below_inr: number;
+  wallet_auto_recharge_amount_inr: number;
+}
+
+export interface ManageOverview {
+  date: string;
+  totals: {
+    doctors: number;
+    on_shift: number;
+    tokens: number;
+    waiting: number;
+    done: number;
+    no_show: number;
+    collected_inr: number;
+    cash_inr: number;
+    upi_counter_inr: number;
+    online_inr: number;
+    unpaid: number;
+  };
+  doctors: {
+    doctor_id: string;
+    doctor_name: string;
+    specialty: string | null;
+    cabin_label: string | null;
+    shift_state: ShiftState;
+    today_status_detail: string;
+    started_at: string | null;
+    on_break_since: string | null;
+    ended_at: string | null;
+    tokens: number;
+    waiting: number;
+    in_cabin: boolean;
+    done: number;
+    no_show: number;
+    cash_inr: number;
+    upi_counter_inr: number;
+    online_inr: number;
+    unpaid: number;
+  }[];
+}
+
+export interface ActivityItem {
+  at: string;
+  kind: 'payment' | 'shift' | 'patient' | 'staff';
+  doctor_id: string | null;
+  doctor_name: string | null;
+  text: string;
+  by: string | null;
+  note?: string | null;
 }
 
 export interface QrCodeView {
@@ -316,7 +485,8 @@ export interface QrResolve {
   code: string;
   status: 'unassigned' | 'assigned' | 'disabled';
   clinic?: { id: string; subdomain: string; name: string };
-  doctor?: { id: string; name: string; specialty: string | null; cabin_label: string | null; today_status: DoctorTodayStatus; today_status_detail: string };
+  /** null on an assigned code = whole-clinic QR (patients pick the doctor). */
+  doctor?: { id: string; name: string; specialty: string | null; cabin_label: string | null; today_status: DoctorTodayStatus; today_status_detail: string } | null;
 }
 
 export const api = {
@@ -328,14 +498,20 @@ export const api = {
   // Staff login (reception and doctors have separate accounts)
   login: (body: { clinic: string; username: string; password: string }) =>
     request<Me>('/auth/login', { method: 'POST', body: JSON.stringify(body) }),
+  demoLogin: () => request<Me>('/auth/demo-login', { method: 'POST' }),
   logout: () => request('/auth/logout', { method: 'POST' }),
   me: () => request<Me>('/auth/me'),
+  changePassword: (body: { currentPassword: string; newPassword: string }) =>
+    request<Me>('/auth/change-password', { method: 'POST', body: JSON.stringify(body) }),
   getMyTenant: () => request<Tenant>('/tenants/mine'),
   addPatientAttachment: (tokenId: string, file: { url: string; name: string }) =>
     request(`/queue/tokens/${tokenId}/attachments`, { method: 'POST', body: JSON.stringify(file) }),
 
   getTenantBySubdomain: (subdomain: string) => request<Tenant | null>(`/tenants/by-subdomain/${subdomain}`),
   getDoctorsToday: (tenantId: string) => request<DoctorToday[]>(`/doctors/tenant/${tenantId}/today`),
+  // Decision 17 — advance booking window + which doctors have a session on each of the next N days.
+  getAdvanceBooking: (tenantId: string) =>
+    request<{ advance_booking_days: number; days: AdvanceBookingDay[] }>(`/doctors/tenant/${tenantId}/advance-booking`),
   // Patient WhatsApp OTP (Telnyx)
   sendOtp: (mobile_number: string) =>
     request<{ sent: boolean; expires_in_seconds: number; dev_code?: string }>('/patients/otp/send', { method: 'POST', body: JSON.stringify({ mobile_number }) }),
@@ -357,6 +533,8 @@ export const api = {
     patientId: string;
     chief_complaint?: string | null;
     weight_kg?: number | null;
+    /** Decision 17 — a future date, when the clinic's advance-booking window allows it. */
+    bookingDate?: string;
   }) => request<{ id: string; token_number: number; visit_id: string | null }>('/queue/join', { method: 'POST', body: JSON.stringify(body) }),
   getToken: (tokenId: string) => request<TokenStatusView>(`/queue/tokens/${tokenId}`),
   checkIn: (tokenId: string) => request(`/queue/tokens/${tokenId}/check-in`, { method: 'POST' }),
@@ -387,10 +565,28 @@ export const api = {
   setFee: (visitId: string, amount_inr: number) =>
     request<Visit>(`/payments/visits/${visitId}/fee`, { method: 'POST', body: JSON.stringify({ amount_inr }) }),
   visitPaymentEvents: (visitId: string) => request<PaymentEvent[]>(`/payments/visits/${visitId}/events`),
-  paymentReport: (date: string) => request<PaymentReport>(`/payments/report?date=${date}`),
+  paymentReport: (date: string, opts: { all?: boolean; doctorId?: string } = {}) =>
+    request<PaymentReport>(
+      `/payments/report?date=${date}${opts.all ? '&scope=all' : ''}${opts.doctorId ? `&doctorId=${encodeURIComponent(opts.doctorId)}` : ''}`,
+    ),
   simulateQrPayment: (qrId: string) => request(`/payments/dev/qr/${qrId}/simulate-paid`, { method: 'POST' }),
+  // WhatsApp wallet self-recharge (solo doctor or clinic admin, Decision 14)
+  createWalletRechargeQr: (amount_inr: number) =>
+    request<PaymentQrView>('/payments/wallet/recharge-qr', { method: 'POST', body: JSON.stringify({ amount_inr }) }),
+  walletRechargeStatus: (id: string) => request<PaymentQrView>(`/payments/wallet/recharge-qr/${id}`),
+  simulateWalletRecharge: (id: string) => request(`/payments/dev/wallet-recharge/${id}/simulate-paid`, { method: 'POST' }),
   updateQueueSettings: (tenantId: string, patch: Partial<QueueSettings>) =>
     request<Tenant>(`/tenants/${tenantId}/queue-settings`, { method: 'PATCH', body: JSON.stringify(patch) }),
+  // Public doctor/clinic directory (medqr.in/doctors) — clinic-wide fields: doctor/owner self-service (Decision 14).
+  updateTenantPublicProfile: (
+    tenantId: string,
+    patch: { is_publicly_listed?: boolean; city?: string | null; address?: string | null; public_phone?: string | null },
+  ) => request<Tenant>(`/tenants/${tenantId}/public-profile`, { method: 'PATCH', body: JSON.stringify(patch) }),
+  // Per-doctor fields: the doctor's own login, or the clinic admin editing any doctor.
+  updateDoctorPublicProfile: (
+    doctorId: string,
+    patch: { qualification?: string; specialty?: string; photo_url?: string; bio?: string; is_publicly_listed?: boolean },
+  ) => request<DoctorToday & { bio: string | null; public_slug: string | null }>(`/doctors/${doctorId}/public-profile`, { method: 'PATCH', body: JSON.stringify(patch) }),
   // Doctor portal "My Hours"
   listSessions: (doctorId: string, date: string) => request<DoctorSession[]>(`/doctors/${doctorId}/sessions?date=${date}`),
   addSession: (doctorId: string, body: { session_date: string; starts_at: string; ends_at: string; is_break: boolean }) =>
@@ -401,10 +597,85 @@ export const api = {
     request<DoctorSession>(`/doctors/${doctorId}/sessions/${sessionId}`, { method: 'PATCH', body: JSON.stringify({ is_active }) }),
   deleteSession: (doctorId: string, sessionId: string) =>
     request(`/doctors/${doctorId}/sessions/${sessionId}`, { method: 'DELETE' }),
-  startBreak: (doctorId: string, minutes: number) =>
-    request<DoctorSession>(`/doctors/${doctorId}/break`, { method: 'POST', body: JSON.stringify({ minutes }) }),
-  endBreak: (doctorId: string) => request(`/doctors/${doctorId}/break/end`, { method: 'POST' }),
-  stopForToday: (doctorId: string) => request(`/doctors/${doctorId}/stop-today`, { method: 'POST' }),
+  // Doctor shift (outside My Hours): Start/End shift, open-ended breaks
+  doctorShift: (doctorId: string) => request<ShiftView>(`/doctors/${doctorId}/shift`),
+  clinicShifts: (tenantId: string) => request<(ShiftView & { doctor_name: string; cabin_label: string | null })[]>(`/queue/tenant/${tenantId}/shifts`),
+  startShift: (doctorId: string) => request<ShiftView>(`/doctors/${doctorId}/shift/start`, { method: 'POST' }),
+  endShift: (doctorId: string) => request<ShiftView>(`/doctors/${doctorId}/shift/end`, { method: 'POST' }),
+  delayShift: (doctorId: string) => request<ShiftView>(`/doctors/${doctorId}/shift/delay`, { method: 'POST' }),
+  startBreak: (doctorId: string, when: 'now' | 'after_current' | 'after_next') =>
+    request<ShiftView>(`/doctors/${doctorId}/shift/break`, { method: 'POST', body: JSON.stringify({ when }) }),
+  endBreak: (doctorId: string) => request<ShiftView>(`/doctors/${doctorId}/shift/break/end`, { method: 'POST' }),
+  cancelBreak: (doctorId: string) => request<ShiftView>(`/doctors/${doctorId}/shift/break/cancel`, { method: 'POST' }),
   uploadFile,
-  getBillingCatalog: () => request<{ base_plan_price_inr: number; add_ons: CatalogAddOn[] }>('/billing/catalog'),
+  getBillingCatalog: () =>
+    request<{ base_plan_price_inr: number; included_doctors: number; extra_doctor_price_inr: number; add_ons: CatalogAddOn[]; trial_days: number }>(
+      '/billing/catalog',
+    ),
+  // Public landing page "Start free trial" lead form (Decision 18) — never creates a tenant by itself.
+  submitTrialLead: (body: { clinic_name: string; contact_name: string; phone: string; email?: string; city?: string; message?: string }) =>
+    request<{ id: string }>('/leads', { method: 'POST', body: JSON.stringify(body) }),
+  // Public doctor/clinic directory (medqr.in/doctors) — only clinics/doctors that opted in ever show up here.
+  directorySearch: (opts: { q?: string; specialty?: string; city?: string } = {}) =>
+    request<DirectoryDoctorSummary[]>(`/directory/doctors${toQuery(opts)}`),
+  directoryDoctor: (slug: string) => request<DirectoryDoctorProfile>(`/directory/doctors/${encodeURIComponent(slug)}`),
+  directoryClinic: (slug: string) => request<DirectoryClinicProfile>(`/directory/clinics/${encodeURIComponent(slug)}`),
+  directorySpecialties: () => request<string[]>('/directory/specialties'),
+  directoryCities: () => request<string[]>('/directory/cities'),
+  directorySitemap: () => request<{ doctors: { slug: string; updated_at: string }[]; clinics: { slug: string }[] }>('/directory/sitemap'),
+  billingPlan: () => request<MonthlyPlan>('/billing/plan'),
+  // Platform-fee trial / subscription (Decision 18)
+  getSubscription: () => request<SubscriptionStatus>('/billing/subscription'),
+  setupAutopay: () => request<{ subscription_id: string; key_id?: string }>('/billing/subscription/autopay', { method: 'POST' }),
+
+  // ---- Clinic admin / hospital owner (Decision 14) ----
+  manage: {
+    overview: () => request<ManageOverview>('/manage/overview'),
+    activity: (date: string, doctorId?: string) =>
+      request<{ date: string; items: ActivityItem[] }>(`/manage/activity?date=${date}${doctorId ? `&doctorId=${encodeURIComponent(doctorId)}` : ''}`),
+    doctors: () => request<ManagedDoctor[]>('/manage/doctors'),
+    createDoctor: (body: ManagedDoctorBody) => request<ManagedDoctor>('/manage/doctors', { method: 'POST', body: JSON.stringify(body) }),
+    updateDoctor: (id: string, body: ManagedDoctorBody) => request<ManagedDoctor>(`/manage/doctors/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+    deleteDoctor: (id: string) => request(`/manage/doctors/${id}`, { method: 'DELETE' }),
+    users: () => request<ManagedLogin[]>('/manage/users'),
+    createUser: (body: { role: 'reception' | 'doctor'; name: string; username: string; mobile_number: string; doctor_id: string | null }) =>
+      request<ManagedLogin & { generated_password: string }>('/manage/users', { method: 'POST', body: JSON.stringify(body) }),
+    updateUser: (id: string, body: { name?: string; is_active?: boolean; password?: string; mobile_number?: string | null }) =>
+      request<ManagedLogin>(`/manage/users/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+    resetPassword: (id: string) =>
+      request<{ sent: boolean; generated_password: string; error?: string }>(`/manage/users/${id}/reset-password`, { method: 'POST' }),
+    deleteUser: (id: string) => request(`/manage/users/${id}`, { method: 'DELETE' }),
+    qrCodes: () => request<QrCodeView[]>('/manage/qr-codes'),
+    /** Always for a chosen doctor of this clinic, or the whole clinic (doctor selection on scan). */
+    createQrCode: (target: { doctor_id: string } | { whole_clinic: true }) =>
+      request<QrCodeView[]>('/manage/qr-codes', { method: 'POST', body: JSON.stringify({ ...target, count: 1 }) }),
+  },
 };
+
+export interface ManagedDoctor {
+  id: string;
+  tenant_id: string;
+  name: string;
+  qualification: string | null;
+  specialty: string | null;
+  cabin_label: string | null;
+  photo_url: string | null;
+  bio: string | null;
+  is_publicly_listed: boolean;
+  public_slug: string | null;
+}
+export type ManagedDoctorBody = Partial<Pick<ManagedDoctor, 'name' | 'qualification' | 'specialty' | 'cabin_label'>>;
+export interface ManagedLogin {
+  id: string;
+  tenant_id: string;
+  role: StaffRole;
+  name: string;
+  username: string;
+  doctor_id: string | null;
+  mobile_number: string | null; // Decision 15: where a password reset is sent, via WhatsApp
+  must_change_password: boolean;
+  is_owner: boolean;
+  is_active: boolean;
+  last_login_at: string | null;
+  created_at: string;
+}

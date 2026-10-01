@@ -42,7 +42,7 @@ export const patientBaseUrl = () =>
 export const qrBaseUrl = () =>
   (process.env.NEXT_PUBLIC_QR_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000').replace(/\/$/, '');
 
-/** Poster text for a standalone standee (/q/<code>): the doctor once linked, generic while unassigned. */
+/** Poster text for a standalone standee (/q/<code>): the doctor, the clinic (whole-clinic QR), or generic while unassigned. */
 export function posterContentFor(q: QrCodeView): PosterContent {
   const base = qrBaseUrl();
   let host = base;
@@ -53,8 +53,8 @@ export function posterContentFor(q: QrCodeView): PosterContent {
   }
   return {
     url: `${base}/q/${q.code}`,
-    title: q.doctor?.name ?? 'MedQR Digital Queue',
-    subtitle: q.clinic ? [q.doctor?.specialty, q.clinic.name].filter(Boolean).join(' · ') : 'Scan to check in with your doctor',
+    title: q.doctor?.name ?? q.clinic?.name ?? 'MedQR Digital Queue',
+    subtitle: q.doctor ? [q.doctor.specialty, q.clinic?.name].filter(Boolean).join(' · ') : q.clinic ? 'Live OPD digital queue' : 'Scan to check in with your doctor',
     footer: `${host}/q/${q.code}`,
     codeLabel: `MQ-${q.code}`,
   };

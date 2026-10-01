@@ -23,11 +23,17 @@ export function UpiQrCard({
   qr,
   onPatientPhone = false,
   onChanged,
+  onSimulate,
+  label: payLabel,
 }: {
   qr: PaymentQrView;
   /** Patient's own phone: lead with "Open UPI app"; the QR is for paying from another phone. */
   onPatientPhone?: boolean;
   onChanged?: () => void;
+  /** Defaults to the visit-payment simulate endpoint; pass a different one for other QR kinds (e.g. wallet recharge). */
+  onSimulate?: () => Promise<unknown>;
+  /** Defaults to "Pay ₹N by UPI" — override for a non-visit QR (e.g. "Recharge ₹N by UPI"). */
+  label?: string;
 }) {
   const { secs, label } = useCountdown(qr.close_by);
   const [simulating, setSimulating] = useState(false);
@@ -37,7 +43,7 @@ export function UpiQrCard({
     <div className="bg-surface-container-lowest rounded-2xl p-5 shadow-sm flex flex-col items-center text-center gap-3">
       <div className="flex items-center gap-2">
         <Icon name="qr_code_2" className="text-primary text-[20px]" />
-        <p className="font-label-lg text-label-lg">Pay ₹{qr.amount_inr.toLocaleString('en-IN')} by UPI</p>
+        <p className="font-label-lg text-label-lg">{payLabel ?? `Pay ₹${qr.amount_inr.toLocaleString('en-IN')} by UPI`}</p>
         {qr.gateway === 'mock' && (
           <span className="px-2 py-0.5 rounded-full bg-secondary-fixed text-on-secondary-fixed font-label-sm text-label-sm">Test mode</span>
         )}
@@ -73,7 +79,7 @@ export function UpiQrCard({
           disabled={simulating}
           onClick={async () => {
             setSimulating(true);
-            await api.simulateQrPayment(qr.id).catch(() => undefined);
+            await (onSimulate ? onSimulate() : api.simulateQrPayment(qr.id)).catch(() => undefined);
             setSimulating(false);
             onChanged?.();
           }}

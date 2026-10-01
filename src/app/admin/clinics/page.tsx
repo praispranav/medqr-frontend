@@ -18,6 +18,8 @@ function Clinics({ api }: { api: AdminApi }) {
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
   const [codeTouched, setCodeTouched] = useState(false);
+  const [city, setCity] = useState('');
+  const [address, setAddress] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -38,7 +40,7 @@ function Clinics({ api }: { api: AdminApi }) {
     setBusy(true);
     setError(null);
     try {
-      const t = await api.createTenant({ subdomain: effectiveCode, display_name: name });
+      const t = await api.createTenant({ subdomain: effectiveCode, display_name: name, city: city.trim() || undefined, address: address.trim() || undefined });
       router.push(`/admin/clinics/${t.id}`);
     } catch (e) {
       setError((e as Error).message);
@@ -84,6 +86,29 @@ function Clinics({ api }: { api: AdminApi }) {
             </div>
           </label>
         </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <label className="flex flex-col gap-1">
+            <span className="font-label-md text-label-md">City (optional)</span>
+            <input
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+              placeholder="Trivandrum"
+              className="h-12 rounded-xl bg-surface-container-low px-3 font-body-lg text-body-lg focus:outline-none focus:ring-2 focus:ring-primary/30"
+            />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="font-label-md text-label-md">Address (optional)</span>
+            <input
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              placeholder="2nd Floor, MG Road"
+              className="h-12 rounded-xl bg-surface-container-low px-3 font-body-lg text-body-lg focus:outline-none focus:ring-2 focus:ring-primary/30"
+            />
+          </label>
+        </div>
+        <p className="font-body-sm text-body-sm text-on-surface-variant -mt-1">
+          Used for the public doctor directory (medqr.in/doctors) — doctors there share the clinic&apos;s own address, so there&apos;s no separate address per doctor.
+        </p>
         {error && <p className="font-body-sm text-body-sm text-error">{error}</p>}
         <button disabled={busy || !name.trim() || !effectiveCode} className="self-start h-11 px-5 rounded-xl bg-primary text-on-primary font-label-lg text-label-lg disabled:opacity-40">
           {busy ? 'Creating…' : 'Create clinic'}
@@ -98,7 +123,22 @@ function Clinics({ api }: { api: AdminApi }) {
               <Icon name="local_hospital" className="text-[22px]" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="font-label-lg text-label-lg truncate">{t.display_name ?? t.subdomain}</p>
+              <div className="flex items-center gap-2">
+                <p className="font-label-lg text-label-lg truncate">{t.display_name ?? t.subdomain}</p>
+                {t.subscription && t.subscription.status !== 'active' && (
+                  <span
+                    className={`px-2 py-0.5 rounded-full font-label-sm text-label-sm shrink-0 ${
+                      t.subscription.status === 'read_only'
+                        ? 'bg-error-container text-on-error-container'
+                        : t.subscription.status === 'grace'
+                          ? 'bg-secondary-container text-on-secondary-container'
+                          : 'bg-tertiary-container text-on-tertiary-container'
+                    }`}
+                  >
+                    {t.subscription.status === 'trial' ? 'Trial' : t.subscription.status === 'grace' ? 'Grace' : 'Read-only'}
+                  </span>
+                )}
+              </div>
               <p className="font-body-sm text-body-sm text-on-surface-variant">{t.subdomain}.medqr.in</p>
             </div>
             <div className="hidden sm:flex gap-6 font-body-sm text-body-sm text-on-surface-variant text-right">

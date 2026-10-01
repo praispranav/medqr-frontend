@@ -14,8 +14,11 @@ import {
   type PosterKind,
 } from '@/components/qr/QrPoster';
 
-// Platform admin: standalone QR standees for enrollment / onboarding kits. Codes are created
-// UNASSIGNED; admin assigns one to a doctor here, or the doctor links it by scanning it while logged in.
+// Platform admin: standalone QR standees. Creating codes always asks who they're for:
+//  - "Unassigned" — printed ahead and handed out; linked later here as clinics/doctors join (or by a
+//    doctor scanning it while logged in);
+//  - a clinic/hospital — enough on its own (scan opens the clinic's doctor selection); optionally one
+//    doctor too (scan goes straight to that doctor's check-in, no doctor selection).
 
 export default function AdminQrCodesPage() {
   return <AdminShell active="/admin/qr-codes">{(api) => <QrCodes api={api} />}</AdminShell>;
@@ -31,6 +34,30 @@ function QrCodes({ api }: { api: AdminApi }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [count, setCount] = useState('10');
   const [label, setLabel] = useState('');
+  // Who new codes are for: forTenant is required ('unassigned' or a clinic id); forDoctor is optional ('' = whole clinic).
+  const [forTenant, setForTenant] = useState('');
+  const [forDoctor, setForDoctor] = useState('');
+  const [forDoctors, setForDoctors] = useState<AdminDoctor[]>([]);
+  useEffect(() => {
+    setForDoctor('');
+    setForDoctors([]);
+    if (forTenant && forTenant !== 'unassigned') api.doctors(forTenant).then(setForDoctors).catch(() => setForDoctors([]));
+  }, [api, forTenant]);
+  const target: { doctor_id: string | null; tenant_id: string | null } | undefined =
+    forTenant === 'unassigned'
+      ? { doctor_id: null, tenant_id: null }
+      : forTenant && forDoctor
+        ? { doctor_id: forDoctor, tenant_id: forTenant }
+        : forTenant
+          ? { doctor_id: null, tenant_id: forTenant } // doctor optional: whole clinic
+          : undefined; // not chosen yet
+  const targetName = !target
+    ? ''
+    : target.doctor_id
+      ? (forDoctors.find((d) => d.id === target.doctor_id)?.name ?? 'this doctor')
+      : target.tenant_id
+        ? `${tenants.find((t) => t.id === target.tenant_id)?.display_name ?? 'the clinic'} (whole clinic)`
+        : '';
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
   const [previewId, setPreviewId] = useState<string | null>(null);
@@ -74,14 +101,17 @@ function QrCodes({ api }: { api: AdminApi }) {
   };
 
   const create = async () => {
+    if (!target) return;
+    const who = targetName || null;
+    const n = Number(count);
     // Codes are permanent, printable assets — never create a batch from a stray Enter key.
-    if (!window.confirm(`Create ${Number(count)} new unassigned QR code${Number(count) === 1 ? '' : 's'}?`)) return;
+    if (!window.confirm(`Create ${n} new QR code${n === 1 ? '' : 's'} ${who ? `for ${who}` : '(unassigned)'}?`)) return;
     setBusy(true);
     await act(async () => {
-      const made = await api.createQrCodes(Number(count), label);
+      const made = await api.createQrCodes(n, label, target);
       setSelected(new Set(made.map((m) => m.id)));
-      setFilter('unassigned');
-    }, `${count} new unassigned QR codes created and selected — download them below.`);
+      setFilter(target.tenant_id ? 'assigned' : 'unassigned');
+    }, `${n} new QR code${n === 1 ? '' : 's'} ${who ? `for ${who}` : '(unassigned)'} created and selected — download them below.`);
     setBusy(false);
   };
 
@@ -121,8 +151,9 @@ function QrCodes({ api }: { api: AdminApi }) {
       <div>
         <h1 className="font-headline-lg text-headline-lg">QR codes</h1>
         <p className="font-body-md text-body-md text-on-surface-variant">
-          Print standees before a clinic is set up and hand them out at onboarding. Link each one to a doctor here — or the doctor
-          scans it while logged in and taps “Link to me”.
+          Print codes ahead as “Unassigned” and hand them out; as clinics and doctors join, link each printed code here to a whole clinic
+          (patients pick the doctor) or to one doctor (straight to their check-in). A doctor can also scan an unassigned code while
+          logged in and tap “Link to me”.
         </p>
       </div>
 
@@ -131,7 +162,7 @@ function QrCodes({ api }: { api: AdminApi }) {
           e.preventDefault();
           create();
         }}
-        className="bg-surface-container-lowest rounded-2xl p-5 shadow-sm flex flex-col sm:flex-row sm:items-end gap-3"
+        className="bg-surface-container-lowest rounded-2xl p-5 shadow-sm flex flex-col sm:flex-row sm:flex-wrap sm:items-end gap-3"
       >
         <label className="flex flex-col gap-1">
           <span className="font-label-sm text-label-sm text-on-surface-variant">How many</span>
@@ -142,6 +173,31 @@ function QrCodes({ api }: { api: AdminApi }) {
             className="h-11 w-24 rounded-lg bg-surface-container-low px-3 font-body-md text-body-md"
           />
         </label>
+        <label className="flex flex-col gap-1">
+          <span className="font-label-sm text-label-sm text-on-surface-variant">Clinic *</span>
+          <select value={forTenant} onChange={(e) => setForTenant(e.target.value)} className="h-11 rounded-lg bg-surface-container-low px-3 font-body-md text-body-md">
+            <option value="">Choose…</option>
+            <option value="unassigned">Unassigned — print now, link later</option>
+            {tenants.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.display_name ?? t.subdomain}
+              </option>
+            ))}
+          </select>
+        </label>
+        {forTenant && forTenant !== 'unassigned' && (
+          <label className="flex flex-col gap-1">
+            <span className="font-label-sm text-label-sm text-on-surface-variant">Doctor (optional)</span>
+            <select value={forDoctor} onChange={(e) => setForDoctor(e.target.value)} className="h-11 rounded-lg bg-surface-container-low px-3 font-body-md text-body-md">
+              <option value="">Whole clinic — patient picks the doctor</option>
+              {forDoctors.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <label className="flex flex-col gap-1 flex-1">
           <span className="font-label-sm text-label-sm text-on-surface-variant">Batch note (optional)</span>
           <input
@@ -151,8 +207,8 @@ function QrCodes({ api }: { api: AdminApi }) {
             className="h-11 rounded-lg bg-surface-container-low px-3 font-body-md text-body-md"
           />
         </label>
-        <button disabled={busy || !Number(count)} className="h-11 px-5 rounded-xl bg-primary text-on-primary font-label-lg text-label-lg flex items-center gap-2 disabled:opacity-50">
-          <Icon name="add" className="text-[20px]" /> {busy ? 'Creating…' : 'Create unassigned QR codes'}
+        <button disabled={busy || !Number(count) || !target} className="h-11 px-5 rounded-xl bg-primary text-on-primary font-label-lg text-label-lg flex items-center gap-2 disabled:opacity-50">
+          <Icon name="add" className="text-[20px]" /> {busy ? 'Creating…' : target && !target.tenant_id ? 'Create unassigned QR codes' : 'Create QR codes'}
         </button>
       </form>
 
@@ -210,7 +266,9 @@ function QrCodes({ api }: { api: AdminApi }) {
                 {q.status === 'assigned' ? 'Assigned' : q.status === 'disabled' ? 'Disabled' : 'Unassigned'}
               </span>
               <div className="flex-1 min-w-[180px]">
-                <p className="font-label-md text-label-md text-on-surface">{q.doctor ? `${q.doctor.name} · ${q.clinic?.name ?? ''}` : '—'}</p>
+                <p className="font-label-md text-label-md text-on-surface">
+                  {q.doctor ? `${q.doctor.name} · ${q.clinic?.name ?? ''}` : q.clinic ? `${q.clinic.name} · whole clinic` : '—'}
+                </p>
                 <p className="font-body-sm text-body-sm text-on-surface-variant">
                   {[q.label, q.assigned_by ? `by ${q.assigned_by}` : null, q.scan_count ? `${q.scan_count} scan${q.scan_count === 1 ? '' : 's'}` : null]
                     .filter(Boolean)
@@ -223,11 +281,11 @@ function QrCodes({ api }: { api: AdminApi }) {
                 </button>
                 {q.status !== 'disabled' && (
                   <button onClick={() => setAssignId(assignId === q.id ? null : q.id)} className="h-9 px-3 rounded-lg bg-surface-container-low font-label-md text-label-md text-primary">
-                    {q.doctor ? 'Reassign' : 'Assign'}
+                    {q.clinic ? 'Reassign' : 'Assign'}
                   </button>
                 )}
-                {q.doctor && (
-                  <button onClick={() => act(() => api.updateQrCode(q.id, { doctor_id: null }), `MQ-${q.code} is unassigned again.`)} className="h-9 px-3 rounded-lg bg-surface-container-low font-label-md text-label-md text-on-surface-variant">
+                {q.clinic && (
+                  <button onClick={() => act(() => api.updateQrCode(q.id, { doctor_id: null, tenant_id: null }), `MQ-${q.code} is unassigned again.`)} className="h-9 px-3 rounded-lg bg-surface-container-low font-label-md text-label-md text-on-surface-variant">
                     Unassign
                   </button>
                 )}
@@ -247,11 +305,11 @@ function QrCodes({ api }: { api: AdminApi }) {
               <AssignRow
                 api={api}
                 tenants={tenants}
-                onAssign={(doctorId) =>
+                onAssign={(tenantId, doctorId) =>
                   act(async () => {
-                    await api.updateQrCode(q.id, { doctor_id: doctorId });
+                    await api.updateQrCode(q.id, doctorId ? { doctor_id: doctorId } : { tenant_id: tenantId, doctor_id: null });
                     setAssignId(null);
-                  }, `MQ-${q.code} linked.`)
+                  }, doctorId ? `MQ-${q.code} linked to the doctor.` : `MQ-${q.code} is now the clinic's shared QR.`)
                 }
               />
             )}
@@ -276,7 +334,8 @@ function QrCodes({ api }: { api: AdminApi }) {
   );
 }
 
-function AssignRow({ api, tenants, onAssign }: { api: AdminApi; tenants: AdminTenant[]; onAssign: (doctorId: string) => void }) {
+/** Link a code to a clinic/hospital. The doctor is optional: none = whole clinic (patients pick the doctor). */
+function AssignRow({ api, tenants, onAssign }: { api: AdminApi; tenants: AdminTenant[]; onAssign: (tenantId: string, doctorId: string | null) => void }) {
   const [tenantId, setTenantId] = useState('');
   const [doctors, setDoctors] = useState<AdminDoctor[]>([]);
   const [doctorId, setDoctorId] = useState('');
@@ -301,9 +360,9 @@ function AssignRow({ api, tenants, onAssign }: { api: AdminApi; tenants: AdminTe
         </select>
       </label>
       <label className="flex flex-col gap-1">
-        <span className="font-label-sm text-label-sm text-on-surface-variant">Doctor</span>
+        <span className="font-label-sm text-label-sm text-on-surface-variant">Doctor (optional)</span>
         <select value={doctorId} disabled={!tenantId} onChange={(e) => setDoctorId(e.target.value)} className="h-10 rounded-lg bg-surface-container-lowest px-2 font-body-md text-body-md min-w-[200px] disabled:opacity-50">
-          <option value="">{tenantId && doctors.length === 0 ? 'No doctors yet' : 'Select doctor…'}</option>
+          <option value="">Whole clinic — patient picks the doctor</option>
           {doctors.map((d) => (
             <option key={d.id} value={d.id}>
               {d.name}
@@ -311,8 +370,12 @@ function AssignRow({ api, tenants, onAssign }: { api: AdminApi; tenants: AdminTe
           ))}
         </select>
       </label>
-      <button disabled={!doctorId} onClick={() => onAssign(doctorId)} className="h-10 px-4 rounded-lg bg-primary text-on-primary font-label-md text-label-md disabled:opacity-40">
-        Link to doctor
+      <button
+        disabled={!tenantId}
+        onClick={() => onAssign(tenantId, doctorId || null)}
+        className="h-10 px-4 rounded-lg bg-primary text-on-primary font-label-md text-label-md disabled:opacity-40"
+      >
+        {doctorId ? 'Link to doctor' : 'Link to clinic'}
       </button>
     </div>
   );

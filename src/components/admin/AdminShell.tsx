@@ -12,6 +12,7 @@ import { Icon, LoadingPage } from '@/components/patient/ui';
 const NAV = [
   { href: '/admin', label: 'Activity', icon: 'monitoring' },
   { href: '/admin/clinics', label: 'Clinics', icon: 'local_hospital' },
+  { href: '/admin/leads', label: 'Trial requests', icon: 'inbox' },
   { href: '/admin/qr-codes', label: 'QR codes', icon: 'qr_code_2' },
 ];
 

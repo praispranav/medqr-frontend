@@ -2,10 +2,10 @@
 
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { api as publicApi, type CatalogAddOn, type Tenant } from '@/lib/api';
-import type { AdminApi, AdminDoctor, StaffLogin } from '@/lib/adminApi';
-import { ScheduleEditor } from '@/components/schedule/ScheduleEditor';
+import type { AdminApi, SubscriptionStatusView } from '@/lib/adminApi';
+import { DoctorsTab, LoginsTab, type TeamApi } from '@/components/team/TeamManager';
 import { Icon } from '@/components/patient/ui';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { inr } from '@/components/staff/bits';
@@ -24,6 +24,7 @@ function ClinicDetail({ api }: { api: AdminApi }) {
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [tab, setTab] = useState<'doctors' | 'logins' | 'modules'>('doctors');
   const [error, setError] = useState<string | null>(null);
+  const team = useMemo(() => adminTeamApi(api, id), [api, id]);
 
   useEffect(() => {
     api.tenant(id).then(setTenant).catch((e: Error) => setError(e.message));
@@ -50,6 +51,8 @@ function ClinicDetail({ api }: { api: AdminApi }) {
         </div>
       </section>
 
+      <SubscriptionCard api={api} tenantId={tenant.id} />
+
       <div className="flex gap-2">
         {(
           [
@@ -68,11 +71,34 @@ function ClinicDetail({ api }: { api: AdminApi }) {
         ))}
       </div>
 
-      {tab === 'doctors' && <DoctorsTab api={api} tenantId={tenant.id} />}
-      {tab === 'logins' && <LoginsTab api={api} tenant={tenant} />}
+      {tab === 'doctors' && <DoctorsTab api={team} />}
+      {tab === 'logins' && <LoginsTab api={team} clinicCode={tenant.subdomain} />}
       {tab === 'modules' && <ModulesTab api={api} tenant={tenant} onSaved={setTenant} />}
     </div>
   );
+}
+
+function adminTeamApi(api: AdminApi, tenantId: string): TeamApi {
+  return {
+    doctors: () => api.doctors(tenantId),
+    createDoctor: (b) => api.createDoctor(tenantId, b),
+    updateDoctor: (id, b) => api.updateDoctor(id, b),
+    deleteDoctor: (id) => api.deleteDoctor(id),
+    schedule: (doctorId) => ({
+      list: (date) => api.sessions(doctorId, date),
+      add: (body) => api.addSession(doctorId, body),
+      repeat: (from, days) => api.repeatSchedule(doctorId, from, days),
+      setActive: (id, active) => api.setSessionActive(id, active),
+      remove: (id) => api.deleteSession(id),
+    }),
+    users: () => api.users(tenantId),
+    createUser: (b) => api.createUser(tenantId, b),
+    updateUser: (id, b) => api.updateUser(id, b),
+    resetPassword: (id) => api.resetPassword(id),
+    deleteUser: (id) => api.deleteUser(id),
+    canGrantOwner: true,
+    directoryFields: true,
+  };
 }
 
 function ClinicName({ api, tenant, onSaved }: { api: AdminApi; tenant: Tenant; onSaved: (t: Tenant) => void }) {
@@ -116,358 +142,108 @@ function ClinicName({ api, tenant, onSaved }: { api: AdminApi; tenant: Tenant; o
   );
 }
 
-// ---------------- Doctors & schedule ----------------
+// ---------------- Platform-fee trial / subscription (Decision 18) ----------------
 
-type DoctorForm = { name: string; qualification: string; specialty: string; cabin_label: string };
-const emptyDoctor: DoctorForm = { name: '', qualification: '', specialty: '', cabin_label: '' };
+function daysLeft(iso: string | null) {
+  if (!iso) return null;
+  return Math.ceil((new Date(iso).getTime() - Date.now()) / 86400000);
+}
 
-function DoctorsTab({ api, tenantId }: { api: AdminApi; tenantId: string }) {
-  const [doctors, setDoctors] = useState<AdminDoctor[] | null>(null);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [adding, setAdding] = useState(false);
+const STATUS_LABEL: Record<SubscriptionStatusView['status'], { text: string; className: string }> = {
+  trial: { text: 'Free trial', className: 'bg-tertiary-container text-on-tertiary-container' },
+  active: { text: 'Active', className: 'bg-primary-container text-on-primary-container' },
+  grace: { text: 'Grace period', className: 'bg-secondary-container text-on-secondary-container' },
+  read_only: { text: 'Read-only (unpaid)', className: 'bg-error-container text-on-error-container' },
+};
 
-  const load = useCallback(async () => {
-    const list = await api.doctors(tenantId);
-    setDoctors(list);
-    setSelectedId((cur) => (cur && list.some((d) => d.id === cur) ? cur : (list[0]?.id ?? null)));
+function SubscriptionCard({ api, tenantId }: { api: AdminApi; tenantId: string }) {
+  const [sub, setSub] = useState<SubscriptionStatusView | null>(null);
+  const [days, setDays] = useState('14');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = () => api.subscription(tenantId).then(setSub).catch((e: Error) => setError(e.message));
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [api, tenantId]);
 
-  useEffect(() => {
-    load();
-  }, [load]);
-
-  if (!doctors) return <p className="font-body-md text-body-md text-on-surface-variant">Loading…</p>;
-  const selected = doctors.find((d) => d.id === selectedId) ?? null;
+  if (!sub) return null;
+  const label = STATUS_LABEL[sub.status];
+  const windowEnd = sub.status === 'grace' ? sub.grace_ends_at : sub.trial_ends_at;
+  const left = daysLeft(windowEnd);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[360px_minmax(0,1fr)] gap-6">
-      <section className="flex flex-col gap-3">
-        {doctors.map((d) =>
-          editingId === d.id ? (
-            <DoctorEditor
-              key={d.id}
-              initial={{ name: d.name, qualification: d.qualification ?? '', specialty: d.specialty ?? '', cabin_label: d.cabin_label ?? '' }}
-              submitLabel="Save"
-              onCancel={() => setEditingId(null)}
-              onSubmit={async (f) => {
-                await api.updateDoctor(d.id, f);
-                setEditingId(null);
-                await load();
-              }}
-            />
-          ) : (
-            <div
-              key={d.id}
-              onClick={() => setSelectedId(d.id)}
-              className={`rounded-2xl p-4 cursor-pointer flex items-start gap-3 ${d.id === selectedId ? 'bg-primary-fixed/20 ring-2 ring-primary' : 'bg-surface-container-lowest shadow-sm'}`}
-            >
-              <div className="flex-1 min-w-0">
-                <p className="font-label-lg text-label-lg truncate">{d.name}</p>
-                <p className="font-body-sm text-body-sm text-on-surface-variant truncate">
-                  {[d.qualification, d.specialty, d.cabin_label].filter(Boolean).join(' · ') || 'No details yet'}
-                </p>
-              </div>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setEditingId(d.id);
-                }}
-                aria-label={`Edit ${d.name}`}
-                className="w-9 h-9 rounded-lg hover:bg-surface-container flex items-center justify-center text-on-surface-variant"
-              >
-                <Icon name="edit" className="text-[18px]" />
-              </button>
-              <button
-                onClick={async (e) => {
-                  e.stopPropagation();
-                  if (!window.confirm(`Remove ${d.name} and their schedule? Past visits are kept.`)) return;
-                  await api.deleteDoctor(d.id);
-                  await load();
-                }}
-                aria-label={`Remove ${d.name}`}
-                className="w-9 h-9 rounded-lg hover:bg-error-container hover:text-error flex items-center justify-center text-on-surface-variant"
-              >
-                <Icon name="delete" className="text-[18px]" />
-              </button>
-            </div>
-          ),
+    <section className="bg-surface-container-lowest rounded-2xl p-5 shadow-sm flex flex-col gap-3">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-3">
+          <h2 className="font-headline-sm text-headline-sm">Platform-fee subscription</h2>
+          <span className={`px-3 py-1 rounded-full font-label-sm text-label-sm ${label.className}`}>{label.text}</span>
+        </div>
+        {sub.autopay_active && (
+          <span className="font-body-sm text-body-sm text-on-surface-variant flex items-center gap-1">
+            <Icon name="autorenew" className="text-[16px]" /> Autopay set up
+          </span>
         )}
-        {doctors.length === 0 && !adding && (
-          <p className="font-body-md text-body-md text-on-surface-variant">No doctors yet. Patients can&apos;t check in until you add one with a session today.</p>
-        )}
-        {adding ? (
-          <DoctorEditor
-            initial={emptyDoctor}
-            submitLabel="Add doctor"
-            onCancel={() => setAdding(false)}
-            onSubmit={async (f) => {
-              const d = await api.createDoctor(tenantId, f);
-              setAdding(false);
-              await load();
-              setSelectedId(d.id);
-            }}
-          />
-        ) : (
-          <button onClick={() => setAdding(true)} className="h-12 rounded-xl border border-dashed border-outline-variant text-primary font-label-lg text-label-lg flex items-center justify-center gap-2 hover:bg-surface-container-low">
-            <Icon name="person_add" className="text-[20px]" /> Add doctor
-          </button>
-        )}
-      </section>
+      </div>
 
-      {selected ? (
-        <ScheduleEditor
-          key={selected.id}
-          title={selected.name}
-          api={{
-            list: (date) => api.sessions(selected.id, date),
-            add: (body) => api.addSession(selected.id, body),
-            repeat: (from, days) => api.repeatSchedule(selected.id, from, days),
-            setActive: (id, active) => api.setSessionActive(id, active),
-            remove: (id) => api.deleteSession(id),
-          }}
-        />
-      ) : (
-        <section className="bg-surface-container-low rounded-2xl p-8 text-center font-body-md text-body-md text-on-surface-variant">
-          Add a doctor to set their consulting hours.
-        </section>
+      {windowEnd && (
+        <p className="font-body-md text-body-md text-on-surface-variant">
+          {sub.status === 'grace' ? 'Grace period ends' : 'Trial ends'} {new Date(windowEnd).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+          {left !== null && ` (${left >= 0 ? `${left} day${left === 1 ? '' : 's'} left` : 'expired'})`}
+        </p>
       )}
-    </div>
-  );
-}
+      {sub.status === 'read_only' && (
+        <p className="font-body-md text-body-md text-error">Staff can view but not change anything for this clinic until it's marked active.</p>
+      )}
 
-function DoctorEditor({
-  initial,
-  submitLabel,
-  onSubmit,
-  onCancel,
-}: {
-  initial: DoctorForm;
-  submitLabel: string;
-  onSubmit: (f: DoctorForm) => Promise<void>;
-  onCancel: () => void;
-}) {
-  const [f, setF] = useState(initial);
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  const field = (k: keyof DoctorForm, label: string, ph: string) => (
-    <label className="flex flex-col gap-1">
-      <span className="font-label-sm text-label-sm text-on-surface-variant">{label}</span>
-      <input
-        value={f[k]}
-        placeholder={ph}
-        onChange={(e) => setF((x) => ({ ...x, [k]: e.target.value }))}
-        className="h-11 rounded-lg bg-surface-container-low px-3 font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-primary/30"
-      />
-    </label>
-  );
-  return (
-    <form
-      onSubmit={async (e) => {
-        e.preventDefault();
-        setBusy(true);
-        setError(null);
-        try {
-          await onSubmit(f);
-        } catch (err) {
-          setError((err as Error).message);
-          setBusy(false);
-        }
-      }}
-      className="bg-surface-container-lowest rounded-2xl p-4 shadow-sm flex flex-col gap-3"
-    >
-      {field('name', 'Name *', 'Dr. Meera Sharma')}
-      <div className="grid grid-cols-2 gap-2">
-        {field('qualification', 'Qualification', 'MBBS, MD')}
-        {field('cabin_label', 'Cabin', 'Cabin 2')}
-      </div>
-      {field('specialty', 'Specialty', 'Pediatrician')}
-      {error && <p className="font-body-sm text-body-sm text-error">{error}</p>}
-      <div className="flex gap-2">
-        <button disabled={busy || !f.name.trim()} className="h-10 px-4 rounded-lg bg-primary text-on-primary font-label-md text-label-md disabled:opacity-40">
-          {submitLabel}
-        </button>
-        <button type="button" onClick={onCancel} className="h-10 px-4 rounded-lg font-label-md text-label-md text-on-surface-variant">
-          Cancel
-        </button>
-      </div>
-    </form>
-  );
-}
-
-// ---------------- Staff logins ----------------
-
-function LoginsTab({ api, tenant }: { api: AdminApi; tenant: Tenant }) {
-  const [logins, setLogins] = useState<StaffLogin[] | null>(null);
-  const [doctors, setDoctors] = useState<AdminDoctor[]>([]);
-  const [role, setRole] = useState<'reception' | 'doctor'>('reception');
-  const [name, setName] = useState('');
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [doctorId, setDoctorId] = useState('');
-  const [msg, setMsg] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
-
-  const load = useCallback(async () => {
-    const [u, d] = await Promise.all([api.users(tenant.id), api.doctors(tenant.id)]);
-    setLogins(u);
-    setDoctors(d);
-  }, [api, tenant.id]);
-
-  useEffect(() => {
-    load();
-  }, [load]);
-
-  const doctorName = (id: string | null) => doctors.find((d) => d.id === id)?.name ?? '—';
-  const doctorsWithoutLogin = doctors.filter((d) => !logins?.some((l) => l.doctor_id === d.id));
-
-  const act = async (fn: () => Promise<unknown>, ok: string) => {
-    setMsg(null);
-    try {
-      await fn();
-      await load();
-      setMsg({ kind: 'ok', text: ok });
-    } catch (e) {
-      setMsg({ kind: 'error', text: (e as Error).message });
-    }
-  };
-
-  const create = () =>
-    act(async () => {
-      await api.createUser(tenant.id, { role, name, username, password, doctor_id: role === 'doctor' ? doctorId : null });
-      setName('');
-      setUsername('');
-      setPassword('');
-      setDoctorId('');
-    }, `Login created. Share the clinic code “${tenant.subdomain}”, the username and the password with them.`);
-
-  return (
-    <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-6">
-      <section className="bg-surface-container-lowest rounded-2xl shadow-sm overflow-hidden self-start">
-        <div className="px-5 pt-5 pb-3">
-          <h2 className="font-headline-sm text-headline-sm">Who can log in</h2>
-          <p className="font-body-sm text-body-sm text-on-surface-variant">
-            Reception and doctors have separate logins. Staff sign in at <strong>/login</strong> with clinic code{' '}
-            <strong>{tenant.subdomain}</strong>.
-          </p>
+      <div className="flex flex-wrap items-end gap-2 pt-1">
+        <div>
+          <label className="font-label-sm text-label-sm text-on-surface-variant block mb-1">Extend trial by (days)</label>
+          <input
+            inputMode="numeric"
+            value={days}
+            onChange={(e) => setDays(e.target.value.replace(/\D/g, ''))}
+            className="w-24 h-10 rounded-xl bg-surface-container-low px-3 font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-primary/30"
+          />
         </div>
-        {logins === null && <p className="px-5 pb-5 font-body-md text-body-md text-on-surface-variant">Loading…</p>}
-        {logins?.length === 0 && <p className="px-5 pb-5 font-body-md text-body-md text-on-surface-variant">No logins yet — create one on the right.</p>}
-        {logins?.map((l) => (
-          <div key={l.id} className={`px-5 py-4 border-t border-surface-container flex items-center gap-3 flex-wrap ${l.is_active ? '' : 'opacity-60'}`}>
-            <span className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${l.role === 'doctor' ? 'bg-primary-fixed/50 text-primary' : 'bg-secondary-fixed text-on-secondary-fixed'}`}>
-              <Icon name={l.role === 'doctor' ? 'stethoscope' : 'desk'} className="text-[22px]" />
-            </span>
-            <div className="flex-1 min-w-[160px]">
-              <p className="font-label-lg text-label-lg">
-                {l.name} <span className="font-body-sm text-body-sm text-on-surface-variant">@{l.username}</span>
-              </p>
-              <p className="font-body-sm text-body-sm text-on-surface-variant">
-                {l.role === 'doctor' ? `Doctor · ${doctorName(l.doctor_id)}` : 'Reception'}
-                {' · '}
-                {l.is_active ? (l.last_login_at ? `last login ${new Date(l.last_login_at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}` : 'never logged in') : 'deactivated'}
-              </p>
-            </div>
-            <button
-              onClick={() => {
-                const pw = window.prompt(`New password for @${l.username} (min 8 characters). They will be signed out everywhere.`);
-                if (pw) act(() => api.updateUser(l.id, { password: pw }), `Password reset for @${l.username}.`);
-              }}
-              className="h-9 px-3 rounded-lg bg-surface-container-low font-label-md text-label-md text-primary"
-            >
-              Reset password
-            </button>
-            <button
-              onClick={() => act(() => api.updateUser(l.id, { is_active: !l.is_active }), l.is_active ? `@${l.username} can no longer log in.` : `@${l.username} can log in again.`)}
-              className="h-9 px-3 rounded-lg bg-surface-container-low font-label-md text-label-md text-on-surface-variant"
-            >
-              {l.is_active ? 'Deactivate' : 'Reactivate'}
-            </button>
-            <button
-              onClick={() => {
-                if (window.confirm(`Delete the login @${l.username}? This can't be undone.`)) act(() => api.deleteUser(l.id), `Deleted @${l.username}.`);
-              }}
-              aria-label={`Delete login ${l.username}`}
-              className="w-9 h-9 rounded-lg hover:bg-error-container hover:text-error flex items-center justify-center text-on-surface-variant"
-            >
-              <Icon name="delete" className="text-[18px]" />
-            </button>
-          </div>
-        ))}
-      </section>
-
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          create();
-        }}
-        className="bg-surface-container-lowest rounded-2xl p-5 shadow-sm flex flex-col gap-3 self-start"
-      >
-        <h2 className="font-headline-sm text-headline-sm">New login</h2>
-        <div className="grid grid-cols-2 gap-2">
-          {(['reception', 'doctor'] as const).map((r) => (
-            <button
-              type="button"
-              key={r}
-              onClick={() => setRole(r)}
-              className={`h-11 rounded-xl font-label-lg text-label-lg flex items-center justify-center gap-2 ${role === r ? 'bg-primary text-on-primary' : 'bg-surface-container-low text-on-surface-variant'}`}
-            >
-              <Icon name={r === 'doctor' ? 'stethoscope' : 'desk'} className="text-[18px]" />
-              {r === 'doctor' ? 'Doctor' : 'Reception'}
-            </button>
-          ))}
-        </div>
-        {role === 'doctor' && (
-          <label className="flex flex-col gap-1">
-            <span className="font-label-sm text-label-sm text-on-surface-variant">Which doctor</span>
-            <select
-              value={doctorId}
-              onChange={(e) => {
-                setDoctorId(e.target.value);
-                const d = doctors.find((x) => x.id === e.target.value);
-                if (d && !name) setName(d.name);
-              }}
-              className="h-11 rounded-lg bg-surface-container-low px-3 font-body-md text-body-md"
-            >
-              <option value="">Select…</option>
-              {doctorsWithoutLogin.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.name}
-                </option>
-              ))}
-            </select>
-            {doctorsWithoutLogin.length === 0 && (
-              <span className="font-body-sm text-body-sm text-on-surface-variant">Every doctor already has a login. Add doctors in “Doctors & schedule”.</span>
-            )}
-          </label>
-        )}
-        {(
-          [
-            ['Name', name, setName, role === 'doctor' ? 'Dr. Meera Sharma' : 'Sunita (front desk)', 'text'],
-            ['Username', username, (v: string) => setUsername(v.toLowerCase().replace(/[^a-z0-9._-]/g, '')), role === 'doctor' ? 'meera' : 'frontdesk', 'text'],
-            ['Password (min 8)', password, setPassword, '', 'password'],
-          ] as const
-        ).map(([label, value, set, ph, type]) => (
-          <label key={label} className="flex flex-col gap-1">
-            <span className="font-label-sm text-label-sm text-on-surface-variant">{label}</span>
-            <input
-              type={type}
-              value={value}
-              placeholder={ph}
-              autoComplete="new-password"
-              onChange={(e) => set(e.target.value)}
-              className="h-11 rounded-lg bg-surface-container-low px-3 font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-primary/30"
-            />
-          </label>
-        ))}
         <button
-          disabled={!name.trim() || !username || password.length < 8 || (role === 'doctor' && !doctorId)}
-          className="h-11 rounded-xl bg-primary text-on-primary font-label-lg text-label-lg disabled:opacity-40"
+          disabled={busy || !Number(days)}
+          onClick={async () => {
+            setBusy(true);
+            setError(null);
+            try {
+              setSub(await api.extendTrial(tenantId, Number(days)));
+            } catch (e) {
+              setError((e as Error).message);
+            } finally {
+              setBusy(false);
+            }
+          }}
+          className="h-10 px-4 rounded-xl bg-surface-container-low text-primary font-label-md text-label-md disabled:opacity-60"
         >
-          Create login
+          Extend trial
         </button>
-        {msg && <p className={`font-body-sm text-body-sm ${msg.kind === 'ok' ? 'text-tertiary' : 'text-error'}`}>{msg.text}</p>}
-      </form>
-    </div>
+        <button
+          disabled={busy || sub.status === 'active'}
+          onClick={async () => {
+            setBusy(true);
+            setError(null);
+            try {
+              setSub(await api.setSubscriptionActive(tenantId));
+            } catch (e) {
+              setError((e as Error).message);
+            } finally {
+              setBusy(false);
+            }
+          }}
+          className="h-10 px-4 rounded-xl bg-primary text-on-primary font-label-md text-label-md disabled:opacity-60"
+        >
+          Mark active (paid offline)
+        </button>
+      </div>
+      {error && <p className="font-body-sm text-body-sm text-error">{error}</p>}
+    </section>
   );
 }
 

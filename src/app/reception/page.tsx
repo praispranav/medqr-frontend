@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import { api, ApiError, type DoctorToday, type PaymentEvent, type PaymentQrView, type QueueRow, type Tenant, type Vitals } from '@/lib/api';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { api, ApiError, type DoctorToday, type PaymentEvent, type PaymentQrView, type QueueRow, type ShiftView, type Tenant, type Vitals } from '@/lib/api';
 import { PaymentLog } from '@/components/payments/PaymentLog';
 import { UpiQrCard } from '@/components/payments/UpiQrCard';
 import { Icon } from '@/components/patient/ui';
@@ -60,6 +60,19 @@ function ReceptionDesk({ tenant, doctors }: { tenant: Tenant; doctors: DoctorTod
   const [walkInOpen, setWalkInOpen] = useState(false);
   const [unpaidOnly, setUnpaidOnly] = useState(false);
   const [payConfig, setPayConfig] = useState<PayConfig | null>(null);
+  const [shifts, setShifts] = useState<(ShiftView & { doctor_name: string })[]>([]);
+
+  // Doctors' live shift state (Start shift / break / ended) — refreshes with every queue event.
+  const loadShifts = useCallback(() => {
+    api.clinicShifts(tenant.id).then(setShifts).catch(() => undefined);
+  }, [tenant.id]);
+  useEffect(() => {
+    loadShifts();
+  }, [loadShifts, rows]);
+  useEffect(() => {
+    const id = setInterval(loadShifts, 60_000);
+    return () => clearInterval(id);
+  }, [loadShifts]);
 
   useEffect(() => {
     api.paymentConfig().then(setPayConfig).catch(() => setPayConfig({ gateway: 'mock', online_available: false }));
@@ -245,6 +258,8 @@ function ReceptionDesk({ tenant, doctors }: { tenant: Tenant; doctors: DoctorTod
             </button>
           </div>
 
+          <DoctorShifts shifts={shifts} onChanged={async () => { loadShifts(); await refresh(); }} />
+
           {multiDoctor && (
             <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
               {[{ id: 'all', name: 'All doctors' }, ...doctors].map((d) => (
@@ -262,7 +277,11 @@ function ReceptionDesk({ tenant, doctors }: { tenant: Tenant; doctors: DoctorTod
           )}
 
           {tenant.queue_settings.advance_mode === 'reception' && (
-            <ReceptionCallNext doctors={doctorFilter === 'all' ? doctors : doctors.filter((d) => d.id === doctorFilter)} onDone={refresh} />
+            <ReceptionCallNext
+              doctors={doctorFilter === 'all' ? doctors : doctors.filter((d) => d.id === doctorFilter)}
+              shifts={shifts}
+              onDone={refresh}
+            />
           )}
 
           <div className="flex flex-col gap-2 overflow-y-auto -mx-1 px-1">
@@ -644,32 +663,122 @@ function PaymentBlock({
   );
 }
 
-function ReceptionCallNext({ doctors, onDone }: { doctors: DoctorToday[]; onDone: () => Promise<void> }) {
+/**
+ * Each doctor's live shift. In "Start shift" clinics reception can start it for the doctor
+ * ("Doctor has arrived") — logged with reception's name. Breaks stay the doctor's own action.
+ */
+function DoctorShifts({ shifts, onChanged }: { shifts: (ShiftView & { doctor_name: string })[]; onChanged: () => Promise<void> }) {
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [empty, setEmpty] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  if (shifts.length === 0) return null;
+
+  const act = async (doctorId: string, fn: () => Promise<unknown>, failMsg: string) => {
+    setBusyId(doctorId);
+    setError(null);
+    try {
+      await fn();
+      await onChanged();
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : failMsg);
+    } finally {
+      setBusyId(null);
+    }
+  };
+  const tone = (s: ShiftView['state']) =>
+    s === 'live' ? 'bg-tertiary' : s === 'on_break' ? 'bg-secondary' : 'bg-outline';
+  const text = (v: ShiftView) =>
+    v.state === 'live'
+      ? 'On shift'
+      : v.state === 'on_break'
+        ? 'On a break'
+        : v.state === 'ended'
+          ? 'Shift ended'
+          : v.mode === 'auto'
+            ? v.today_status_detail
+            : v.can_delay
+              ? v.today_status_detail
+              : 'Not started';
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      {shifts.map((v) => (
+        <div key={v.doctor_id} className="flex items-center gap-2 bg-surface-container-low rounded-xl px-3 py-2">
+          <span className={`w-2 h-2 rounded-full shrink-0 ${tone(v.state)}`} />
+          <span className="flex-1 min-w-0 font-label-md text-label-md truncate">
+            {v.doctor_name} <span className="text-on-surface-variant font-normal">· {text(v)}</span>
+          </span>
+          {v.mode === 'manual' && v.state === 'not_started' && (
+            <>
+              {v.can_delay && (
+                <button
+                  disabled={busyId === v.doctor_id}
+                  onClick={() => act(v.doctor_id, () => api.delayShift(v.doctor_id), "Couldn't delay the shift.")}
+                  className="h-8 px-3 rounded-lg bg-surface-container text-on-surface-variant font-label-sm text-label-sm shrink-0 disabled:opacity-60"
+                >
+                  Delay 30m
+                </button>
+              )}
+              <button
+                disabled={busyId === v.doctor_id}
+                onClick={() => act(v.doctor_id, () => api.startShift(v.doctor_id), "Couldn't start the shift.")}
+                className="h-8 px-3 rounded-lg bg-primary text-on-primary font-label-sm text-label-sm shrink-0 disabled:opacity-60"
+              >
+                Doctor has arrived
+              </button>
+            </>
+          )}
+        </div>
+      ))}
+      {error && <p className="font-body-sm text-body-sm text-error">{error}</p>}
+    </div>
+  );
+}
+
+function ReceptionCallNext({
+  doctors,
+  shifts,
+  onDone,
+}: {
+  doctors: DoctorToday[];
+  shifts: ShiftView[];
+  onDone: () => Promise<void>;
+}) {
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [note, setNote] = useState<{ id: string; text: string } | null>(null);
   return (
     <div className="flex flex-col gap-2 bg-primary-fixed/20 rounded-xl p-3">
       <p className="font-label-sm text-label-sm text-on-surface-variant uppercase">Reception controls cabin advance</p>
-      {doctors.map((d) => (
-        <div key={d.id} className="flex items-center justify-between gap-2">
-          <span className="font-label-md text-label-md truncate">
-            {d.name}
-            {empty === d.id && <span className="text-on-surface-variant font-normal"> · nobody waiting</span>}
-          </span>
-          <button
-            disabled={busyId === d.id}
-            onClick={async () => {
-              setBusyId(d.id);
-              const next = await api.callNext(d.id).finally(() => setBusyId(null));
-              setEmpty(next ? null : d.id);
-              await onDone();
-            }}
-            className="h-9 px-3 rounded-lg bg-primary text-on-primary font-label-md text-label-md shrink-0 disabled:opacity-60"
-          >
-            Call next
-          </button>
-        </div>
-      ))}
+      {doctors.map((d) => {
+        const live = shifts.find((s) => s.doctor_id === d.id)?.state === 'live';
+        return (
+          <div key={d.id} className="flex items-center justify-between gap-2">
+            <span className="font-label-md text-label-md truncate">
+              {d.name}
+              {!live && <span className="text-on-surface-variant font-normal"> · not on shift</span>}
+              {note?.id === d.id && <span className="text-on-surface-variant font-normal"> · {note.text}</span>}
+            </span>
+            <button
+              disabled={busyId === d.id || !live}
+              onClick={async () => {
+                setBusyId(d.id);
+                setNote(null);
+                try {
+                  const next = await api.callNext(d.id);
+                  if (!next) setNote({ id: d.id, text: 'nobody waiting / break started' });
+                } catch (e) {
+                  setNote({ id: d.id, text: e instanceof ApiError ? e.message : 'could not call' });
+                } finally {
+                  setBusyId(null);
+                }
+                await onDone();
+              }}
+              className="h-9 px-3 rounded-lg bg-primary text-on-primary font-label-md text-label-md shrink-0 disabled:opacity-40"
+            >
+              Call next
+            </button>
+          </div>
+        );
+      })}
     </div>
   );
 }

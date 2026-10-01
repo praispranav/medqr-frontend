@@ -80,10 +80,10 @@ export default function LiveQueuePage() {
   useEffect(() => {
     const id = setInterval(() => {
       setNow(new Date());
-      if (view?.session_starts_at) refresh();
+      if (view && view.doctor_state.state !== 'live') refresh();
     }, 30_000);
     return () => clearInterval(id);
-  }, [view?.session_starts_at, refresh]);
+  }, [view, refresh]);
 
   if (notFound)
     return <FullPageMessage icon="confirmation_number" title="Token not found" body="This link may have expired. Please ask the reception desk." />;
@@ -106,6 +106,44 @@ export default function LiveQueuePage() {
           <h1 className="font-headline-lg text-headline-lg">It&apos;s your turn</h1>
           <p className="font-headline-sm text-headline-sm">Please go to {cabin}</p>
           <p className="font-body-md text-body-md opacity-90">{doctor.name} is ready to see you.</p>
+        </main>
+      </>
+    );
+  }
+
+  // ---------- Decision 17: booked for a future date — distinct from same-day Pre-Session ----------
+  if (view.is_future_booking && view.booking_date) {
+    const dateLabel = new Date(`${view.booking_date}T00:00:00`).toLocaleDateString('en-IN', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+    });
+    return (
+      <>
+        {header}
+        <main className="min-h-screen w-full max-w-[480px] mx-auto pt-20 pb-10 bg-surface">
+          <div className="flex flex-col w-full px-gutter space-y-space-md">
+            <div className="w-full bg-surface-container-lowest rounded-2xl p-space-lg shadow-sm flex flex-col items-center text-center gap-2 relative overflow-hidden">
+              <div className="absolute -top-12 -right-12 w-36 h-36 bg-primary-fixed/20 rounded-full blur-2xl pointer-events-none" />
+              <Icon name="event_available" className="text-primary text-[36px]" />
+              <span className="font-label-sm text-label-sm uppercase tracking-wider font-semibold text-on-surface-variant">You&apos;re booked</span>
+              <h1 className="font-headline-md text-headline-md text-primary tracking-tight">{dateLabel}</h1>
+              <p className="font-body-md text-body-md text-on-surface-variant">with {doctor.name}{doctor.cabin_label ? ` · ${doctor.cabin_label}` : ''}</p>
+              <div className="mt-2 inline-flex items-center gap-2 bg-surface-container-high text-on-surface px-4 py-1.5 rounded-full shadow-sm">
+                <Icon name="tag" className="text-primary text-[18px]" />
+                <span className="font-label-md text-label-md font-semibold">Token #{view.token_number}</span>
+              </div>
+              {view.ahead_tokens.length > 0 && (
+                <p className="font-body-sm text-body-sm text-on-surface-variant">
+                  {view.ahead_tokens.length} patient{view.ahead_tokens.length === 1 ? '' : 's'} already booked ahead of you
+                </p>
+              )}
+            </div>
+            <p className="text-center font-body-sm text-body-sm text-on-surface-variant px-4">
+              Come back and open this link on the day — your queue position and wait time will show once the doctor&apos;s
+              session starts.
+            </p>
+          </div>
         </main>
       </>
     );
@@ -142,7 +180,11 @@ export default function LiveQueuePage() {
   }
 
   const verified = view.status === 'waiting_in_clinic' || view.status === 'checked_in_early';
-  const preSession = view.session_starts_at;
+  // Pre-session = the doctor hasn't actually started (Start shift, or hours in auto mode) — Decision 7.
+  const preSession = view.doctor_state.state === 'not_started';
+  const plannedStart = view.session_starts_at;
+  const onBreak = view.doctor_state.state === 'on_break';
+  const shiftEnded = view.doctor_state.state === 'ended';
   const aheadCount = view.ahead_tokens.length;
   const waitMins = aheadCount * view.avg_consult_mins;
   const estTime = new Date(now.getTime() + waitMins * 60000).toLocaleTimeString('en-IN', {
@@ -163,8 +205,25 @@ export default function LiveQueuePage() {
             <div className="w-full bg-surface-container-low text-on-surface p-space-sm px-space-md rounded-xl flex items-center gap-space-sm shadow-sm">
               <Icon name="info" className="text-primary text-[22px] flex-shrink-0" />
               <p className="font-body-sm text-body-sm leading-tight flex-1">
-                <strong className="font-label-sm uppercase tracking-wider text-primary">Pre-Session:</strong> The doctor&apos;s
-                session starts later. Your place in line is already saved.
+                <strong className="font-label-sm uppercase tracking-wider text-primary">Pre-Session:</strong> The doctor
+                hasn&apos;t started yet. Your place in line is already saved.
+              </p>
+            </div>
+          )}
+          {onBreak && (
+            <div className="w-full bg-secondary-fixed/50 text-on-secondary-fixed-variant p-space-sm px-space-md rounded-xl flex items-center gap-space-sm shadow-sm">
+              <Icon name="coffee" className="text-secondary text-[22px] flex-shrink-0" />
+              <p className="font-body-sm text-body-sm leading-tight flex-1">
+                <strong className="font-label-sm uppercase tracking-wider text-secondary">Short break:</strong> {doctor.name} will be back
+                shortly ({view.doctor_state.detail.toLowerCase()}). Your place is saved.
+              </p>
+            </div>
+          )}
+          {shiftEnded && (
+            <div className="w-full bg-error-container/60 text-on-error-container p-space-sm px-space-md rounded-xl flex items-center gap-space-sm shadow-sm">
+              <Icon name="info" className="text-error text-[22px] flex-shrink-0" />
+              <p className="font-body-sm text-body-sm leading-tight flex-1">
+                {doctor.name} has finished for today. Please speak to the reception desk.
               </p>
             </div>
           )}
@@ -180,20 +239,28 @@ export default function LiveQueuePage() {
                   <span className="font-label-sm text-label-sm uppercase tracking-wider font-semibold">Upcoming session</span>
                 </div>
                 <div className="font-headline-lg text-headline-lg text-primary my-1 tracking-tight">
-                  {doctor.name}&apos;s session starts at {toDisplayTime(preSession)}
+                  {plannedStart
+                    ? `${doctor.name}'s session starts at ${toDisplayTime(plannedStart)}`
+                    : `Waiting for ${doctor.name} to start`}
                 </div>
                 <div className="mt-3 inline-flex items-center gap-2 bg-surface-container-high text-on-surface px-4 py-1.5 rounded-full shadow-sm">
                   <Icon name="tag" className="text-primary text-[18px]" />
                   <span className="font-label-md text-label-md font-semibold">You&apos;re Token #{view.token_number}</span>
                 </div>
                 <div className="mt-4 w-full bg-surface-container-low rounded-xl p-space-md flex flex-col items-center space-y-1">
-                  <div className="flex items-center gap-1.5 text-secondary font-label-md text-label-md">
-                    <Icon name="timer" className="text-[18px]" />
-                    <span>Session countdown</span>
-                  </div>
-                  <p className="font-numeric-metric text-numeric-metric text-on-surface tracking-tight">
-                    Starts in {countdownTo(preSession, now)}
-                  </p>
+                  {plannedStart ? (
+                    <>
+                      <div className="flex items-center gap-1.5 text-secondary font-label-md text-label-md">
+                        <Icon name="timer" className="text-[18px]" />
+                        <span>Session countdown</span>
+                      </div>
+                      <p className="font-numeric-metric text-numeric-metric text-on-surface tracking-tight">
+                        Starts in {countdownTo(plannedStart, now)}
+                      </p>
+                    </>
+                  ) : (
+                    <p className="font-headline-sm text-headline-sm text-on-surface">The doctor will start shortly</p>
+                  )}
                   <span className="font-body-sm text-body-sm text-on-surface-variant">
                     Wait times show once the doctor starts seeing patients
                   </span>

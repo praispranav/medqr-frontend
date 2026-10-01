@@ -10,18 +10,20 @@ import { patientBaseUrl, PosterCard, posterContentFor, POSTER_FORMATS, type Post
 // stitch_medqr_clinic_suite_ui_design/reception_counter_qr_standee_print_suite/code.html.
 // 1) "My QR codes": standalone standees (handed out at onboarding) linked to this doctor — by admin,
 //    or by the doctor scanning one while logged in / typing its printed code here.
-// 2) The clinic-wide QR (/patient/<clinic>), where patients pick the doctor on screen #1A.
+// 2) "My check-in QR" (/patient/<clinic>/intake?doctorId=<me>): the doctor is already known, so a scan
+//    skips doctor selection and goes straight to this doctor's check-in. (The whole-clinic QR, where
+//    patients pick the doctor, lives with the clinic admin: /manage/qr.)
 // Every poster downloads as a PDF at the exact paper size or a ~300 dpi PNG.
 
 export default function QrPosterPage() {
   return (
     <StaffShell variant="doctor" active="/doctor/qr-poster">
-      {({ tenant, doctor, doctors }) => <QrSuite tenant={tenant} doctor={doctor!} doctorCount={doctors.length} />}
+      {({ tenant, doctor }) => <QrSuite tenant={tenant} doctor={doctor!} />}
     </StaffShell>
   );
 }
 
-function QrSuite({ tenant, doctor, doctorCount }: { tenant: Tenant; doctor: DoctorToday; doctorCount: number }) {
+function QrSuite({ tenant, doctor }: { tenant: Tenant; doctor: DoctorToday }) {
   const [mine, setMine] = useState<QrCodeView[] | null>(null);
   const [code, setCode] = useState('');
   const [msg, setMsg] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
@@ -57,11 +59,11 @@ function QrSuite({ tenant, doctor, doctorCount }: { tenant: Tenant; doctor: Doct
   };
 
   const clinicName = tenant.display_name ?? tenant.subdomain;
-  const clinicUrl = base ? `${base}/patient/${tenant.subdomain}` : '';
+  const clinicUrl = base ? `${base}/patient/${tenant.subdomain}/intake?doctorId=${doctor.id}` : '';
   const clinicPoster: PosterContent = {
     url: clinicUrl,
-    title: doctorCount === 1 ? doctor.name : clinicName,
-    subtitle: doctorCount === 1 ? [doctor.specialty, clinicName].filter(Boolean).join(' · ') : 'Live OPD digital queue',
+    title: doctor.name,
+    subtitle: [doctor.specialty, clinicName].filter(Boolean).join(' · '),
     footer: `${tenant.subdomain}.medqr.in`,
   };
   const isLocal = /localhost|127\.0\.0\.1/.test(base);
@@ -122,7 +124,7 @@ function QrSuite({ tenant, doctor, doctorCount }: { tenant: Tenant; doctor: Doct
         {mine === null && <p className="font-body-md text-body-md text-on-surface-variant">Loading…</p>}
         {mine?.length === 0 && (
           <p className="bg-surface-container-low rounded-xl p-4 font-body-md text-body-md text-on-surface-variant">
-            No standees linked to you yet. The clinic QR below works in the meantime.
+            No standees linked to you yet. Your check-in QR below works in the meantime.
           </p>
         )}
         {mine && mine.length > 0 && (
@@ -150,15 +152,14 @@ function QrSuite({ tenant, doctor, doctorCount }: { tenant: Tenant; doctor: Doct
       {/* ---- Clinic QR ---- */}
       <section className="bg-surface-container-lowest rounded-2xl p-5 shadow-sm flex flex-col gap-4">
         <div>
-          <h2 className="font-headline-sm text-headline-sm">Clinic QR</h2>
+          <h2 className="font-headline-sm text-headline-sm">My check-in QR</h2>
           <p className="font-body-sm text-body-sm text-on-surface-variant break-all">
-            {doctorCount > 1 ? 'One QR for the whole clinic — patients pick their doctor after scanning. ' : ''}
-            {clinicUrl}
+            Goes straight to your check-in — patients don&apos;t pick a doctor. {clinicUrl}
           </p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
           {POSTER_FORMATS.map((f) => (
-            <PosterCard key={f.key} kind={f.key} content={clinicPoster} fileBase={`medqr-${tenant.subdomain}`} />
+            <PosterCard key={f.key} kind={f.key} content={clinicPoster} fileBase={`medqr-${tenant.subdomain}-${doctor.name.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}`} />
           ))}
         </div>
       </section>

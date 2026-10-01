@@ -2,11 +2,12 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import { api, type DoctorToday, type QueueRow, type Tenant } from '@/lib/api';
+import { api, ApiError, type DoctorToday, type QueueRow, type ShiftView, type Tenant } from '@/lib/api';
+import { ShiftBar } from '@/components/staff/ShiftBar';
 import { Icon } from '@/components/patient/ui';
 import { StaffShell } from '@/components/staff/StaffShell';
 import { useLiveQueue } from '@/components/staff/useLiveQueue';
-import { minutesSince, PaidBadge, StatusPill, VitalsChips } from '@/components/staff/bits';
+import { minutesSince, PaidBadge, STATUS_LABEL, StatusPill, VitalsChips } from '@/components/staff/bits';
 
 // Screen #5 — Doctor Queue Command Center. Ported from
 // stitch_medqr_clinic_suite_ui_design/doctor_queue_command_center/code.html.
@@ -31,6 +32,17 @@ function CommandCenter({ tenant, doctor }: { tenant: Tenant; doctor: DoctorToday
   const [query, setQuery] = useState('');
   const [busy, setBusy] = useState(false);
   const [now, setNow] = useState(() => Date.now());
+  const [shift, setShift] = useState<ShiftView | null>(null);
+  const [callError, setCallError] = useState<string | null>(null);
+
+  // Shift state rides on the same live events as the queue (any change broadcasts queue:changed).
+  useEffect(() => {
+    api.doctorShift(doctor.id).then(setShift).catch(() => undefined);
+  }, [doctor.id, rows]);
+  useEffect(() => {
+    const id = setInterval(() => api.doctorShift(doctor.id).then(setShift).catch(() => undefined), 60_000);
+    return () => clearInterval(id);
+  }, [doctor.id]);
 
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 30_000);
@@ -55,11 +67,29 @@ function CommandCenter({ tenant, doctor }: { tenant: Tenant; doctor: DoctorToday
     minute: '2-digit',
   });
 
+  const live = shift?.state === 'live';
+  const breakDue = live && shift?.break_after_patients === 0;
+  const notLiveReason = !shift
+    ? ''
+    : shift.state === 'not_started'
+      ? shift.mode === 'manual'
+        ? 'Tap Start shift to begin calling patients.'
+        : `Your consulting hours start ${shift.today_status_detail.replace(/^From /, 'at ')}.`
+      : shift.state === 'on_break'
+        ? 'You are on a break — tap End break to continue.'
+        : shift.state === 'ended'
+          ? 'Your shift has ended for today.'
+          : '';
+
   const run = async (fn: () => Promise<unknown>) => {
     setBusy(true);
+    setCallError(null);
     try {
       await fn();
       await refresh();
+      setShift(await api.doctorShift(doctor.id));
+    } catch (e) {
+      setCallError(e instanceof ApiError ? e.message : 'Something went wrong — try again.');
     } finally {
       setBusy(false);
     }
@@ -72,7 +102,7 @@ function CommandCenter({ tenant, doctor }: { tenant: Tenant; doctor: DoctorToday
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement;
       if (e.key !== 'Enter' || busy || ['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON'].includes(t.tagName)) return;
-      if (next || current) callNext();
+      if (live && (next || current)) callNext();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -81,6 +111,13 @@ function CommandCenter({ tenant, doctor }: { tenant: Tenant; doctor: DoctorToday
   return (
     <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_440px] gap-5 max-w-[1400px]">
       <div className="flex flex-col gap-5 min-w-0">
+        <ShiftBar doctorId={doctor.id} shift={shift} hasPatientInCabin={!!current} onChanged={(v) => { setShift(v); refresh(); }} />
+        {!live && notLiveReason && (
+          <p className="flex items-center gap-2 bg-secondary-fixed/40 text-on-secondary-fixed-variant rounded-xl px-4 py-3 font-label-lg text-label-lg">
+            <Icon name="info" className="text-[20px]" /> {notLiveReason}
+          </p>
+        )}
+        {callError && <p className="font-body-md text-body-md text-error">{callError}</p>}
         {/* ---------- Now serving ---------- */}
         <section className="bg-surface-container-lowest rounded-2xl p-5 lg:p-6 shadow-sm flex flex-col gap-5 relative overflow-hidden">
           <div className="absolute -top-16 -right-16 w-48 h-48 rounded-full bg-primary-fixed/20 pointer-events-none" />
@@ -148,14 +185,20 @@ function CommandCenter({ tenant, doctor }: { tenant: Tenant; doctor: DoctorToday
                   </Link>
                 )}
                 <button
-                  disabled={busy}
+                  disabled={busy || !live}
                   onClick={callNext}
-                  className="flex-1 h-14 px-5 rounded-xl bg-primary-container text-on-primary font-label-lg text-label-lg flex items-center justify-between gap-3 shadow-md disabled:opacity-60"
+                  className={`flex-1 h-14 px-5 rounded-xl text-on-primary font-label-lg text-label-lg flex items-center justify-between gap-3 shadow-md disabled:opacity-50 ${
+                    breakDue ? 'bg-secondary' : 'bg-primary-container'
+                  }`}
                 >
                   <span className="flex items-center gap-2 min-w-0">
-                    <Icon name="arrow_forward" className="text-[22px]" />
+                    <Icon name={breakDue ? 'coffee' : 'arrow_forward'} className="text-[22px]" />
                     <span className="truncate">
-                      {next ? `Complete & call #${next.token_number} ${next.patient?.name ?? ''}` : 'Complete visit'}
+                      {breakDue
+                        ? 'Complete & start break'
+                        : next
+                          ? `Complete & call #${next.token_number} ${next.patient?.name ?? ''}`
+                          : 'Complete visit'}
                     </span>
                   </span>
                   <span className="hidden sm:inline px-2 py-1 rounded-lg bg-on-primary/15 font-label-sm text-label-sm">Enter ↵</span>
@@ -185,7 +228,7 @@ function CommandCenter({ tenant, doctor }: { tenant: Tenant; doctor: DoctorToday
               </p>
               {next && (
                 <button
-                  disabled={busy}
+                  disabled={busy || !live}
                   onClick={callNext}
                   className="h-14 px-8 rounded-xl bg-primary-container text-on-primary font-label-lg text-label-lg flex items-center gap-2 shadow-md disabled:opacity-60"
                 >
@@ -218,9 +261,20 @@ function CommandCenter({ tenant, doctor }: { tenant: Tenant; doctor: DoctorToday
       <section className="bg-surface-container-lowest rounded-2xl p-5 shadow-sm flex flex-col gap-4 min-w-0 xl:max-h-[calc(100vh-7rem)] xl:sticky xl:top-20">
         <div className="flex items-center justify-between gap-2">
           <h2 className="font-headline-sm text-headline-sm text-on-surface">Live patient queue</h2>
-          <span className="px-2.5 py-1 rounded-full bg-secondary-fixed text-on-secondary-fixed font-label-sm text-label-sm">
-            {callable.length} waiting
-          </span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => downloadTodayPatientsCsv(rows ?? [], doctor.name)}
+              disabled={!rows?.length}
+              aria-label="Export today's patients to Excel"
+              title="Export today's patients (Excel/CSV)"
+              className="w-8 h-8 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container-low disabled:opacity-40"
+            >
+              <Icon name="download" className="text-[18px]" />
+            </button>
+            <span className="px-2.5 py-1 rounded-full bg-secondary-fixed text-on-secondary-fixed font-label-sm text-label-sm">
+              {callable.length} waiting
+            </span>
+          </div>
         </div>
         <div className="flex items-center gap-2 bg-surface-container-low rounded-xl px-3 h-11">
           <Icon name="search" className="text-on-surface-variant text-[20px]" />
@@ -240,7 +294,7 @@ function CommandCenter({ tenant, doctor }: { tenant: Tenant; doctor: DoctorToday
                 <span className="px-2 py-0.5 rounded-full bg-secondary-fixed text-on-secondary-fixed font-label-sm text-label-sm">Next up</span>
               ) : (
                 <button
-                  disabled={busy}
+                  disabled={busy || !live || breakDue}
                   onClick={() => run(() => api.callToken(r.id))}
                   title="Priority jump — call this patient now"
                   className="h-9 px-3 rounded-lg bg-surface-container text-primary font-label-md text-label-md flex items-center gap-1 hover:bg-surface-container-high disabled:opacity-60"
@@ -282,6 +336,39 @@ function CommandCenter({ tenant, doctor }: { tenant: Tenant; doctor: DoctorToday
       </section>
     </div>
   );
+}
+
+/** Doctor's own "export today" — tabular data only, deliberately no photos/attachments (those live on the visit, not this list). */
+function downloadTodayPatientsCsv(rows: QueueRow[], doctorName: string) {
+  const cell = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  const header = ['Token', 'Patient', 'Age', 'Gender', 'Mobile', 'Status', 'Reason for visit', 'Joined at', 'Called at'];
+  const lines = [
+    header.map(cell).join(','),
+    ...[...rows]
+      .sort((a, b) => a.token_number - b.token_number)
+      .map((r) =>
+        [
+          r.token_number,
+          r.patient?.name ?? '',
+          r.patient?.age ?? '',
+          r.patient?.gender ?? '',
+          r.patient?.mobile_number ?? '',
+          STATUS_LABEL[r.status],
+          r.visit?.chief_complaint ?? '',
+          new Date(r.joined_at).toLocaleString('en-IN'),
+          r.called_at ? new Date(r.called_at).toLocaleString('en-IN') : '',
+        ]
+          .map(cell)
+          .join(','),
+      ),
+  ];
+  const today = new Date().toISOString().slice(0, 10);
+  const url = URL.createObjectURL(new Blob([lines.join('\n')], { type: 'text/csv' }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${doctorName.replace(/[^a-z0-9]+/gi, '-')}-patients-${today}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 function QueueItem({ row, now, muted = false, children }: { row: QueueRow; now: number; muted?: boolean; children: React.ReactNode }) {

@@ -7,7 +7,8 @@ import { api, ApiError, type Me, type QrResolve } from '@/lib/api';
 import { FullPageMessage, Icon, LoadingPage } from '@/components/patient/ui';
 
 // What a scanned standalone standee (/q/<code>) opens.
-// - Assigned  → straight into that doctor's check-in (skips doctor selection).
+// - Assigned to a doctor → straight into that doctor's check-in (skips doctor selection).
+// - Assigned to a whole clinic → that clinic's doctor selection.
 // - Unassigned → a logged-in doctor can link it to themselves ("scan to claim"); patients are told to
 //   ask reception. Codes are handed out at onboarding before they belong to anyone.
 // - Disabled  → no longer active.
@@ -26,8 +27,12 @@ export default function QrEntryPage() {
     (async () => {
       try {
         const r = await api.resolveQr(code);
+        if (r.status === 'assigned' && r.clinic && !r.doctor) {
+          router.replace(`/patient/${r.clinic.subdomain}`); // whole-clinic QR → pick the doctor
+          return;
+        }
         if (r.status === 'assigned' && r.clinic && r.doctor && r.doctor.today_status !== 'off_today') {
-          router.replace(`/patient/${r.clinic.subdomain}/intake?doctorId=${r.doctor.id}`);
+          router.replace(`/patient/${r.clinic.subdomain}/intake?doctorId=${r.doctor.id}`); // doctor QR → no selection
           return;
         }
         setQr(r);

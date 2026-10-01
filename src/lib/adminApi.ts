@@ -23,10 +23,38 @@ async function request<T>(key: string, path: string, options?: RequestInit): Pro
   return res.json();
 }
 
+export type SubscriptionStatus = 'trial' | 'active' | 'grace' | 'read_only';
+
+export interface SubscriptionStatusView {
+  status: SubscriptionStatus;
+  trial_ends_at: string | null;
+  current_period_end: string | null;
+  grace_ends_at: string | null;
+  autopay_active: boolean;
+  wallet_auto_recharge_enabled: boolean;
+  wallet_auto_recharge_below_inr: number;
+  wallet_auto_recharge_amount_inr: number;
+}
+
+export type TrialLeadStatus = 'new' | 'contacted' | 'converted' | 'dismissed';
+
+export interface TrialLead {
+  id: string;
+  clinic_name: string;
+  contact_name: string;
+  phone: string;
+  email: string | null;
+  city: string | null;
+  message: string | null;
+  status: TrialLeadStatus;
+  created_at: string;
+}
+
 export interface AdminTenant extends Tenant {
   created_at: string;
   doctor_count: number;
   tokens_today: number;
+  subscription?: { status: SubscriptionStatus; trial_ends_at: string | null; grace_ends_at: string | null };
 }
 
 export interface AdminDoctor {
@@ -37,6 +65,9 @@ export interface AdminDoctor {
   specialty: string | null;
   cabin_label: string | null;
   photo_url: string | null;
+  bio: string | null;
+  is_publicly_listed: boolean;
+  public_slug: string | null;
 }
 
 export type AdminSession = DoctorSession;
@@ -59,26 +90,44 @@ export interface Activity {
 export interface StaffLogin {
   id: string;
   tenant_id: string;
-  role: 'reception' | 'doctor';
+  role: 'reception' | 'doctor' | 'owner';
   name: string;
   username: string;
   doctor_id: string | null;
+  mobile_number: string | null; // Decision 15: where a password reset is sent, via WhatsApp
+  must_change_password: boolean;
+  is_owner: boolean; // Decision 14: clinic admin (owner login, or a doctor with owner access)
   is_active: boolean;
   last_login_at: string | null;
   created_at: string;
 }
 
-type DoctorBody = Partial<Omit<AdminDoctor, 'id' | 'tenant_id'>>;
+type DoctorBody = Partial<Omit<AdminDoctor, 'id' | 'tenant_id' | 'public_slug'>>;
 
 export const adminApi = (key: string) => ({
   ping: () => request<{ ok: true }>(key, '/ping'),
   activity: () => request<Activity>(key, '/activity'),
   tenants: () => request<AdminTenant[]>(key, '/tenants'),
-  createTenant: (body: { subdomain: string; display_name: string }) =>
+  createTenant: (body: { subdomain: string; display_name: string; trial_days?: number; city?: string; address?: string }) =>
     request<Tenant>(key, '/tenants', { method: 'POST', body: JSON.stringify(body) }),
   tenant: (id: string) => request<Tenant>(key, `/tenants/${id}`),
-  updateTenant: (id: string, body: { display_name?: string; entitlements?: Partial<Entitlements>; require_whatsapp_otp?: boolean }) =>
-    request<Tenant>(key, `/tenants/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  subscription: (id: string) => request<SubscriptionStatusView>(key, `/tenants/${id}/subscription`),
+  extendTrial: (id: string, days: number) =>
+    request<SubscriptionStatusView>(key, `/tenants/${id}/subscription/extend-trial`, { method: 'POST', body: JSON.stringify({ days }) }),
+  setSubscriptionActive: (id: string) =>
+    request<SubscriptionStatusView>(key, `/tenants/${id}/subscription/set-active`, { method: 'POST' }),
+  updateTenant: (
+    id: string,
+    body: {
+      display_name?: string;
+      entitlements?: Partial<Entitlements>;
+      require_whatsapp_otp?: boolean;
+      is_publicly_listed?: boolean;
+      city?: string | null;
+      address?: string | null;
+      public_phone?: string | null;
+    },
+  ) => request<Tenant>(key, `/tenants/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
   adjustWallet: (id: string, amount_inr: number) =>
     request<Tenant>(key, `/tenants/${id}/wallet`, { method: 'POST', body: JSON.stringify({ amount_inr }) }),
   doctors: (tenantId: string) => request<AdminDoctor[]>(key, `/tenants/${tenantId}/doctors`),
@@ -101,16 +150,22 @@ export const adminApi = (key: string) => ({
   users: (tenantId: string) => request<StaffLogin[]>(key, `/tenants/${tenantId}/users`),
   createUser: (
     tenantId: string,
-    body: { role: 'reception' | 'doctor'; name: string; username: string; password: string; doctor_id?: string | null },
-  ) => request<StaffLogin>(key, `/tenants/${tenantId}/users`, { method: 'POST', body: JSON.stringify(body) }),
-  updateUser: (id: string, body: { name?: string; is_active?: boolean; password?: string }) =>
+    body: { role: 'reception' | 'doctor' | 'owner'; name: string; username: string; mobile_number: string; doctor_id?: string | null; is_owner?: boolean },
+  ) => request<StaffLogin & { generated_password: string }>(key, `/tenants/${tenantId}/users`, { method: 'POST', body: JSON.stringify(body) }),
+  updateUser: (id: string, body: { name?: string; is_active?: boolean; password?: string; mobile_number?: string | null; is_owner?: boolean }) =>
     request<StaffLogin>(key, `/users/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  resetPassword: (id: string) =>
+    request<{ sent: boolean; generated_password: string; error?: string }>(key, `/users/${id}/reset-password`, { method: 'POST' }),
   deleteUser: (id: string) => request(key, `/users/${id}`, { method: 'DELETE' }),
   qrCodes: (status?: string) => request<QrCodeView[]>(key, `/qr-codes${status ? `?status=${status}` : ''}`),
-  createQrCodes: (count: number, label: string) =>
-    request<QrCodeView[]>(key, '/qr-codes', { method: 'POST', body: JSON.stringify({ count, label }) }),
-  updateQrCode: (id: string, body: { doctor_id?: string | null; status?: 'disabled' | 'active' }) =>
+  /** Always says who they're for: { doctor_id }, { tenant_id } (whole clinic), or both null (unassigned, print ahead). */
+  createQrCodes: (count: number, label: string, target: { doctor_id: string | null; tenant_id: string | null }) =>
+    request<QrCodeView[]>(key, '/qr-codes', { method: 'POST', body: JSON.stringify({ count, label, ...target }) }),
+  updateQrCode: (id: string, body: { doctor_id?: string | null; tenant_id?: string | null; status?: 'disabled' | 'active' }) =>
     request<QrCodeView>(key, `/qr-codes/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  leads: () => request<TrialLead[]>(key, '/leads'),
+  setLeadStatus: (id: string, status: TrialLeadStatus) =>
+    request<TrialLead>(key, `/leads/${id}`, { method: 'PATCH', body: JSON.stringify({ status }) }),
 });
 
 export type AdminApi = ReturnType<typeof adminApi>;

@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { api, ApiError, patientDevice, type DoctorToday, type Patient, type Tenant } from '@/lib/api';
-import { FullPageMessage, Icon, initials, LoadingPage } from '@/components/patient/ui';
+import { DoctorAvatar, FullPageMessage, Icon, initials, LoadingPage } from '@/components/patient/ui';
 
 // Screen #1 (returning 1-tap / new patient) + Screen #2 (intake details), on one page. Ported from
 // stitch_medqr_clinic_suite_ui_design/patient_qr_landing_check_in/code.html and
@@ -22,6 +22,10 @@ const SYMPTOMS = [
   { label: 'Stomach Ache', emoji: '💊' },
 ];
 
+// Decision 17 — human-readable label for a bookingDate (YYYY-MM-DD) query param.
+const formatBookingDate = (iso: string, opts: Intl.DateTimeFormatOptions) =>
+  new Date(`${iso}T00:00:00`).toLocaleDateString('en-IN', opts);
+
 export default function IntakePage() {
   return (
     <Suspense fallback={<LoadingPage />}>
@@ -32,12 +36,17 @@ export default function IntakePage() {
 
 function IntakeForm() {
   const { subdomain } = useParams<{ subdomain: string }>();
-  const doctorId = useSearchParams().get('doctorId');
+  const params = useSearchParams();
+  const doctorId = params.get('doctorId');
+  // Decision 17 — set only when this visit was booked from the advance-booking date strip.
+  const bookingDate = params.get('date');
   const router = useRouter();
 
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [doctor, setDoctor] = useState<DoctorToday | null>(null);
   const [loadError, setLoadError] = useState(false);
+  // A doctor's own QR opens this page directly (no doctor selection) — so check today's status here (Decision 6).
+  const [offToday, setOffToday] = useState<{ name: string; detail: string } | null>(null);
 
   // Identity — returning profiles (1-tap) or a new person
   const [profiles, setProfiles] = useState<Patient[]>([]);
@@ -69,9 +78,22 @@ function IntakeForm() {
       try {
         const t = await api.getTenantBySubdomain(subdomain);
         if (!t) return setLoadError(true);
-        const doctors = await api.getDoctorsToday(t.id);
-        const d = doctors.find((x) => x.id === doctorId);
-        if (!d) return setLoadError(true);
+
+        let d: DoctorToday | undefined;
+        if (bookingDate) {
+          // Decision 17 — a future booking: today's off/on-break status is irrelevant, only whether
+          // the doctor actually has a session on that date (re-checked server-side at join too).
+          const advance = await api.getAdvanceBooking(t.id);
+          const day = advance.days.find((x) => x.date === bookingDate);
+          const match = day?.doctors.find((x) => x.id === doctorId);
+          if (!match) return setLoadError(true);
+          d = { ...match, today_status: 'available', today_status_detail: '' };
+        } else {
+          const doctors = await api.getDoctorsToday(t.id);
+          d = doctors.find((x) => x.id === doctorId);
+          if (!d) return setLoadError(true);
+          if (d.today_status === 'off_today') return setOffToday({ name: d.name, detail: d.today_status_detail });
+        }
         setTenant(t);
         setDoctor(d);
 
@@ -83,7 +105,7 @@ function IntakeForm() {
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [subdomain, doctorId]);
+  }, [subdomain, doctorId, bookingDate]);
 
   /** Saved check-in on this phone → 1-tap. Ask for WhatsApp OTP only if the clinic requires it. */
   async function loadDeviceProfiles(required: boolean) {
@@ -123,6 +145,14 @@ function IntakeForm() {
         icon="error"
         title="Couldn't start check-in"
         body="Please go back and choose your doctor again, or ask the reception desk."
+      />
+    );
+  if (offToday)
+    return (
+      <FullPageMessage
+        icon="event_busy"
+        title={`${offToday.name} is not consulting today`}
+        body={`${offToday.detail}. Please check with the reception desk.`}
       />
     );
   if (!tenant || !doctor || phoneState === 'checking') return <LoadingPage />;
@@ -201,6 +231,7 @@ function IntakeForm() {
         patientId,
         chief_complaint: complaint.trim() || null,
         weight_kg: weight ? Number(weight) : null,
+        bookingDate: bookingDate ?? undefined,
       });
       // Attachments never block the token — a failed attach is dropped silently.
       for (const f of files) {
@@ -251,20 +282,27 @@ function IntakeForm() {
 
       <main className="flex-1 w-full max-w-[480px] mx-auto">
         <section className="px-margin pt-4 pb-2">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <h1 className="text-headline-sm font-headline-sm text-on-surface tracking-tight font-bold">
-                {mode === 'returning' && selectedProfile ? `Welcome back! 👋` : 'Just a few quick details'}
-              </h1>
-              <p className="text-body-sm font-body-sm text-on-surface-variant mt-0.5">
-                Checking in with {doctor.name}
+          <div className="flex items-center gap-3 bg-surface-container-lowest rounded-2xl p-3 shadow-sm">
+            <DoctorAvatar doctor={doctor} size="w-14 h-14" />
+            <div className="min-w-0 flex-1">
+              <p className="font-label-lg text-label-lg font-bold text-on-surface truncate">{doctor.name}</p>
+              <p className="font-body-sm text-body-sm text-primary font-semibold truncate">
+                {[doctor.qualification, doctor.specialty].filter(Boolean).join(' · ') || 'Consulting today'}
                 {doctor.cabin_label ? ` · ${doctor.cabin_label}` : ''}
               </p>
             </div>
-            <div className="w-10 h-10 rounded-xl bg-surface-container-low flex items-center justify-center text-primary shrink-0 shadow-sm">
-              <Icon name="assignment_turned_in" className="text-[24px]" />
-            </div>
           </div>
+
+          {bookingDate && (
+            <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-secondary-fixed/40 text-on-secondary-fixed-variant font-label-sm text-label-sm">
+              <Icon name="event_available" className="text-[14px]" />
+              Booking for {formatBookingDate(bookingDate, { weekday: 'short', day: 'numeric', month: 'short' })} — not today
+            </div>
+          )}
+
+          <h1 className="text-headline-sm font-headline-sm text-on-surface tracking-tight font-bold mt-3">
+            {mode === 'returning' && selectedProfile ? `Welcome back! 👋` : 'Just a few quick details'}
+          </h1>
 
           {(errors.name || errors.mobile) && (
             <div className="mt-3 p-3.5 bg-error-container text-on-error-container rounded-xl shadow-sm">
@@ -663,7 +701,7 @@ function IntakeForm() {
             )}
           </button>
           <p className="font-label-md text-label-md text-on-surface-variant mt-2 text-center">
-            {doctor.name} · {doctor.today_status_detail}
+            {doctor.name} · {bookingDate ? `Booking for ${formatBookingDate(bookingDate, { day: 'numeric', month: 'short' })}` : doctor.today_status_detail}
           </p>
         </div>
       </footer>

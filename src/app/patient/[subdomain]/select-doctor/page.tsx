@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { api, type DoctorToday, type DoctorTodayStatus, type Tenant } from '@/lib/api';
+import { api, type AdvanceBookingDay, type DoctorToday, type DoctorTodayStatus, type Tenant } from '@/lib/api';
 import {
   DoctorAvatar,
   DoctorStatusRow,
@@ -17,15 +17,29 @@ import {
 // Variant A (one doctor) is a confirmation card; Variant B (polyclinic) is a pick-list with a
 // sticky confirm bar, plus search once there are more than 6 doctors. The prototype
 // state-switcher and the per-doctor "live cabin tracker" were dropped — no data behind them yet.
+//
+// Decision 17 — advance booking: a date strip appears only when the clinic allows booking ahead
+// AND at least one doctor actually has a scheduled session on one of those days. Picking a future
+// date swaps in that day's bookable doctors; their card shows "Consulting on {date}" instead of the
+// live Decision-6 status row, since there's no live/break state for a day that hasn't started yet.
 
 // Decision 6: only 'off_today' is non-selectable.
 const isSelectable = (status: DoctorTodayStatus) => status !== 'off_today';
+
+const formatDate = (iso: string) => {
+  const d = new Date(`${iso}T00:00:00`);
+  const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+  if (iso === tomorrow) return 'Tomorrow';
+  return d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
+};
 
 export default function SelectDoctorPage() {
   const { subdomain } = useParams<{ subdomain: string }>();
   const router = useRouter();
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [doctors, setDoctors] = useState<DoctorToday[] | null>(null);
+  const [advanceDays, setAdvanceDays] = useState<AdvanceBookingDay[]>([]);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null); // null = today
   const [error, setError] = useState<'not_found' | 'network' | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [query, setQuery] = useState('');
@@ -37,23 +51,33 @@ export default function SelectDoctorPage() {
         if (!t) return setError('not_found');
         setTenant(t);
         setDoctors(await api.getDoctorsToday(t.id));
+        api
+          .getAdvanceBooking(t.id)
+          .then((r) => setAdvanceDays(r.days.filter((d) => d.doctors.length > 0)))
+          .catch(() => undefined); // advance booking is a bonus — never block today's check-in on it
       } catch {
         setError('network');
       }
     })();
   }, [subdomain]);
 
+  const isFutureView = selectedDate !== null;
+  // Unify today's real doctors and a future day's bookable doctors into one shape: presence in a
+  // future day's list already means "has a real session" (Decision 17), so status is synthetic.
+  const activeDoctors: DoctorToday[] = useMemo(() => {
+    if (!isFutureView) return doctors ?? [];
+    const day = advanceDays.find((d) => d.date === selectedDate);
+    return (day?.doctors ?? []).map((d) => ({ ...d, today_status: 'available' as const, today_status_detail: '' }));
+  }, [isFutureView, selectedDate, advanceDays, doctors]);
+
   const filtered = useMemo(() => {
-    if (!doctors) return [];
     const q = query.trim().toLowerCase();
     const list = q
-      ? doctors.filter((d) =>
-          [d.name, d.specialty, d.cabin_label].some((f) => f?.toLowerCase().includes(q)),
-        )
-      : doctors;
-    // Selectable doctors first; off-today ones sink to the bottom.
+      ? activeDoctors.filter((d) => [d.name, d.specialty, d.cabin_label].some((f) => f?.toLowerCase().includes(q)))
+      : activeDoctors;
+    // Selectable doctors first; off-today ones sink to the bottom (never applies to a future day — all bookable).
     return [...list].sort((a, b) => Number(!isSelectable(a.today_status)) - Number(!isSelectable(b.today_status)));
-  }, [doctors, query]);
+  }, [activeDoctors, query]);
 
   if (error === 'not_found')
     return <FullPageMessage icon="wrong_location" title="Clinic not found" body="This QR code doesn't match a clinic on MedQR. Please ask the reception desk." />;
@@ -62,26 +86,76 @@ export default function SelectDoctorPage() {
   if (!tenant || !doctors) return <LoadingPage />;
 
   const clinicName = tenant.display_name ?? subdomain;
-  const goToIntake = (doctorId: string) => router.push(`/patient/${subdomain}/intake?doctorId=${doctorId}`);
+  const goToIntake = (doctorId: string) =>
+    router.push(`/patient/${subdomain}/intake?doctorId=${doctorId}${selectedDate ? `&date=${selectedDate}` : ''}`);
 
-  if (doctors.length === 0)
-    return <FullPageMessage icon="event_busy" title="No doctors listed today" body={`Please check with the reception desk at ${clinicName}.`} />;
+  const dateStrip = advanceDays.length > 0 && (
+    <div className="flex items-center gap-2 overflow-x-auto no-scrollbar -mx-1 px-1">
+      <button
+        onClick={() => {
+          setSelectedDate(null);
+          setSelectedId(null);
+        }}
+        className={`shrink-0 px-3.5 py-2 rounded-xl font-label-md text-label-md transition-colors ${
+          !isFutureView ? 'bg-primary text-on-primary' : 'bg-surface-container-lowest text-on-surface-variant shadow-sm'
+        }`}
+      >
+        Today
+      </button>
+      {advanceDays.map((d) => (
+        <button
+          key={d.date}
+          onClick={() => {
+            setSelectedDate(d.date);
+            setSelectedId(null);
+          }}
+          className={`shrink-0 px-3.5 py-2 rounded-xl font-label-md text-label-md transition-colors ${
+            selectedDate === d.date ? 'bg-primary text-on-primary' : 'bg-surface-container-lowest text-on-surface-variant shadow-sm'
+          }`}
+        >
+          {formatDate(d.date)}
+        </button>
+      ))}
+    </div>
+  );
 
-  // ---------- Variant A: single-doctor clinic ----------
-  if (doctors.length === 1) {
-    const d = doctors[0];
-    const selectable = isSelectable(d.today_status);
+  if (activeDoctors.length === 0)
+    return (
+      <>
+        <PatientHeader eyebrow="MedQR · Scanned ✓" title="Doctor Selection" />
+        <main className="min-h-screen w-full max-w-[480px] mx-auto pt-16 pb-safe bg-surface">
+          <div className="flex flex-col px-margin py-space-lg gap-space-md">
+            {dateStrip}
+            <div className="flex flex-col items-center text-center gap-3 py-16">
+              <Icon name="event_busy" className="text-[40px] text-on-surface-variant" />
+              <p className="font-headline-sm text-headline-sm text-on-surface">
+                {isFutureView ? `No doctor is scheduled on ${formatDate(selectedDate!)}` : 'No doctors listed today'}
+              </p>
+              <p className="font-body-md text-body-md text-on-surface-variant">Please check with the reception desk at {clinicName}.</p>
+            </div>
+          </div>
+        </main>
+      </>
+    );
+
+  // ---------- Variant A: single bookable doctor for the selected day ----------
+  if (activeDoctors.length === 1) {
+    const d = activeDoctors[0];
+    const selectable = isFutureView || isSelectable(d.today_status);
     return (
       <>
         <PatientHeader eyebrow="MedQR · Scanned ✓" title="Doctor Selection" />
         <main className="min-h-screen w-full max-w-[480px] mx-auto pt-16 pb-safe bg-surface">
           <div className="flex flex-col px-margin py-space-lg gap-space-lg">
+            {dateStrip}
             <div className="flex flex-col gap-1">
               <span className="font-label-md text-label-md text-primary font-bold uppercase tracking-wider">OPD Express Check-in</span>
               <h2 className="font-headline-md text-headline-md text-on-surface font-extrabold tracking-tight">
-                You&apos;re checking in with {d.name}
+                {isFutureView ? `Book with ${d.name}` : `You're checking in with ${d.name}`}
               </h2>
-              <p className="font-body-md text-body-md text-on-surface-variant">Confirm the doctor to get your queue token.</p>
+              <p className="font-body-md text-body-md text-on-surface-variant">
+                {isFutureView ? `Confirm to get your token for ${formatDate(selectedDate!)}.` : 'Confirm the doctor to get your queue token.'}
+              </p>
             </div>
 
             <div className="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm flex flex-col gap-space-md relative overflow-hidden">
@@ -112,7 +186,14 @@ export default function SelectDoctorPage() {
                 </div>
               </div>
 
-              <DoctorStatusRow status={d.today_status} detail={d.today_status_detail} />
+              {isFutureView ? (
+                <div className="flex items-center gap-1.5 bg-surface-container-low px-3 py-1.5 rounded-lg">
+                  <Icon name="event_available" className="text-[16px] text-primary" />
+                  <span className="font-label-sm text-label-sm text-on-surface font-semibold">Consulting on {formatDate(selectedDate!)}</span>
+                </div>
+              ) : (
+                <DoctorStatusRow status={d.today_status} detail={d.today_status_detail} />
+              )}
             </div>
 
             <div className="flex items-center gap-2 px-1">
@@ -142,14 +223,15 @@ export default function SelectDoctorPage() {
   }
 
   // ---------- Variant B: polyclinic ----------
-  const selected = doctors.find((d) => d.id === selectedId) ?? null;
-  const selectableCount = doctors.filter((d) => isSelectable(d.today_status)).length;
+  const selected = activeDoctors.find((d) => d.id === selectedId) ?? null;
+  const selectableCount = isFutureView ? activeDoctors.length : activeDoctors.filter((d) => isSelectable(d.today_status)).length;
 
   return (
     <>
       <PatientHeader eyebrow="MedQR · Scanned ✓" title="Doctor Selection" />
       <main className={`min-h-screen w-full max-w-[480px] mx-auto pt-16 bg-surface ${selected ? 'pb-48' : 'pb-safe'}`}>
         <div className="flex flex-col px-margin py-space-lg gap-space-md">
+          {dateStrip}
           <div className="flex flex-col gap-1">
             <div className="flex items-center gap-1.5 text-primary">
               <Icon name="local_hospital" className="text-[18px]" />
@@ -160,11 +242,13 @@ export default function SelectDoctorPage() {
               Which doctor are you here to see?
             </h2>
             <span className="font-body-sm text-body-sm text-on-surface-variant">
-              {selectableCount} of {doctors.length} doctors consulting today · Tap to select
+              {isFutureView
+                ? `${selectableCount} doctor${selectableCount === 1 ? '' : 's'} consulting on ${formatDate(selectedDate!)} · Tap to select`
+                : `${selectableCount} of ${activeDoctors.length} doctors consulting today · Tap to select`}
             </span>
           </div>
 
-          {doctors.length > 6 && (
+          {activeDoctors.length > 6 && (
             <div className="relative flex items-center">
               <Icon name="search" className="absolute left-3.5 text-on-surface-variant text-[20px]" />
               <input
@@ -183,7 +267,7 @@ export default function SelectDoctorPage() {
 
           <div className="flex flex-col gap-space-sm">
             {filtered.map((d) => {
-              const selectable = isSelectable(d.today_status);
+              const selectable = isFutureView || isSelectable(d.today_status);
               const isSelected = d.id === selectedId;
               return (
                 <button
@@ -222,7 +306,14 @@ export default function SelectDoctorPage() {
                       </span>
                     </div>
                   </div>
-                  <DoctorStatusRow status={d.today_status} detail={d.today_status_detail} />
+                  {isFutureView ? (
+                    <div className="flex items-center gap-1.5 bg-surface-container-low px-2.5 py-1 rounded-lg self-start">
+                      <Icon name="event_available" className="text-[14px] text-primary" />
+                      <span className="font-label-sm text-label-sm text-on-surface">Consulting on {formatDate(selectedDate!)}</span>
+                    </div>
+                  ) : (
+                    <DoctorStatusRow status={d.today_status} detail={d.today_status_detail} />
+                  )}
                 </button>
               );
             })}
@@ -250,16 +341,18 @@ export default function SelectDoctorPage() {
               </div>
               <span
                 className={`font-label-sm text-label-sm font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${
-                  selected.today_status === 'available'
+                  isFutureView || selected.today_status === 'available'
                     ? 'bg-tertiary-fixed text-on-tertiary-fixed'
                     : 'bg-secondary-fixed text-on-secondary-fixed'
                 }`}
               >
-                {selected.today_status === 'available'
-                  ? 'Available'
-                  : selected.today_status === 'on_break'
-                    ? 'On break'
-                    : 'Later today'}
+                {isFutureView
+                  ? formatDate(selectedDate!)
+                  : selected.today_status === 'available'
+                    ? 'Available'
+                    : selected.today_status === 'on_break'
+                      ? 'On break'
+                      : 'Later today'}
               </span>
             </div>
             <button
