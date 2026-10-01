@@ -1,8 +1,0 @@
-{
-  "/q/[code]/page": "app/q/[code]/page.js",
-  "/admin/clinics/[id]/page": "app/admin/clinics/[id]/page.js",
-  "/patient/[subdomain]/payment/page": "app/patient/[subdomain]/payment/page.js",
-  "/doctor/qr-poster/page": "app/doctor/qr-poster/page.js",
-  "/patient/[subdomain]/intake/page": "app/patient/[subdomain]/intake/page.js",
-  "/admin/qr-codes/page": "app/admin/qr-codes/page.js"
-}
