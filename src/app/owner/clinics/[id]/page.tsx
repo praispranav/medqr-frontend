@@ -15,7 +15,7 @@ import { inr } from '@/components/staff/bits';
 // separate), and manual WhatsApp-wallet credit until the payment gateway exists.
 
 export default function AdminClinicPage() {
-  return <AdminShell active="/admin/clinics">{(api) => <ClinicDetail api={api} />}</AdminShell>;
+  return <AdminShell active="/owner/clinics">{(api) => <ClinicDetail api={api} />}</AdminShell>;
 }
 
 
@@ -35,7 +35,7 @@ function ClinicDetail({ api }: { api: AdminApi }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <Link href="/admin/clinics" className="flex items-center gap-1.5 text-primary font-label-md text-label-md self-start">
+      <Link href="/owner/clinics" className="flex items-center gap-1.5 text-primary font-label-md text-label-md self-start">
         <Icon name="arrow_back" className="text-[18px]" /> All clinics
       </Link>
 

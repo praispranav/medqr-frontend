@@ -7,8 +7,9 @@ import { Icon } from '@/components/patient/ui';
 import { inr } from '@/components/staff/bits';
 
 // Doctors (+ their planned hours) and staff logins for one clinic. Shared by the platform admin
-// (/admin/clinics/[id], via x-admin-key) and the clinic admin (/manage/team, via the owner's
-// session — Decision 14). Only the platform admin can grant clinic-admin (owner) access.
+// (/owner/clinics/[id], via x-admin-key — not to be confused with the clinic-admin "owner" staff
+// role below) and the clinic admin (/manage/team, via that owner-role session — Decision 14). Only
+// the platform admin can grant clinic-admin (owner) access.
 
 export type LoginRole = 'reception' | 'doctor' | 'owner';
 type DoctorBody = { name: string; qualification: string; specialty: string; cabin_label: string; bio?: string; is_publicly_listed?: boolean };

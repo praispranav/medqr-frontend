@@ -10,10 +10,10 @@ import { Icon, LoadingPage } from '@/components/patient/ui';
 // protected by ADMIN_API_KEY from backend/.env; the key is entered once and kept on this device.
 
 const NAV = [
-  { href: '/admin', label: 'Activity', icon: 'monitoring' },
-  { href: '/admin/clinics', label: 'Clinics', icon: 'local_hospital' },
-  { href: '/admin/leads', label: 'Trial requests', icon: 'inbox' },
-  { href: '/admin/qr-codes', label: 'QR codes', icon: 'qr_code_2' },
+  { href: '/owner', label: 'Activity', icon: 'monitoring' },
+  { href: '/owner/clinics', label: 'Clinics', icon: 'local_hospital' },
+  { href: '/owner/leads', label: 'Trial requests', icon: 'inbox' },
+  { href: '/owner/qr-codes', label: 'QR codes', icon: 'qr_code_2' },
 ];
 
 export function AdminShell({ active, children }: { active: string; children: (api: AdminApi) => ReactNode }) {

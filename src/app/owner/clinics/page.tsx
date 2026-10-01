@@ -9,7 +9,7 @@ import { AdminShell } from '@/components/admin/AdminShell';
 import { inr } from '@/components/staff/bits';
 
 export default function AdminClinicsPage() {
-  return <AdminShell active="/admin/clinics">{(api) => <Clinics api={api} />}</AdminShell>;
+  return <AdminShell active="/owner/clinics">{(api) => <Clinics api={api} />}</AdminShell>;
 }
 
 function Clinics({ api }: { api: AdminApi }) {
@@ -41,7 +41,7 @@ function Clinics({ api }: { api: AdminApi }) {
     setError(null);
     try {
       const t = await api.createTenant({ subdomain: effectiveCode, display_name: name, city: city.trim() || undefined, address: address.trim() || undefined });
-      router.push(`/admin/clinics/${t.id}`);
+      router.push(`/owner/clinics/${t.id}`);
     } catch (e) {
       setError((e as Error).message);
       setBusy(false);
@@ -118,7 +118,7 @@ function Clinics({ api }: { api: AdminApi }) {
       <section className="bg-surface-container-lowest rounded-2xl shadow-sm overflow-hidden">
         {list === null && !error && <p className="p-5 font-body-md text-body-md text-on-surface-variant">Loading…</p>}
         {list?.map((t) => (
-          <Link key={t.id} href={`/admin/clinics/${t.id}`} className="flex items-center gap-4 px-5 py-4 border-b border-surface-container last:border-0 hover:bg-surface-container-low">
+          <Link key={t.id} href={`/owner/clinics/${t.id}`} className="flex items-center gap-4 px-5 py-4 border-b border-surface-container last:border-0 hover:bg-surface-container-low">
             <div className="w-10 h-10 rounded-xl bg-primary-fixed/50 text-primary flex items-center justify-center shrink-0">
               <Icon name="local_hospital" className="text-[22px]" />
             </div>

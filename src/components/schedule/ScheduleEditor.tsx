@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import type { DoctorSession } from '@/lib/api';
 import { Icon } from '@/components/patient/ui';
 
-// Day-by-day consulting hours editor, shared by the platform admin (/admin/clinics/[id]) and the
+// Day-by-day consulting hours editor, shared by the platform admin (/owner/clinics/[id]) and the
 // doctor's own "My Hours" screen (/doctor/hours). Sessions drive the today-only availability
 // chips patients see (Decision 6). Callers pass an adapter so each side hits its own API.
 

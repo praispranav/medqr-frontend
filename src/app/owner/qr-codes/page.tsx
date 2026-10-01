@@ -21,7 +21,7 @@ import {
 //    doctor too (scan goes straight to that doctor's check-in, no doctor selection).
 
 export default function AdminQrCodesPage() {
-  return <AdminShell active="/admin/qr-codes">{(api) => <QrCodes api={api} />}</AdminShell>;
+  return <AdminShell active="/owner/qr-codes">{(api) => <QrCodes api={api} />}</AdminShell>;
 }
 
 type Filter = 'all' | 'unassigned' | 'assigned' | 'disabled';

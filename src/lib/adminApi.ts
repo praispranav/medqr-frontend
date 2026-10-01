@@ -12,7 +12,7 @@ export function readAdminKey() {
 }
 
 async function request<T>(key: string, path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE}/admin${path}`, {
+  const res = await fetch(`${API_BASE}/owner${path}`, {
     ...options,
     headers: { 'Content-Type': 'application/json', 'x-admin-key': key, ...(options?.headers ?? {}) },
   });
