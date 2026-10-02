@@ -91,7 +91,7 @@ function Payment() {
 
   return (
     <>
-      <PatientHeader eyebrow={`Token #${status.token_number}`} title="Consultation fee" />
+      <PatientHeader eyebrow={`Token #${status.token_number}`} title="Consultation fee" homeUrl={`/patient/${subdomain}`} />
       <main className="min-h-screen w-full max-w-[480px] mx-auto pt-20 pb-10 px-margin bg-surface flex flex-col gap-4">
         {status.is_paid ? (
           <div className="bg-surface-container-lowest rounded-2xl p-8 shadow-sm flex flex-col items-center text-center gap-3">

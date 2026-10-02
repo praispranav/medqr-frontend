@@ -125,17 +125,19 @@ function Clinics({ api }: { api: AdminApi }) {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
                 <p className="font-label-lg text-label-lg truncate">{t.display_name ?? t.subdomain}</p>
-                {t.subscription && t.subscription.status !== 'active' && (
+                {t.subscription && (
                   <span
                     className={`px-2 py-0.5 rounded-full font-label-sm text-label-sm shrink-0 ${
                       t.subscription.status === 'read_only'
-                        ? 'bg-error-container text-on-error-container'
+                        ? 'bg-error text-white'
                         : t.subscription.status === 'grace'
-                          ? 'bg-secondary-container text-on-secondary-container'
-                          : 'bg-tertiary-container text-on-tertiary-container'
+                          ? 'bg-secondary text-white'
+                          : t.subscription.status === 'trial'
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-tertiary text-white'
                     }`}
                   >
-                    {t.subscription.status === 'trial' ? 'Trial' : t.subscription.status === 'grace' ? 'Grace' : 'Read-only'}
+                    {t.subscription.status === 'trial' ? 'Free Trial' : t.subscription.status === 'grace' ? 'Grace' : t.subscription.status === 'read_only' ? 'Read-only' : 'Paid'}
                   </span>
                 )}
               </div>

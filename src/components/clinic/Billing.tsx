@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { api, type CatalogAddOn, type MonthlyPlan, type PaymentQrView, type Tenant } from '@/lib/api';
+import { api, type CatalogAddOn, type MonthlyPlan, type PaymentQrView, type SubscriptionStatus, type Tenant, type ModuleRequest } from '@/lib/api';
 import { Icon } from '@/components/patient/ui';
 import { inr } from '@/components/staff/bits';
 import { UpiQrCard } from '@/components/payments/UpiQrCard';
@@ -28,9 +28,13 @@ export function Billing({ tenant }: { tenant: Tenant }) {
   const [catalog, setCatalog] = useState<{ base_plan_price_inr: number; add_ons: CatalogAddOn[] } | null>(null);
   const [plan, setPlan] = useState<MonthlyPlan | null>(null);
   const [wallet, setWallet] = useState(Number(tenant.wallet_balance_inr));
+  const [requests, setRequests] = useState<ModuleRequest[]>([]);
+  const [requesting, setRequesting] = useState<string | null>(null);
+
   useEffect(() => {
     api.getBillingCatalog().then(setCatalog).catch(() => setCatalog({ base_plan_price_inr: 0, add_ons: [] }));
     api.billingPlan().then(setPlan).catch(() => setPlan(null));
+    api.manage.myModuleRequests().then(setRequests).catch(() => setRequests([]));
   }, []);
   useEffect(() => setWallet(Number(tenant.wallet_balance_inr)), [tenant.wallet_balance_inr]);
 
@@ -44,6 +48,9 @@ export function Billing({ tenant }: { tenant: Tenant }) {
 
   return (
     <div className="max-w-6xl flex flex-col gap-6">
+      {/* Platform subscription (Decision 18) — trial countdown, grace/read-only warnings, autopay */}
+      <PlatformSubscriptionCard />
+
       {/* Plan summary */}
       <section className="bg-surface-container-lowest rounded-2xl p-6 shadow-sm grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_380px] gap-6 relative overflow-hidden">
         <div className="absolute -top-20 -right-20 w-64 h-64 rounded-full bg-primary-fixed/20 pointer-events-none" />
@@ -128,6 +135,31 @@ export function Billing({ tenant }: { tenant: Tenant }) {
                     {inr(a.price_inr_per_month)}
                     <span className="font-body-sm text-body-sm text-on-surface-variant"> /mo</span>
                   </p>
+                  {!on && (
+                    <div className="mt-2 pt-2 border-t border-surface-container-low">
+                      {requests.find((r) => r.module_key === a.key && r.status === 'pending') ? (
+                        <p className="font-label-sm text-label-sm text-on-surface-variant flex items-center gap-1.5">
+                          <Icon name="schedule" className="text-[16px]" /> Requested - pending review
+                        </p>
+                      ) : (
+                        <button
+                          disabled={requesting === a.key}
+                          onClick={async () => {
+                            setRequesting(a.key);
+                            try {
+                              const req = await api.manage.requestModule(a.key);
+                              setRequests((prev) => [req, ...prev.filter(r => r.id !== req.id)]);
+                            } finally {
+                              setRequesting(null);
+                            }
+                          }}
+                          className="h-8 px-3 rounded-lg bg-surface-container-low text-primary font-label-sm text-label-sm hover:bg-surface-container disabled:opacity-50"
+                        >
+                          {requesting === a.key ? 'Requesting…' : 'Request this module'}
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -160,6 +192,163 @@ export function Billing({ tenant }: { tenant: Tenant }) {
         Billed by MedQR, operated by Altis Labs · PAN GRTPK1849H · Udyam Registration No. UDYAM-BR-34-0066884
       </p>
     </div>
+  );
+}
+
+// ---------------- Platform subscription (Decision 18) ----------------
+
+interface RazorpayCheckoutOptions {
+  key: string;
+  subscription_id: string;
+  name: string;
+  description: string;
+  theme?: { color: string };
+  handler?: () => void;
+  modal?: { ondismiss?: () => void };
+}
+interface RazorpayCheckout {
+  open: () => void;
+  on: (event: 'payment.failed', cb: () => void) => void;
+}
+declare global {
+  interface Window {
+    Razorpay?: new (options: RazorpayCheckoutOptions) => RazorpayCheckout;
+  }
+}
+
+let razorpayScript: Promise<void> | null = null;
+function loadRazorpayCheckout(): Promise<void> {
+  if (window.Razorpay) return Promise.resolve();
+  if (!razorpayScript) {
+    razorpayScript = new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error('Could not reach Razorpay — check your connection and try again.'));
+      document.body.appendChild(script);
+    });
+  }
+  return razorpayScript;
+}
+
+const fmtDate = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : null);
+const daysLeft = (iso: string | null) => (iso ? Math.max(0, Math.ceil((new Date(iso).getTime() - Date.now()) / 86400000)) : null);
+
+/** The MedQR platform fee itself — distinct from the module add-ons/WhatsApp wallet below, which
+ * are usage-based extras. This is "can this clinic keep using MedQR at all." */
+function PlatformSubscriptionCard() {
+  const [sub, setSub] = useState<SubscriptionStatus | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = () => api.getSubscription().then(setSub).catch(() => undefined);
+  useEffect(() => {
+    load();
+  }, []);
+
+  const setupAutopay = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const { subscription_id, key_id } = await api.setupAutopay();
+      await loadRazorpayCheckout();
+      if (!key_id || !window.Razorpay) throw new Error('Payments are not configured yet — ask MedQR support.');
+      const rzp = new window.Razorpay({
+        key: key_id,
+        subscription_id,
+        name: 'MedQR',
+        description: 'Platform subscription — autopay (card or UPI)',
+        theme: { color: '#005c55' },
+        handler: () => load(),
+        modal: { ondismiss: () => setBusy(false) },
+      });
+      rzp.on('payment.failed', () => setError('Could not set up autopay with that payment method — try another card or UPI.'));
+      setBusy(false); // the Razorpay modal has its own loading state from here
+      rzp.open();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not start autopay setup. Try again.');
+      setBusy(false);
+    }
+  };
+
+  if (!sub) return null;
+
+  const cta = (label: string) => (
+    <button
+      disabled={busy}
+      onClick={setupAutopay}
+      className="h-10 px-4 rounded-xl bg-primary text-on-primary font-label-lg text-label-lg disabled:opacity-50 shrink-0"
+    >
+      {busy ? 'Opening…' : label}
+    </button>
+  );
+
+  if (sub.status === 'read_only') {
+    const label = fmtDate(sub.grace_ends_at);
+    return (
+      <section className="bg-error-container text-on-error-container rounded-2xl p-5 shadow-sm flex items-center gap-4 flex-wrap">
+        <Icon name="lock" className="text-[26px] shrink-0" />
+        <div className="flex-1 min-w-[220px]">
+          <p className="font-label-lg text-label-lg">Subscription payment overdue — changes are locked</p>
+          <p className="font-body-sm text-body-sm opacity-90">
+            {label ? `Grace period ended ${label}. ` : ''}Set up autopay to unlock the queue, reception and doctor console again.
+          </p>
+          {error && <p className="font-body-sm text-body-sm mt-1">{error}</p>}
+        </div>
+        {cta('Set up autopay')}
+      </section>
+    );
+  }
+
+  if (sub.status === 'grace') {
+    const d = daysLeft(sub.grace_ends_at);
+    return (
+      <section className="bg-tertiary-container text-on-tertiary-container rounded-2xl p-5 shadow-sm flex items-center gap-4 flex-wrap">
+        <Icon name="warning" className="text-[26px] shrink-0" />
+        <div className="flex-1 min-w-[220px]">
+          <p className="font-label-lg text-label-lg">A payment was missed — grace period{d !== null ? `, ${d} day${d === 1 ? '' : 's'} left` : ''}</p>
+          <p className="font-body-sm text-body-sm opacity-90">Everything still works, but it goes read-only once the grace period ends. Set up autopay to fix it now.</p>
+          {error && <p className="font-body-sm text-body-sm mt-1">{error}</p>}
+        </div>
+        {cta('Set up autopay')}
+      </section>
+    );
+  }
+
+  if (sub.status === 'trial') {
+    const d = daysLeft(sub.trial_ends_at);
+    return (
+      <section className="bg-surface-container-lowest rounded-2xl p-5 shadow-sm flex items-center gap-4 flex-wrap ring-2 ring-primary/20">
+        <Icon name="schedule" className="text-primary text-[26px] shrink-0" />
+        <div className="flex-1 min-w-[220px]">
+          <p className="font-label-lg text-label-lg text-on-surface">
+            Free trial{d !== null ? ` — ${d} day${d === 1 ? '' : 's'} left` : ''}
+          </p>
+          <p className="font-body-sm text-body-sm text-on-surface-variant">
+            Set up autopay any time to keep MedQR running without a gap when the trial ends. Card or UPI, billed monthly.
+          </p>
+          {error && <p className="font-body-sm text-body-sm text-error mt-1">{error}</p>}
+        </div>
+        {cta('Set up autopay')}
+      </section>
+    );
+  }
+
+  // active
+  return (
+    <section className="bg-surface-container-lowest rounded-2xl p-5 shadow-sm flex items-center gap-4 flex-wrap">
+      <Icon name={sub.autopay_active ? 'verified' : 'info'} className={`text-[26px] shrink-0 ${sub.autopay_active ? 'text-tertiary' : 'text-on-surface-variant'}`} />
+      <div className="flex-1 min-w-[220px]">
+        <p className="font-label-lg text-label-lg text-on-surface">{sub.autopay_active ? 'Autopay is active' : 'Subscription active'}</p>
+        <p className="font-body-sm text-body-sm text-on-surface-variant">
+          {sub.autopay_active
+            ? `Next charge ${fmtDate(sub.current_period_end) ?? 'is calculated after your first payment'}.`
+            : "No autopay on file yet — set one up so this clinic doesn't lose access if billing is ever done manually."}
+        </p>
+        {error && <p className="font-body-sm text-body-sm text-error mt-1">{error}</p>}
+      </div>
+      {cta(sub.autopay_active ? 'Change card' : 'Set up autopay')}
+    </section>
   );
 }
 

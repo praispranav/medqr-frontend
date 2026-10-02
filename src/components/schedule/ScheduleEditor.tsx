@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { DoctorSession } from '@/lib/api';
 import { Icon } from '@/components/patient/ui';
+import { WeeklyEditor } from './WeeklyEditor';
 
 // Day-by-day consulting hours editor, shared by the platform admin (/owner/clinics/[id]) and the
 // doctor's own "My Hours" screen (/doctor/hours). Sessions drive the today-only availability
@@ -12,6 +13,7 @@ export interface ScheduleApi {
   list: (date: string) => Promise<DoctorSession[]>;
   add: (body: { session_date: string; starts_at: string; ends_at: string; is_break: boolean }) => Promise<unknown>;
   repeat: (fromDate: string, days: number) => Promise<unknown>;
+  applyWeeklyTemplate?: (weeks: number, template: Record<string, { starts_at: string; ends_at: string; is_break: boolean }[]>) => Promise<unknown>;
   setActive: (sessionId: string, active: boolean) => Promise<unknown>;
   remove: (sessionId: string) => Promise<unknown>;
 }
@@ -39,6 +41,7 @@ export function ScheduleEditor({ api, title, onChanged }: { api: ScheduleApi; ti
   const [isBreak, setIsBreak] = useState(false);
   const [repeatDays, setRepeatDays] = useState(6);
   const [msg, setMsg] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
+  const [viewMode, setViewMode] = useState<'day' | 'week'>('day');
 
   const load = useCallback(async () => {
     setSessions(await api.list(date));
@@ -62,6 +65,19 @@ export function ScheduleEditor({ api, title, onChanged }: { api: ScheduleApi; ti
     }
   };
 
+  if (viewMode === 'week' && api.applyWeeklyTemplate) {
+    return (
+      <WeeklyEditor
+        onApply={async (weeks, template) => {
+          await api.applyWeeklyTemplate!(weeks, template);
+          await load();
+          onChanged?.();
+        }}
+        onCancel={() => setViewMode('day')}
+      />
+    );
+  }
+
   const isToday = date === todayIso();
 
   return (
@@ -71,10 +87,17 @@ export function ScheduleEditor({ api, title, onChanged }: { api: ScheduleApi; ti
           <p className="font-label-sm text-label-sm text-on-surface-variant uppercase">Consulting hours</p>
           <h2 className="font-headline-md text-headline-md">{title}</h2>
         </div>
-        <label className="flex flex-col gap-1">
-          <span className="font-label-sm text-label-sm text-on-surface-variant">Day</span>
-          <input type="date" value={date} onChange={(e) => e.target.value && setDate(e.target.value)} className="h-11 rounded-lg bg-surface-container-low px-3 font-body-md text-body-md" />
-        </label>
+        <div className="flex items-center gap-4">
+          <label className="flex flex-col gap-1">
+            <span className="font-label-sm text-label-sm text-on-surface-variant">Day</span>
+            <input type="date" value={date} onChange={(e) => e.target.value && setDate(e.target.value)} className="h-11 rounded-lg bg-surface-container-low px-3 font-body-md text-body-md" />
+          </label>
+          {api.applyWeeklyTemplate && (
+            <button onClick={() => setViewMode('week')} className="mt-5 h-11 px-4 rounded-lg bg-surface-container-low text-primary font-label-md text-label-md">
+              Switch to Weekly Setup
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="flex flex-col gap-2">
@@ -136,7 +159,19 @@ export function ScheduleEditor({ api, title, onChanged }: { api: ScheduleApi; ti
         <div className="flex items-end gap-3 flex-wrap">
           <label className="flex flex-col gap-1">
             <span className="font-label-sm text-label-sm text-on-surface-variant">From</span>
-            <input type="time" value={start} onChange={(e) => setStart(e.target.value)} className="h-11 rounded-lg bg-surface-container-lowest px-3 font-body-md text-body-md" />
+            <input 
+              type="time" 
+              value={start} 
+              onChange={(e) => {
+                const val = e.target.value;
+                setStart(val);
+                if (val) {
+                  const [h, m] = val.split(':').map(Number);
+                  setEnd(`${String((h + 1) % 24).padStart(2, '0')}:${String(m).padStart(2, '0')}`);
+                }
+              }} 
+              className="h-11 rounded-lg bg-surface-container-lowest px-3 font-body-md text-body-md" 
+            />
           </label>
           <label className="flex flex-col gap-1">
             <span className="font-label-sm text-label-sm text-on-surface-variant">To</span>

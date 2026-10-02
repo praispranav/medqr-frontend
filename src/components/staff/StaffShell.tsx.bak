@@ -75,7 +75,7 @@ function navFor(variant: Variant, me: Me, isDemo: boolean): NavItem[] {
   } else {
     items = NAV[variant];
   }
-  return isDemo ? items.filter((i) => !DEMO_HIDDEN_HREFS.has(i.href || '')) : items;
+  return isDemo ? items.filter((i) => !DEMO_HIDDEN_HREFS.has(i.href)) : items;
 }
 
 export function StaffShell({

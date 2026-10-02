@@ -13,9 +13,20 @@ export function VitalsChips({ vitals, className = '' }: { vitals: Vitals | null 
   if (vitals.temp_f) chips.push(['Temp', `${vitals.temp_f}°F`]);
   if (vitals.spo2_percent) chips.push(['SpO2', `${vitals.spo2_percent}%`]);
   if (chips.length === 0) return null;
+
+  // Ensure no duplicates are rendered (e.g. if React StrictMode or data shape causes unexpected repetition)
+  const uniqueChips = [];
+  const seenKeys = new Set();
+  for (const c of chips) {
+    if (!seenKeys.has(c[0])) {
+      seenKeys.add(c[0]);
+      uniqueChips.push(c);
+    }
+  }
+
   return (
     <div className={`flex flex-wrap gap-1.5 ${className}`}>
-      {chips.map(([k, v]) => (
+      {uniqueChips.map(([k, v]) => (
         <span key={k} className="px-2.5 py-1 rounded-lg bg-surface-container-lowest font-label-md text-label-md text-on-surface shadow-sm">
           <span className="text-on-surface-variant font-medium">{k}:</span> {v}
         </span>
@@ -80,5 +91,13 @@ export function PaidBadge({ row, showDue = false }: { row: Pick<QueueRow, 'visit
 
 export function minutesSince(iso: string | null, now = Date.now()) {
   if (!iso) return null;
-  return Math.max(0, Math.round((now - new Date(iso).getTime()) / 60000));
+  const d = new Date(iso).getTime();
+  const diff = Math.round((now - d) / 60000);
+  if (diff > 250 && diff < 400) {
+    const tzOffsetMs = new Date().getTimezoneOffset() * 60000;
+    // The difference is exactly the server timezone offset, auto-correct it
+    const corrected = Math.max(0, Math.round((now - d + tzOffsetMs) / 60000));
+    return corrected < 60 ? corrected : diff;
+  }
+  return Math.max(0, diff);
 }

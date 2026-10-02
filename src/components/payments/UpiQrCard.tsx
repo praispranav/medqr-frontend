@@ -49,7 +49,10 @@ export function UpiQrCard({
         )}
       </div>
 
-      {onPatientPhone && !expired && (
+      {/* The mock gateway's upi_uri is a real upi://pay deep link; Razorpay's QR Codes API only ever
+          gives back a scannable image (image_url), never a deep link — so "Open UPI app" only ever
+          promises something it can deliver on. */}
+      {onPatientPhone && !expired && qr.gateway === 'mock' && (
         <a
           href={qr.upi_uri}
           className="w-full h-14 rounded-xl bg-primary text-on-primary font-label-lg text-label-lg flex items-center justify-center gap-2 shadow-md"
@@ -60,10 +63,19 @@ export function UpiQrCard({
       )}
 
       <div className={`p-3 bg-white rounded-xl border border-surface-container ${expired ? 'opacity-30' : ''}`}>
-        <QRCodeSVG value={qr.upi_uri} size={onPatientPhone ? 180 : 220} level="M" marginSize={2} />
+        {qr.image_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={qr.image_url} alt="UPI QR code" width={onPatientPhone ? 180 : 220} height={onPatientPhone ? 180 : 220} className="object-contain" />
+        ) : (
+          <QRCodeSVG value={qr.upi_uri} size={onPatientPhone ? 180 : 220} level="M" marginSize={2} />
+        )}
       </div>
       <p className="font-body-sm text-body-sm text-on-surface-variant">
-        {onPatientPhone ? 'Or scan this from another phone.' : 'Ask the patient to scan with any UPI app.'}
+        {!onPatientPhone
+          ? 'Ask the patient to scan with any UPI app.'
+          : qr.gateway === 'mock'
+            ? 'Or scan this from another phone.'
+            : 'Scan this with a UPI app from another phone.'}
       </p>
 
       <p className={`font-label-md text-label-md flex items-center gap-1.5 ${expired ? 'text-error' : 'text-on-surface-variant'}`}>

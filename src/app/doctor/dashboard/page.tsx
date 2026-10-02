@@ -50,7 +50,12 @@ function CommandCenter({ tenant, doctor }: { tenant: Tenant; doctor: DoctorToday
   }, []);
 
   const current = rows?.find((r) => r.status === 'in_consultation') ?? null;
-  const callable = useMemo(() => (rows ?? []).filter((r) => CALLABLE.has(r.status)), [rows]);
+  const callable = useMemo(() => {
+    if (tenant.queue_settings.front_desk_verifies_arrivals === false) {
+      return (rows ?? []).filter((r) => CALLABLE.has(r.status) || r.status === 'booked');
+    }
+    return (rows ?? []).filter((r) => CALLABLE.has(r.status));
+  }, [rows, tenant.queue_settings.front_desk_verifies_arrivals]);
   const notArrived = useMemo(() => (rows ?? []).filter((r) => r.status === 'booked'), [rows]);
   const finished = useMemo(() => (rows ?? []).filter((r) => r.status === 'done' || r.status === 'no_show'), [rows]);
   const next = callable[0] ?? null;
@@ -109,7 +114,7 @@ function CommandCenter({ tenant, doctor }: { tenant: Tenant; doctor: DoctorToday
   });
 
   return (
-    <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_440px] gap-5 max-w-[1400px]">
+    <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_440px] gap-5 max-w-[1400px] pb-24 xl:pb-0">
       <div className="flex flex-col gap-5 min-w-0">
         <ShiftBar doctorId={doctor.id} shift={shift} hasPatientInCabin={!!current} onChanged={(v) => { setShift(v); refresh(); }} />
         {!live && notLiveReason && (
@@ -155,6 +160,16 @@ function CommandCenter({ tenant, doctor }: { tenant: Tenant; doctor: DoctorToday
                       </span>
                     )}
                     <PaidBadge row={current} showDue />
+                    {tenant.queue_settings.payment_mode === 'pay_after_consultation' && current.visit && !current.visit.is_paid && (
+                      <div className="flex items-center gap-2 ml-auto">
+                        <button disabled={busy} onClick={() => run(() => api.markPaid(current.visit!.id, 'cash', Number(current.visit!.consultation_fee_inr ?? tenant.queue_settings.default_consultation_fee_inr)))} className="px-3 py-1.5 rounded-lg bg-primary text-on-primary font-label-sm text-label-sm disabled:opacity-60">
+                          {busy ? 'Processing...' : 'Paid · Cash'}
+                        </button>
+                        <button disabled={busy} onClick={() => run(() => api.markPaid(current.visit!.id, 'upi_counter', Number(current.visit!.consultation_fee_inr ?? tenant.queue_settings.default_consultation_fee_inr)))} className="px-3 py-1.5 rounded-lg bg-surface-container-low text-primary font-label-sm text-label-sm disabled:opacity-60">
+                          {busy ? 'Processing...' : 'Paid · UPI'}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -187,7 +202,7 @@ function CommandCenter({ tenant, doctor }: { tenant: Tenant; doctor: DoctorToday
                 <button
                   disabled={busy || !live}
                   onClick={callNext}
-                  className={`flex-1 h-14 px-5 rounded-xl text-on-primary font-label-lg text-label-lg flex items-center justify-between gap-3 shadow-md disabled:opacity-50 ${
+                  className={`w-full sm:w-auto sm:flex-1 shrink-0 h-14 px-5 rounded-xl text-on-primary font-label-lg text-label-lg flex items-center justify-between gap-3 shadow-md disabled:opacity-50 ${
                     breakDue ? 'bg-secondary' : 'bg-primary-container'
                   }`}
                 >
@@ -258,7 +273,7 @@ function CommandCenter({ tenant, doctor }: { tenant: Tenant; doctor: DoctorToday
       </div>
 
       {/* ---------- Live patient queue ---------- */}
-      <section className="bg-surface-container-lowest rounded-2xl p-5 shadow-sm flex flex-col gap-4 min-w-0 xl:max-h-[calc(100vh-7rem)] xl:sticky xl:top-20">
+      <section id="queue-list-section" className="bg-surface-container-lowest rounded-2xl p-5 shadow-sm flex flex-col gap-4 min-w-0 xl:max-h-[calc(100vh-7rem)] xl:sticky xl:top-20">
         <div className="flex items-center justify-between gap-2">
           <h2 className="font-headline-sm text-headline-sm text-on-surface">Live patient queue</h2>
           <div className="flex items-center gap-2">
@@ -305,12 +320,26 @@ function CommandCenter({ tenant, doctor }: { tenant: Tenant; doctor: DoctorToday
             </QueueItem>
           ))}
 
-          {filter(notArrived).length > 0 && (
+          {tenant.queue_settings.front_desk_verifies_arrivals !== false && filter(notArrived).length > 0 && (
             <p className="font-label-sm text-label-sm text-on-surface-variant uppercase mt-3">Booked · not arrived yet</p>
           )}
-          {filter(notArrived).map((r) => (
+          {tenant.queue_settings.front_desk_verifies_arrivals !== false && filter(notArrived).map((r) => (
             <QueueItem key={r.id} row={r} now={now} muted>
-              <StatusPill status={r.status} />
+              <div className="flex items-center gap-3">
+                <StatusPill status={r.status} />
+                <button
+                  disabled={busy || !live || breakDue}
+                  onClick={() => {
+                    if (confirm("This patient hasn't been confirmed as arrived — call anyway?")) {
+                      run(() => api.callToken(r.id));
+                    }
+                  }}
+                  title="Override — call this patient now"
+                  className="h-9 px-3 rounded-lg bg-surface-container text-primary font-label-md text-label-md flex items-center gap-1 hover:bg-surface-container-high disabled:opacity-60"
+                >
+                  <Icon name="arrow_upward" className="text-[16px]" /> Call now
+                </button>
+              </div>
             </QueueItem>
           ))}
 
@@ -334,6 +363,34 @@ function CommandCenter({ tenant, doctor }: { tenant: Tenant; doctor: DoctorToday
           )}
         </div>
       </section>
+
+      {/* Mobile fixed bottom bar */}
+      <div className="xl:hidden fixed bottom-0 left-0 right-0 z-40 bg-surface-container-lowest border-t border-surface-container p-4 pb-safe flex items-center gap-3 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
+        <button
+          onClick={() => {
+            const el = document.getElementById('queue-list-section');
+            el?.scrollIntoView({ behavior: 'smooth' });
+          }}
+          className="flex-1 h-14 rounded-xl bg-surface-container-low text-on-surface font-label-lg text-label-lg flex items-center justify-center gap-2"
+        >
+          <Icon name="list" className="text-[22px]" />
+          Queue list
+        </button>
+        <button
+          disabled={busy || !live}
+          onClick={callNext}
+          className={`flex-[2] h-14 px-5 rounded-xl text-on-primary font-label-lg text-label-lg flex items-center justify-between gap-3 shadow-md disabled:opacity-50 ${
+            breakDue ? 'bg-secondary' : 'bg-primary'
+          }`}
+        >
+          <span className="flex items-center gap-2 min-w-0">
+            <Icon name={breakDue ? 'coffee' : 'campaign'} className="text-[22px]" />
+            <span className="truncate">
+              {breakDue ? 'Start break' : next ? `Call #${next.token_number}` : 'Call next'}
+            </span>
+          </span>
+        </button>
+      </div>
     </div>
   );
 }

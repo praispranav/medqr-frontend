@@ -1,4 +1,5 @@
 'use client';
+import Link from "next/link";
 
 import type { DoctorToday, DoctorTodayStatus } from '@/lib/api';
 
@@ -96,26 +97,33 @@ export function DoctorStatusRow({ status, detail }: { status: DoctorTodayStatus;
 }
 
 /** Fixed app bar shared by the patient screens (Screens #1A, #3). */
-export function PatientHeader({ eyebrow, title, onBack }: { eyebrow: string; title: string; onBack?: () => void }) {
+export function PatientHeader({ eyebrow, title, onBack, homeUrl }: { eyebrow: string; title: string; onBack?: () => void; homeUrl?: string }) {
   return (
     <header className="fixed top-0 w-full z-50 pt-safe bg-surface/85 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)]">
-      <div className="h-16 px-margin flex items-center gap-space-sm max-w-[480px] mx-auto w-full">
-        {onBack && (
-          <button
-            aria-label="Go back"
-            onClick={onBack}
-            className="w-11 h-11 -ml-space-xs flex items-center justify-center text-on-surface-variant hover:text-on-surface transition-colors"
-          >
-            <Icon name="arrow_back" className="text-[24px]" />
-          </button>
+      <div className="h-16 px-margin flex items-center justify-between gap-space-sm max-w-[480px] mx-auto w-full">
+        <div className="flex items-center gap-space-sm flex-1 min-w-0">
+          {onBack && (
+            <button
+              aria-label="Go back"
+              onClick={onBack}
+              className="w-11 h-11 -ml-space-xs flex items-center justify-center text-on-surface-variant hover:text-on-surface transition-colors shrink-0"
+            >
+              <Icon name="arrow_back" className="text-[24px]" />
+            </button>
+          )}
+          <div className="w-9 h-9 rounded-lg bg-primary-container text-on-primary flex items-center justify-center flex-shrink-0">
+            <Icon name="qr_code_2" className="text-[22px]" />
+          </div>
+          <div className="flex flex-col min-w-0">
+            <span className="font-label-sm text-label-sm text-primary font-bold tracking-tight uppercase truncate">{eyebrow}</span>
+            <span className="font-headline-sm text-headline-sm text-on-surface truncate">{title}</span>
+          </div>
+        </div>
+        {homeUrl && (
+          <Link href={homeUrl} className="w-11 h-11 -mr-space-xs flex items-center justify-center text-on-surface-variant hover:text-on-surface transition-colors shrink-0" aria-label="Home">
+            <Icon name="home" className="text-[24px]" />
+          </Link>
         )}
-        <div className="w-9 h-9 rounded-lg bg-primary-container text-on-primary flex items-center justify-center flex-shrink-0">
-          <Icon name="qr_code_2" className="text-[22px]" />
-        </div>
-        <div className="flex flex-col min-w-0">
-          <span className="font-label-sm text-label-sm text-primary font-bold tracking-tight uppercase truncate">{eyebrow}</span>
-          <span className="font-headline-sm text-headline-sm text-on-surface truncate">{title}</span>
-        </div>
       </div>
     </header>
   );

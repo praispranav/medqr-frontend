@@ -210,6 +210,27 @@ function Consultation({ tenant, doctor }: { tenant: Tenant; doctor: DoctorToday 
               </p>
             )}
 
+            {visit.intake_answers && Object.keys(visit.intake_answers).length > 0 && (
+              <div className="flex flex-col gap-1 bg-surface-container-lowest p-3 rounded-lg border border-surface-container">
+                <span className="text-label-sm font-label-sm text-on-surface-variant uppercase tracking-wider flex items-center gap-1">
+                  <Icon name="assignment" className="text-[14px]" /> Additional Details
+                </span>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                  {Object.entries(visit.intake_answers).map(([key, val]) => {
+                    const schema = doctor.intake_schema?.find((s: any) => s.id === key);
+                    const label = schema?.label || key;
+                    const valueStr = typeof val === 'boolean' ? (val ? 'Yes' : 'No') : Array.isArray(val) ? val.join(', ') : val;
+                    return (
+                      <p key={key} className="font-body-sm text-body-sm">
+                        <span className="text-on-surface-variant">{label}: </span>
+                        <span className="text-on-surface font-semibold">{String(valueStr)}</span>
+                      </p>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             <textarea
               value={note}
               onChange={(e) => {
@@ -287,12 +308,14 @@ function Consultation({ tenant, doctor }: { tenant: Tenant; doctor: DoctorToday 
           <div className="flex items-center justify-end gap-3 flex-wrap">
             {saved === 'saved' && !dirty && <span className="font-label-md text-label-md text-tertiary">Saved ✓</span>}
             {saved === 'error' && <span className="font-label-md text-label-md text-error">Couldn&apos;t save — try again</span>}
-            <button
-              onClick={() => window.print()}
-              className="h-12 px-5 rounded-xl border border-outline-variant bg-surface-container-lowest font-label-lg text-label-lg flex items-center gap-2"
-            >
-              <Icon name="print" className="text-[20px]" /> Print
-            </button>
+            {tenant.entitlements?.smart_print && (
+              <button
+                onClick={() => window.print()}
+                className="h-12 px-5 rounded-xl border border-outline-variant bg-surface-container-lowest font-label-lg text-label-lg flex items-center gap-2"
+              >
+                <Icon name="print" className="text-[20px]" /> Print
+              </button>
+            )}
             <button
               disabled={saved === 'saving'}
               onClick={async () => {
@@ -426,10 +449,10 @@ function PaymentSection({ visit, tenant, onReload }: { visit: Visit; tenant: Ten
               </button>
             )}
             <button disabled={busy || newFee !== fee} onClick={() => run(() => api.markPaid(visit.id, 'cash', fee))} className="h-12 px-4 rounded-xl bg-primary text-on-primary font-label-md text-label-md disabled:opacity-50">
-              Paid · Cash
+              {busy ? 'Processing...' : 'Paid · Cash'}
             </button>
             <button disabled={busy || newFee !== fee} onClick={() => run(() => api.markPaid(visit.id, 'upi_counter', fee))} className="h-12 px-4 rounded-xl bg-surface-container-low text-primary font-label-md text-label-md disabled:opacity-50">
-              Paid · UPI at counter
+              {busy ? 'Processing...' : 'Paid · UPI at counter'}
             </button>
             {online && !qr && (
               <button
@@ -437,7 +460,7 @@ function PaymentSection({ visit, tenant, onReload }: { visit: Visit; tenant: Ten
                 onClick={() => run(async () => setQr(await api.staffQr(visit.id)))}
                 className="h-12 px-4 rounded-xl bg-surface-container-low text-primary font-label-md text-label-md flex items-center gap-1.5 disabled:opacity-50"
               >
-                <Icon name="qr_code_2" className="text-[18px]" /> Show UPI QR
+                <Icon name="qr_code_2" className="text-[18px]" /> {busy ? 'Loading...' : 'Show UPI QR'}
               </button>
             )}
           </div>

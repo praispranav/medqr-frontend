@@ -50,5 +50,21 @@ export function useLiveQueue(tenantId: string, doctorIds: string[], onlyDoctorId
     };
   }, [roomKey, refresh]);
 
-  return { rows, refresh, connected };
+    const [calledTokenId, setCalledTokenId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const socket = getQueueSocket();
+    const handleSessionChanged = (payload: any) => {
+      if (payload?.activeTokenId) {
+        setCalledTokenId(payload.activeTokenId);
+        setTimeout(() => setCalledTokenId(null), 10000);
+      }
+    };
+    socket.on('session:changed', handleSessionChanged);
+    return () => {
+      socket.off('session:changed', handleSessionChanged);
+    };
+  }, []);
+
+  return { rows, refresh, connected, calledTokenId, setCalledTokenId };
 }

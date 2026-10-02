@@ -50,6 +50,15 @@ export interface TrialLead {
   created_at: string;
 }
 
+export interface ModuleRequest {
+  id: string;
+  tenant_id: string;
+  module_key: string;
+  requested_by: string | null;
+  status: 'pending' | 'approved' | 'denied';
+  created_at: string;
+}
+
 export interface AdminTenant extends Tenant {
   created_at: string;
   doctor_count: number;
@@ -111,6 +120,7 @@ export const adminApi = (key: string) => ({
   createTenant: (body: { subdomain: string; display_name: string; trial_days?: number; city?: string; address?: string }) =>
     request<Tenant>(key, '/tenants', { method: 'POST', body: JSON.stringify(body) }),
   tenant: (id: string) => request<Tenant>(key, `/tenants/${id}`),
+  deleteTenant: (id: string) => request(key, `/tenants/${id}`, { method: 'DELETE' }),
   subscription: (id: string) => request<SubscriptionStatusView>(key, `/tenants/${id}/subscription`),
   extendTrial: (id: string, days: number) =>
     request<SubscriptionStatusView>(key, `/tenants/${id}/subscription/extend-trial`, { method: 'POST', body: JSON.stringify({ days }) }),
@@ -144,6 +154,11 @@ export const adminApi = (key: string) => ({
       method: 'POST',
       body: JSON.stringify({ from_date, days }),
     }),
+  applyWeeklyTemplate: (doctorId: string, weeks: number, template: Record<string, { starts_at: string; ends_at: string; is_break: boolean }[]>) =>
+    request(key, `/doctors/${doctorId}/sessions/weekly-template`, {
+      method: 'POST',
+      body: JSON.stringify({ weeks, template }),
+    }),
   setSessionActive: (id: string, is_active: boolean) =>
     request<AdminSession>(key, `/sessions/${id}`, { method: 'PATCH', body: JSON.stringify({ is_active }) }),
   deleteSession: (id: string) => request(key, `/sessions/${id}`, { method: 'DELETE' }),
@@ -151,11 +166,11 @@ export const adminApi = (key: string) => ({
   createUser: (
     tenantId: string,
     body: { role: 'reception' | 'doctor' | 'owner'; name: string; username: string; mobile_number: string; doctor_id?: string | null; is_owner?: boolean },
-  ) => request<StaffLogin & { generated_password: string }>(key, `/tenants/${tenantId}/users`, { method: 'POST', body: JSON.stringify(body) }),
+  ) => request<StaffLogin & { setup_link: string }>(key, `/tenants/${tenantId}/users`, { method: 'POST', body: JSON.stringify(body) }),
   updateUser: (id: string, body: { name?: string; is_active?: boolean; password?: string; mobile_number?: string | null; is_owner?: boolean }) =>
     request<StaffLogin>(key, `/users/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
   resetPassword: (id: string) =>
-    request<{ sent: boolean; generated_password: string; error?: string }>(key, `/users/${id}/reset-password`, { method: 'POST' }),
+    request<{ sent: boolean; setup_link: string; error?: string }>(key, `/users/${id}/reset-password`, { method: 'POST' }),
   deleteUser: (id: string) => request(key, `/users/${id}`, { method: 'DELETE' }),
   qrCodes: (status?: string) => request<QrCodeView[]>(key, `/qr-codes${status ? `?status=${status}` : ''}`),
   /** Always says who they're for: { doctor_id }, { tenant_id } (whole clinic), or both null (unassigned, print ahead). */
@@ -166,6 +181,9 @@ export const adminApi = (key: string) => ({
   leads: () => request<TrialLead[]>(key, '/leads'),
   setLeadStatus: (id: string, status: TrialLeadStatus) =>
     request<TrialLead>(key, `/leads/${id}`, { method: 'PATCH', body: JSON.stringify({ status }) }),
+  moduleRequests: () => request<ModuleRequest[]>(key, '/module-requests'),
+  setModuleRequestStatus: (id: string, status: 'pending' | 'approved' | 'denied') =>
+    request<ModuleRequest>(key, `/module-requests/${id}`, { method: 'PATCH', body: JSON.stringify({ status }) }),
 });
 
 export type AdminApi = ReturnType<typeof adminApi>;

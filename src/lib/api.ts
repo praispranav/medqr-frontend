@@ -90,6 +90,10 @@ export interface QueueSettings {
   shift_start_mode?: 'manual' | 'auto';
   /** Decision 17: how many days ahead a patient may book (0/missing = today only). Still needs an actual scheduled session that day. */
   advance_booking_days?: number;
+  /** Decision 19 */
+  front_desk_verifies_arrivals?: boolean;
+  late_arrival_priority?: 'keep_position' | 'insert_after_n' | 'back_of_queue';
+  late_arrival_insert_after?: number;
 }
 
 export interface Entitlements {
@@ -133,7 +137,12 @@ export interface DoctorToday {
   today_status_detail: string;
   bio?: string | null;
   is_publicly_listed?: boolean;
+  intake_schema?: any;
   public_slug?: string | null;
+  notify_token_confirmed?: boolean;
+  notify_you_are_next?: boolean;
+  notify_your_turn?: boolean;
+  notify_location_override?: string | null;
 }
 
 export interface Patient {
@@ -314,6 +323,7 @@ export interface Visit {
   token_number: number;
   visit_date: string;
   chief_complaint: string | null;
+  intake_answers: Record<string, string | string[] | boolean> | null;
   note: string | null;
   attachments: VisitAttachment[];
   vitals: Vitals | null;
@@ -331,7 +341,7 @@ export interface QueueRow {
   called_at: string | null;
   doctor: { id: string; name: string; cabin_label: string | null };
   patient: { id: string; name: string; age: number | null; gender: string | null; mobile_number: string } | null;
-  visit: Pick<Visit, 'id' | 'chief_complaint' | 'vitals' | 'is_paid' | 'consultation_fee_inr' | 'payment_method' | 'payment_choice'> | null;
+  visit: Pick<Visit, 'id' | 'chief_complaint' | 'intake_answers' | 'vitals' | 'is_paid' | 'consultation_fee_inr' | 'payment_method' | 'payment_choice'> | null;
 }
 
 export interface CatalogAddOn {
@@ -501,6 +511,8 @@ export const api = {
   demoLogin: () => request<Me>('/auth/demo-login', { method: 'POST' }),
   logout: () => request('/auth/logout', { method: 'POST' }),
   me: () => request<Me>('/auth/me'),
+  setupPassword: (body: { token: string; newPassword: string }) =>
+    request<{ success: boolean }>('/auth/setup-password', { method: 'POST', body: JSON.stringify(body) }),
   changePassword: (body: { currentPassword: string; newPassword: string }) =>
     request<Me>('/auth/change-password', { method: 'POST', body: JSON.stringify(body) }),
   getMyTenant: () => request<Tenant>('/tenants/mine'),
@@ -535,6 +547,7 @@ export const api = {
     weight_kg?: number | null;
     /** Decision 17 — a future date, when the clinic's advance-booking window allows it. */
     bookingDate?: string;
+    intake_answers?: Record<string, string | string[] | boolean> | null;
   }) => request<{ id: string; token_number: number; visit_id: string | null }>('/queue/join', { method: 'POST', body: JSON.stringify(body) }),
   getToken: (tokenId: string) => request<TokenStatusView>(`/queue/tokens/${tokenId}`),
   checkIn: (tokenId: string) => request(`/queue/tokens/${tokenId}/check-in`, { method: 'POST' }),
@@ -585,7 +598,7 @@ export const api = {
   // Per-doctor fields: the doctor's own login, or the clinic admin editing any doctor.
   updateDoctorPublicProfile: (
     doctorId: string,
-    patch: { qualification?: string; specialty?: string; photo_url?: string; bio?: string; is_publicly_listed?: boolean },
+    patch: { qualification?: string; specialty?: string; photo_url?: string; bio?: string; is_publicly_listed?: boolean; intake_schema?: any; notify_token_confirmed?: boolean; notify_you_are_next?: boolean; notify_your_turn?: boolean; notify_location_override?: string },
   ) => request<DoctorToday & { bio: string | null; public_slug: string | null }>(`/doctors/${doctorId}/public-profile`, { method: 'PATCH', body: JSON.stringify(patch) }),
   // Doctor portal "My Hours"
   listSessions: (doctorId: string, date: string) => request<DoctorSession[]>(`/doctors/${doctorId}/sessions?date=${date}`),
@@ -593,6 +606,8 @@ export const api = {
     request<DoctorSession>(`/doctors/${doctorId}/sessions`, { method: 'POST', body: JSON.stringify(body) }),
   repeatSessions: (doctorId: string, from_date: string, days: number) =>
     request<{ copied_to: string[] }>(`/doctors/${doctorId}/sessions/repeat`, { method: 'POST', body: JSON.stringify({ from_date, days }) }),
+  applyWeeklyTemplate: (doctorId: string, weeks: number, template: Record<string, { starts_at: string; ends_at: string; is_break: boolean }[]>) =>
+    request(`/doctors/${doctorId}/sessions/weekly-template`, { method: 'POST', body: JSON.stringify({ weeks, template }) }),
   setSessionActive: (doctorId: string, sessionId: string, is_active: boolean) =>
     request<DoctorSession>(`/doctors/${doctorId}/sessions/${sessionId}`, { method: 'PATCH', body: JSON.stringify({ is_active }) }),
   deleteSession: (doctorId: string, sessionId: string) =>
@@ -639,16 +654,18 @@ export const api = {
     deleteDoctor: (id: string) => request(`/manage/doctors/${id}`, { method: 'DELETE' }),
     users: () => request<ManagedLogin[]>('/manage/users'),
     createUser: (body: { role: 'reception' | 'doctor'; name: string; username: string; mobile_number: string; doctor_id: string | null }) =>
-      request<ManagedLogin & { generated_password: string }>('/manage/users', { method: 'POST', body: JSON.stringify(body) }),
+      request<ManagedLogin & { setup_link: string }>('/manage/users', { method: 'POST', body: JSON.stringify(body) }),
     updateUser: (id: string, body: { name?: string; is_active?: boolean; password?: string; mobile_number?: string | null }) =>
       request<ManagedLogin>(`/manage/users/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
     resetPassword: (id: string) =>
-      request<{ sent: boolean; generated_password: string; error?: string }>(`/manage/users/${id}/reset-password`, { method: 'POST' }),
+      request<{ sent: boolean; setup_link: string; error?: string }>(`/manage/users/${id}/reset-password`, { method: 'POST' }),
     deleteUser: (id: string) => request(`/manage/users/${id}`, { method: 'DELETE' }),
     qrCodes: () => request<QrCodeView[]>('/manage/qr-codes'),
     /** Always for a chosen doctor of this clinic, or the whole clinic (doctor selection on scan). */
     createQrCode: (target: { doctor_id: string } | { whole_clinic: true }) =>
       request<QrCodeView[]>('/manage/qr-codes', { method: 'POST', body: JSON.stringify({ ...target, count: 1 }) }),
+    myModuleRequests: () => request<ModuleRequest[]>('/manage/module-requests'),
+    requestModule: (module_key: string) => request<ModuleRequest>('/manage/module-requests', { method: 'POST', body: JSON.stringify({ module_key }) }),
   },
 };
 
@@ -677,5 +694,14 @@ export interface ManagedLogin {
   is_owner: boolean;
   is_active: boolean;
   last_login_at: string | null;
+  created_at: string;
+}
+
+export interface ModuleRequest {
+  id: string;
+  tenant_id: string;
+  module_key: string;
+  requested_by: string | null;
+  status: 'pending' | 'approved' | 'denied';
   created_at: string;
 }

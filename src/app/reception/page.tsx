@@ -7,13 +7,15 @@ import { UpiQrCard } from '@/components/payments/UpiQrCard';
 import { Icon } from '@/components/patient/ui';
 import { StaffShell } from '@/components/staff/StaffShell';
 import { useLiveQueue } from '@/components/staff/useLiveQueue';
+import { QrScanner } from '@/components/staff/QrScanner';
 import { inr, minutesSince, PaidBadge, StatusPill, VitalsChips } from '@/components/staff/bits';
 
 // Screen #4 — Reception Verifier. Ported from
 // stitch_medqr_clinic_suite_ui_design/reception_verifier_portal/code.html (desktop) with the
 // single-column behaviour of reception_verifier_mobile.
-// The camera scanner panel isn't here: the patient's token screen has no scannable code yet, so
-// the design's "Manual Search / Fallback Arrival" is the primary way in (token #, phone or name).
+// The design's "Manual Search / Fallback Arrival" (token #, phone or name) is still there for when
+// scanning isn't practical; "Scan QR" opens the device camera and reads the same QR the patient's
+// own token screen shows (QrScanner — decodes client-side with jsQR, just the raw token id).
 // Wiring:
 // - Verify -> POST /queue/tokens/:id/check-in (Booked -> Waiting / Arrived early, Decision 7)
 // - Vitals strip -> POST /patients/visits/:visitId/vitals, every field optional (Decision 5)
@@ -34,6 +36,7 @@ function owes(r: QueueRow, tenant: Tenant) {
 function matches(row: QueueRow, q: string) {
   const s = q.trim().toLowerCase().replace(/^#/, '');
   if (!s) return false;
+  if (row.id === q.trim()) return true;
   if (/^\d{1,3}$/.test(s)) return row.token_number === Number(s);
   const digits = s.replace(/\D/g, '');
   if (digits.length >= 4 && row.patient?.mobile_number.includes(digits)) return true;
@@ -49,13 +52,15 @@ export default function ReceptionPage() {
 }
 
 function ReceptionDesk({ tenant, doctors }: { tenant: Tenant; doctors: DoctorToday[] }) {
-  const { rows, refresh, connected } = useLiveQueue(
+  const { rows, refresh, connected, calledTokenId, setCalledTokenId } = useLiveQueue(
     tenant.id,
     doctors.map((d) => d.id),
   );
   const [query, setQuery] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [flash, setFlash] = useState<{ tokenId: string; kind: 'verified' | 'duplicate' } | null>(null);
+  const [scanning, setScanning] = useState(false);
+  const [scanError, setScanError] = useState<string | null>(null);
   const [doctorFilter, setDoctorFilter] = useState<string>('all');
   const [walkInOpen, setWalkInOpen] = useState(false);
   const [unpaidOnly, setUnpaidOnly] = useState(false);
@@ -90,16 +95,22 @@ function ReceptionDesk({ tenant, doctors }: { tenant: Tenant; doctors: DoctorTod
     return [...list].sort((a, b) => order[a.status] - order[b.status] || a.token_number - b.token_number);
   }, [rows, doctorFilter, unpaidOnly, tenant]);
 
+
+  const calledRow = useMemo(() => rows?.find(r => r.id === calledTokenId) ?? null, [rows, calledTokenId]);
+  
   const stats = useMemo(() => {
     const r = rows ?? [];
+    const inCabinTokens = r.filter((x) => x.status === 'in_consultation').map(x => x.token_number).join(', ');
     return {
-      verified: r.filter((x) => VERIFIED.has(x.status)).length,
-      waiting: r.filter((x) => x.status === 'waiting_in_clinic' || x.status === 'checked_in_early').length,
+      verified: r.filter((x) => x.status === 'checked_in_early' || x.status === 'waiting_in_clinic').length,
+      waiting: 0,
       inCabin: r.filter((x) => x.status === 'in_consultation').length,
       notArrived: r.filter((x) => x.status === 'booked').length,
       unpaid: r.filter((x) => owes(x, tenant)).length,
+      inCabinTokens,
     };
   }, [rows, tenant]);
+
 
   const verify = async (row: QueueRow) => {
     setSelectedId(row.id);
@@ -111,6 +122,40 @@ function ReceptionDesk({ tenant, doctors }: { tenant: Tenant; doctors: DoctorTod
     setFlash({ tokenId: row.id, kind: 'verified' });
     setQuery('');
     await refresh();
+  };
+
+  // QR scan decodes straight to the token id — same identity matches() already accepts for a
+  // typed/pasted id, so verify it the same way as a manual match.
+  const handleScan = async (value: string) => {
+    setScanning(false);
+    const row = (rows ?? []).find((r) => r.id === value.trim());
+    if (!row) {
+      setScanError("That QR doesn't match a token here today. Try Verify arrival by token # or phone instead.");
+      return;
+    }
+    setScanError(null);
+    try {
+      await verify(row);
+    } catch (e) {
+      setScanError(e instanceof ApiError ? e.message : 'Could not verify this token — try again.');
+    }
+  };
+
+  const [callBusy, setCallBusy] = useState<string | null>(null);
+  const [callError, setCallError] = useState<string | null>(null);
+  // Jump straight to this token — same action the doctor's own "Call now" uses (Decision 19), so
+  // reception can call a specific patient on the doctor's behalf without going through Call Next.
+  const callToken = async (tokenId: string) => {
+    setCallBusy(tokenId);
+    setCallError(null);
+    try {
+      await api.callToken(tokenId);
+      await refresh();
+    } catch (e) {
+      setCallError(e instanceof ApiError ? e.message : 'Could not call this patient — try again.');
+    } finally {
+      setCallBusy(null);
+    }
   };
 
   const submitSearch = () => {
@@ -128,11 +173,29 @@ function ReceptionDesk({ tenant, doctors }: { tenant: Tenant; doctors: DoctorTod
                 <Icon name="keyboard" className="text-primary text-[22px]" />
                 <h2 className="font-headline-sm text-headline-sm text-on-surface">Verify arrival</h2>
               </div>
-              <span className={`flex items-center gap-1.5 font-label-sm text-label-sm ${connected ? 'text-tertiary' : 'text-outline'}`}>
-                <span className={`w-2 h-2 rounded-full ${connected ? 'bg-tertiary' : 'bg-outline'}`} />
-                {connected ? 'Live' : 'Reconnecting…'}
-              </span>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setScanError(null);
+                    setScanning(true);
+                  }}
+                  className="h-9 px-3 rounded-lg bg-primary-container text-on-primary-container font-label-md text-label-md flex items-center gap-1.5"
+                >
+                  <Icon name="qr_code_scanner" className="text-[18px]" />
+                  Scan QR
+                </button>
+                <span className={`flex items-center gap-1.5 font-label-sm text-label-sm ${connected ? 'text-tertiary' : 'text-outline'}`}>
+                  <span className={`w-2 h-2 rounded-full ${connected ? 'bg-tertiary' : 'bg-outline'}`} />
+                  {connected ? 'Live' : 'Reconnecting…'}
+                </span>
+              </div>
             </div>
+            {scanError && (
+              <p className="mb-3 font-body-sm text-body-sm text-error flex items-center gap-1.5">
+                <Icon name="error" className="text-[16px]" /> {scanError}
+              </p>
+            )}
             <form
               className="flex flex-col sm:flex-row gap-3"
               onSubmit={(e) => {
@@ -222,16 +285,27 @@ function ReceptionDesk({ tenant, doctors }: { tenant: Tenant; doctors: DoctorTod
         <section className="bg-surface-container-lowest rounded-2xl p-5 shadow-sm flex flex-col gap-4 min-w-0 xl:max-h-[calc(100vh-7rem)] xl:sticky xl:top-20">
           <div className="flex items-center justify-between gap-2">
             <h2 className="font-headline-sm text-headline-sm text-on-surface">Live clinic queue</h2>
-            <span className="px-2.5 py-1 rounded-full bg-primary-fixed/50 text-on-primary-fixed-variant font-label-sm text-label-sm">
-              {rows?.length ?? 0} today
-            </span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => downloadTodayPatientsCsv(rows ?? [])}
+                disabled={!rows?.length}
+                aria-label="Download today's tokens"
+                title="Download today's tokens (CSV)"
+                className="w-8 h-8 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container-low disabled:opacity-40"
+              >
+                <Icon name="download" className="text-[18px]" />
+              </button>
+              <span className="px-2.5 py-1 rounded-full bg-primary-fixed/50 text-on-primary-fixed-variant font-label-sm text-label-sm">
+                {rows?.length ?? 0} today
+              </span>
+            </div>
           </div>
 
           <div className="grid grid-cols-4 gap-1 bg-surface-container-low rounded-xl p-3 text-center">
             {[
               ['Verified', stats.verified, 'text-on-surface'],
               ['Waiting', stats.waiting, 'text-primary'],
-              ['In cabin', stats.inCabin, 'text-tertiary'],
+              ['In cabin', stats.inCabinTokens ? `#${stats.inCabinTokens}` : '0', 'text-tertiary'],
               ['Not arrived', stats.notArrived, 'text-secondary'],
             ].map(([label, n, cls]) => (
               <div key={label as string}>
@@ -291,35 +365,60 @@ function ReceptionDesk({ tenant, doctors }: { tenant: Tenant; doctors: DoctorTod
                 No tokens yet today. Patients appear here as soon as they scan the clinic QR.
               </p>
             )}
-            {visible.map((r) => (
-              <button
-                key={r.id}
-                onClick={() => {
-                  setSelectedId(r.id);
-                  setFlash(null);
-                }}
-                className={`flex items-center gap-3 p-3 rounded-xl text-left transition-colors ${
-                  r.id === selectedId
-                    ? 'bg-primary-fixed/30 ring-2 ring-primary'
-                    : r.status === 'done' || r.status === 'no_show'
-                      ? 'bg-surface-container-low opacity-60'
-                      : 'bg-surface-container-low hover:bg-surface-container'
-                }`}
-              >
-                <span className="font-headline-md text-headline-md text-primary w-14 shrink-0">#{r.token_number}</span>
-                <span className="flex-1 min-w-0">
-                  <span className="block font-label-lg text-label-lg text-on-surface truncate">{r.patient?.name ?? 'Patient'}</span>
-                  <span className="block font-body-sm text-body-sm text-on-surface-variant truncate">
-                    {multiDoctor ? `${r.doctor.name} · ` : ''}
-                    {r.visit?.chief_complaint || `joined ${minutesSince(r.joined_at)}m ago`}
+            {visible.map((r) => {
+              const callable = r.status === 'waiting_in_clinic' || r.status === 'checked_in_early';
+              const notVerifiedYet = r.status === 'booked';
+              const canCallDirectly = tenant.queue_settings.front_desk_verifies_arrivals === false;
+              const showCall = callable || notVerifiedYet; // booked still offers a call, gated by confirm below unless canCallDirectly
+              return (
+                <div
+                  key={r.id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => {
+                    setSelectedId(r.id);
+                    setFlash(null);
+                  }}
+                  onKeyDown={(e) => e.key === 'Enter' && setSelectedId(r.id)}
+                  className={`flex items-center gap-3 p-3 rounded-xl text-left transition-colors cursor-pointer ${
+                    r.id === selectedId
+                      ? 'bg-primary-fixed/30 ring-2 ring-primary'
+                      : r.status === 'done' || r.status === 'no_show'
+                        ? 'bg-surface-container-low opacity-60'
+                        : 'bg-surface-container-low hover:bg-surface-container'
+                  }`}
+                >
+                  <span className="font-headline-md text-headline-md text-primary w-14 shrink-0">#{r.token_number}</span>
+                  <span className="flex-1 min-w-0">
+                    <span className="block font-label-lg text-label-lg text-on-surface truncate">{r.patient?.name ?? 'Patient'}</span>
+                    <span className="block font-body-sm text-body-sm text-on-surface-variant truncate">
+                      {multiDoctor ? `${r.doctor.name} · ` : ''}
+                      {r.visit?.chief_complaint || `joined ${minutesSince(r.joined_at)}m ago`}
+                    </span>
                   </span>
-                </span>
-                <span className="flex flex-col items-end gap-1 shrink-0">
-                  <StatusPill status={r.status} />
-                  <PaidBadge row={r} showDue={owes(r, tenant)} />
-                </span>
-              </button>
-            ))}
+                  {showCall && r.status !== 'done' && r.status !== 'no_show' && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (notVerifiedYet && !canCallDirectly && !confirm("This patient hasn't been confirmed as arrived — call anyway?")) return;
+                        callToken(r.id);
+                      }}
+                      disabled={callBusy === r.id}
+                      aria-label={`Call token ${r.token_number} now`}
+                      title="Call now"
+                      className="w-9 h-9 rounded-full bg-primary text-on-primary flex items-center justify-center shrink-0 disabled:opacity-50"
+                    >
+                      <Icon name="campaign" className="text-[18px]" />
+                    </button>
+                  )}
+                  <span className="flex flex-col items-end gap-1 shrink-0">
+                    <StatusPill status={r.status} />
+                    <PaidBadge row={r} showDue={owes(r, tenant)} />
+                  </span>
+                </div>
+              );
+            })}
+            {callError && <p className="font-body-sm text-body-sm text-error px-1">{callError}</p>}
             {unpaidOnly && visible.length === 0 && rows && rows.length > 0 && (
               <p className="font-body-md text-body-md text-on-surface-variant py-6 text-center">Everyone who owes a fee has paid. 🎉</p>
             )}
@@ -350,6 +449,8 @@ function ReceptionDesk({ tenant, doctors }: { tenant: Tenant; doctors: DoctorTod
       )}
 
       {selected && VERIFIED.has(selected.status) && <TokenSlip row={selected} tenant={tenant} />}
+
+      {scanning && <QrScanner onScan={handleScan} onClose={() => setScanning(false)} />}
     </>
   );
 }
@@ -441,11 +542,11 @@ function TokenPanel({
           </button>
         )}
 
-        {row.visit && <VitalsStrip key={row.visit.id} visitId={row.visit.id} initial={row.visit.vitals} onSaved={onChanged} />}
+        {row.visit && <div className="vitals-wrapper-debug"><VitalsStrip key={`vitals-${row.visit.id}`} visitId={row.visit.id} initial={row.visit.vitals} onSaved={onChanged} /></div>}
 
         {row.visit && <PaymentBlock key={row.visit.id} row={row} tenant={tenant} payConfig={payConfig} onChanged={onChanged} />}
 
-        {verified && settings.print_slip_on_checkin && (
+        {verified && settings.print_slip_on_checkin && tenant.entitlements?.smart_print && (
           <button
             onClick={() => window.print()}
             className="h-12 rounded-xl bg-surface-container-low text-primary font-label-lg text-label-lg flex items-center justify-center gap-2 hover:bg-surface-container"
@@ -634,10 +735,10 @@ function PaymentBlock({
           </div>
           <div className="flex flex-wrap gap-2">
             <button disabled={busy} onClick={() => run(() => api.markPaid(visit.id, 'cash', fee))} className="h-10 px-4 rounded-lg bg-primary text-on-primary font-label-md text-label-md disabled:opacity-60">
-              Paid · Cash
+              {busy ? 'Processing...' : 'Paid · Cash'}
             </button>
             <button disabled={busy} onClick={() => run(() => api.markPaid(visit.id, 'upi_counter', fee))} className="h-10 px-4 rounded-lg bg-surface-container-lowest text-primary font-label-md text-label-md disabled:opacity-60">
-              Paid · UPI at counter
+              {busy ? 'Processing...' : 'Paid · UPI at counter'}
             </button>
             {payConfig?.online_available && !qr && (
               <button
@@ -645,7 +746,7 @@ function PaymentBlock({
                 onClick={() => run(async () => setQr(await api.staffQr(visit.id)))}
                 className="h-10 px-4 rounded-lg bg-surface-container-lowest text-primary font-label-md text-label-md flex items-center gap-1.5 disabled:opacity-60"
               >
-                <Icon name="qr_code_2" className="text-[18px]" /> Show UPI QR
+                <Icon name="qr_code_2" className="text-[18px]" /> {busy ? 'Loading...' : 'Show UPI QR'}
               </button>
             )}
           </div>
@@ -911,4 +1012,38 @@ function TokenSlip({ row, tenant }: { row: QueueRow; tenant: Tenant }) {
       <p style={{ fontSize: 11, marginTop: 4 }}>Please wait to be called · MedQR</p>
     </div>
   );
+}
+
+function downloadTodayPatientsCsv(rows: QueueRow[]) {
+  const cell = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  const header = ['Token', 'Patient', 'Doctor', 'Age', 'Gender', 'Mobile', 'Status', 'Reason for visit', 'Joined at', 'Called at'];
+  const lines = [
+    header.map(cell).join(','),
+    ...[...rows]
+      .sort((a, b) => a.token_number - b.token_number)
+      .map((r) =>
+        [
+          r.token_number,
+          r.patient?.name ?? '',
+          r.doctor?.name ?? '',
+          r.patient?.age ?? '',
+          r.patient?.gender ?? '',
+          r.patient?.mobile_number ?? '',
+          r.status,
+          r.visit?.chief_complaint ?? '',
+          new Date(r.joined_at).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' }),
+          r.called_at ? new Date(r.called_at).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' }) : '',
+        ]
+          .map(cell)
+          .join(','),
+      ),
+  ];
+  const csv = lines.join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `Reception_Patients_${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
 }

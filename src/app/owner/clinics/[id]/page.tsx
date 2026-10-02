@@ -41,13 +41,25 @@ function ClinicDetail({ api }: { api: AdminApi }) {
 
       <section className="bg-surface-container-lowest rounded-2xl p-5 shadow-sm flex flex-col gap-4">
         <ClinicName api={api} tenant={tenant} onSaved={setTenant} />
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 items-center">
           <Link href={`/patient/${tenant.subdomain}`} target="_blank" className="h-10 px-4 rounded-xl bg-surface-container-low text-primary font-label-md text-label-md flex items-center gap-2">
             <Icon name="smartphone" className="text-[18px]" /> Patient check-in page
           </Link>
           <Link href={`/login?clinic=${tenant.subdomain}`} target="_blank" className="h-10 px-4 rounded-xl bg-surface-container-low text-primary font-label-md text-label-md flex items-center gap-2">
             <Icon name="login" className="text-[18px]" /> Doctor/Staff Login page
           </Link>
+          <div className="flex-1" />
+          <button
+            onClick={async () => {
+              if (window.prompt(`Type ${tenant.subdomain} to delete this clinic and ALL its data (doctors, logins, queue, past patients):`) === tenant.subdomain) {
+                await api.deleteTenant(tenant.id);
+                window.location.href = '/owner/clinics';
+              }
+            }}
+            className="h-10 px-4 rounded-xl text-error bg-error-container/50 hover:bg-error-container font-label-md text-label-md flex items-center gap-2"
+          >
+            <Icon name="delete" className="text-[18px]" /> Delete clinic
+          </button>
         </div>
       </section>
 
@@ -88,6 +100,7 @@ function adminTeamApi(api: AdminApi, tenantId: string): TeamApi {
       list: (date) => api.sessions(doctorId, date),
       add: (body) => api.addSession(doctorId, body),
       repeat: (from, days) => api.repeatSchedule(doctorId, from, days),
+      applyWeeklyTemplate: (weeks, template) => api.applyWeeklyTemplate(doctorId, weeks, template),
       setActive: (id, active) => api.setSessionActive(id, active),
       remove: (id) => api.deleteSession(id),
     }),
@@ -150,10 +163,10 @@ function daysLeft(iso: string | null) {
 }
 
 const STATUS_LABEL: Record<SubscriptionStatusView['status'], { text: string; className: string }> = {
-  trial: { text: 'Free trial', className: 'bg-tertiary-container text-on-tertiary-container' },
-  active: { text: 'Active', className: 'bg-primary-container text-on-primary-container' },
-  grace: { text: 'Grace period', className: 'bg-secondary-container text-on-secondary-container' },
-  read_only: { text: 'Read-only (unpaid)', className: 'bg-error-container text-on-error-container' },
+  trial: { text: 'Free Trial', className: 'bg-blue-600 text-white' },
+  active: { text: 'Paid', className: 'bg-tertiary text-white' },
+  grace: { text: 'Grace period', className: 'bg-secondary text-white' },
+  read_only: { text: 'Read-only (unpaid)', className: 'bg-error text-white' },
 };
 
 function SubscriptionCard({ api, tenantId }: { api: AdminApi; tenantId: string }) {

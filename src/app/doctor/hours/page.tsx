@@ -65,6 +65,7 @@ function MyHours({ tenant, doctor, canChangeRules }: { tenant: Tenant; doctor: D
           list: (date) => api.listSessions(doctor.id, date),
           add: (body) => api.addSession(doctor.id, body),
           repeat: (from, days) => api.repeatSessions(doctor.id, from, days),
+          applyWeeklyTemplate: (weeks, template) => api.applyWeeklyTemplate(doctor.id, weeks, template),
           setActive: (id, active) => api.setSessionActive(doctor.id, id, active),
           remove: (id) => api.deleteSession(doctor.id, id),
         }}

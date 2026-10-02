@@ -222,17 +222,66 @@ export function QueueRules({ tenant, onSaved }: { tenant: Tenant; onSaved: () =>
         )}
       </Section>
 
-      {/* Decision 2 */}
+      {/* Decision 2 & 19 */}
       <Section title="Reception check-in" subtitle="">
-        <label className="flex items-center justify-between gap-4 cursor-pointer">
-          <div>
-            <p className="font-label-lg text-label-lg text-on-surface">Offer “Print token slip” after check-in</p>
-            <p className="font-body-sm text-body-sm text-on-surface-variant">
-              When off, reception only verifies — saves paper for WhatsApp-first clinics.
-            </p>
-          </div>
-          <Toggle checked={s.print_slip_on_checkin} onChange={(v) => set('print_slip_on_checkin', v)} />
-        </label>
+        <div className="flex flex-col gap-6">
+          <label className="flex items-center justify-between gap-4 cursor-pointer">
+            <div>
+              <p className="font-label-lg text-label-lg text-on-surface">Front desk verifies arrivals</p>
+              <p className="font-body-sm text-body-sm text-on-surface-variant">
+                If off, patients join straight into the live queue. If on, reception must click Verify first.
+              </p>
+            </div>
+            <Toggle checked={s.front_desk_verifies_arrivals !== false} onChange={(v) => set('front_desk_verifies_arrivals', v)} />
+          </label>
+          <label className="flex items-center justify-between gap-4 cursor-pointer">
+            <div>
+              <p className="font-label-lg text-label-lg text-on-surface">Offer “Print token slip” after check-in</p>
+              <p className="font-body-sm text-body-sm text-on-surface-variant">
+                When off, reception only verifies — saves paper for WhatsApp-first clinics.
+              </p>
+            </div>
+            <Toggle checked={s.print_slip_on_checkin} onChange={(v) => set('print_slip_on_checkin', v)} />
+          </label>
+        </div>
+      </Section>
+      
+      {/* Decision 19 - Late arrivals */}
+      <Section title="Late arrivals" subtitle="When a patient misses their turn and shows up later.">
+        <div className="flex flex-col gap-3">
+          <Radio
+            checked={s.late_arrival_priority === 'keep_position'}
+            onChange={() => set('late_arrival_priority', 'keep_position')}
+            title="Keep original position"
+            body="They immediately become the next patient to be called."
+          />
+          <Radio
+            checked={s.late_arrival_priority === 'insert_after_n' || !s.late_arrival_priority}
+            onChange={() => set('late_arrival_priority', 'insert_after_n')}
+            title="Insert a few tokens down"
+            badge="Recommended"
+            body="They are placed slightly behind the current active queue."
+          />
+          {(s.late_arrival_priority === 'insert_after_n' || !s.late_arrival_priority) && (
+            <div className="ml-8 mb-2">
+              <NumberField
+                label="Tokens to wait"
+                suffix="tokens"
+                value={s.late_arrival_insert_after ?? 5}
+                min={1}
+                max={20}
+                onChange={(v) => set('late_arrival_insert_after', v)}
+                hint="How many waiting patients go before them."
+              />
+            </div>
+          )}
+          <Radio
+            checked={s.late_arrival_priority === 'back_of_queue'}
+            onChange={() => set('late_arrival_priority', 'back_of_queue')}
+            title="Move to back of queue"
+            body="They have to wait for everyone currently in the clinic."
+          />
+        </div>
       </Section>
 
       {/* Decision 8 */}

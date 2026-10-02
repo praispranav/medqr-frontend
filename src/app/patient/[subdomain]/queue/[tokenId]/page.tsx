@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import { QRCodeSVG } from 'qrcode.react';
 import { api, type PatientPaymentStatus, type TokenStatusView } from '@/lib/api';
 import { getQueueSocket } from '@/lib/socket';
 import { FullPageMessage, Icon, LoadingPage, PatientHeader } from '@/components/patient/ui';
@@ -32,9 +33,59 @@ export default function LiveQueuePage() {
   const [view, setView] = useState<TokenStatusView | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [now, setNow] = useState(() => new Date());
+  
+  const [storedTokens, setStoredTokens] = useState<{id: string, number: number, patient_name: string, status: string, clinic_subdomain: string}[]>([]);
+
+  useEffect(() => {
+    if (view) {
+      try {
+        const stored = JSON.parse(localStorage.getItem('medqr_patient_tokens') || '[]');
+        const index = stored.findIndex((t: any) => t.id === tokenId);
+        const tokenData = {
+          id: tokenId,
+          number: view.token_number,
+          patient_name: view.patient_name || 'Patient',
+          doctor_name: view.doctor.name,
+          doctor_photo_url: view.doctor.photo_url,
+          status: view.status,
+          clinic_subdomain: view.clinic.subdomain,
+          timestamp: Date.now()
+        };
+        
+        let newTokens = [...stored];
+        if (index >= 0) {
+          newTokens[index] = { ...newTokens[index], ...tokenData };
+        } else {
+          newTokens.push(tokenData);
+        }
+        newTokens = newTokens.sort((a, b) => b.timestamp - a.timestamp).slice(0, 10);
+        localStorage.setItem('medqr_patient_tokens', JSON.stringify(newTokens));
+        
+        setStoredTokens(newTokens.filter(t => t.id !== tokenId && t.status !== 'done' && t.status !== 'no_show'));
+      } catch(e) {}
+    }
+  }, [view, tokenId]);
 
   const loaded = useRef(false);
   const [pay, setPay] = useState<PatientPaymentStatus | null>(null);
+
+  const tokenCardRef = useRef<HTMLDivElement>(null);
+  const [downloading, setDownloading] = useState(false);
+
+  const downloadToken = async () => {
+    if (!tokenCardRef.current) return;
+    setDownloading(true);
+    try {
+      const { toPng } = await import('html-to-image');
+      const dataUrl = await toPng(tokenCardRef.current, { pixelRatio: 4, cacheBust: true, backgroundColor: '#ffffff' });
+      const a = document.createElement('a');
+      a.href = dataUrl;
+      a.download = `token-${view?.token_number}.png`;
+      a.click();
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   const refresh = useCallback(async () => {
     try {
@@ -91,10 +142,32 @@ export default function LiveQueuePage() {
 
   const { doctor, clinic } = view;
   const cabin = doctor.cabin_label ?? 'the consultation room';
-  const header = <PatientHeader eyebrow="MedQR Live" title={clinic.name} />;
+  const header = <PatientHeader eyebrow="MedQR Live" title={clinic.name} homeUrl={`/patient/${clinic.subdomain}`} />;
 
   // ---------- Your turn ----------
   if (view.status === 'in_consultation') {
+    if (view.doctor_state.state === 'ended') {
+      return (
+        <>
+          {header}
+          <main className="min-h-screen w-full max-w-[480px] mx-auto pt-16 flex flex-col items-center justify-center text-center px-6 gap-3 bg-surface">
+            <div className="w-14 h-14 rounded-full flex items-center justify-center bg-tertiary-fixed text-on-tertiary-fixed">
+              <Icon name="check" fill className="text-[28px]" />
+            </div>
+            <h1 className="font-headline-md text-headline-md text-on-surface">Session Ended</h1>
+            <p className="font-body-md text-body-md text-on-surface-variant max-w-xs">
+              Thank you for visiting {clinic.name}. The doctor&apos;s session has ended. Get well soon!
+            </p>
+            <div className="w-full max-w-xs mt-3">
+              <Link href={`/patient/${clinic.subdomain}`} className="w-full h-12 bg-primary text-on-primary rounded-xl font-label-lg text-label-lg flex items-center justify-center">
+                Back to doctor selection
+              </Link>
+            </div>
+          </main>
+        </>
+      );
+    }
+
     return (
       <>
         {header}
@@ -174,6 +247,11 @@ export default function LiveQueuePage() {
               : 'Your turn was called while you were away. Please speak to the reception desk.'}
           </p>
           {done && pay && <div className="w-full max-w-xs mt-3"><PaymentCard pay={pay} payUrl={payUrl} afterVisit /></div>}
+          <div className="w-full max-w-xs mt-3">
+            <Link href={`/patient/${clinic.subdomain}`} className="w-full h-12 bg-surface-container-high text-on-surface rounded-xl font-label-lg text-label-lg flex items-center justify-center">
+              Back to clinic
+            </Link>
+          </div>
         </main>
       </>
     );
@@ -355,8 +433,6 @@ export default function LiveQueuePage() {
             </div>
           )}
 
-          {pay && <PaymentCard pay={pay} payUrl={payUrl} />}
-
           {/* Visit progress */}
           <div className="w-full bg-surface-container-lowest rounded-2xl p-space-md shadow-sm">
             <div className="flex items-center justify-between mb-4">
@@ -383,6 +459,61 @@ export default function LiveQueuePage() {
             </div>
           </div>
 
+          <div className="w-full bg-surface-container-lowest rounded-2xl p-space-md shadow-sm flex flex-col items-center text-center">
+            <div ref={tokenCardRef} style={{ background: '#fff', color: '#131b2e', fontFamily: 'Manrope, Inter, sans-serif' }} className="w-full max-w-[320px] flex flex-col items-center justify-center text-center p-6 rounded-2xl">
+              <p style={{ fontSize: 20, fontWeight: 800, lineHeight: 1.15 }}>{clinic.name}</p>
+              <p style={{ fontSize: 13, color: '#3e4947', marginTop: 3 }}>{doctor.name} {doctor.cabin_label ? `· ${doctor.cabin_label}` : ''}</p>
+              <div style={{ marginTop: 20, marginBottom: 4 }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: '#0f766e', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Your Token</span>
+              </div>
+              <p style={{ fontSize: 48, fontWeight: 800, color: '#005c55', lineHeight: 1 }}>#{view.token_number}</p>
+              
+              <div style={{ margin: '20px 0 12px', padding: 12, border: '2px solid #cfe9e5', borderRadius: 20 }}>
+                {verified ? (
+                  <div style={{ padding: '20px 0', display: 'flex', justifyContent: 'center' }}>
+                    <Icon name="check_circle" className="text-[80px] text-primary" fill />
+                  </div>
+                ) : (
+                  <QRCodeSVG value={tokenId} size={200} level="M" marginSize={2} fgColor="#00201d" bgColor="#ffffff" />
+                )}
+              </div>
+              <p style={{ fontSize: 13, fontWeight: 700, color: '#0f766e' }}>
+                {verified ? 'Verified at reception' : 'Scan at reception to verify arrival'}
+              </p>
+              {!verified && (
+                <p style={{ fontSize: 11, color: '#3e4947', marginTop: 8, textTransform: 'uppercase' }}>
+                  ID: {tokenId.split('-')[0]}
+                </p>
+              )}
+            </div>
+            {!verified && (
+              <div className="w-full mt-2">
+                <button
+                  onClick={downloadToken}
+                  disabled={downloading}
+                  className="w-full h-12 bg-primary text-on-primary rounded-xl font-label-lg text-label-lg flex items-center justify-center gap-2 hover:opacity-90 transition-colors disabled:opacity-60"
+                >
+                  <Icon name={downloading ? 'progress_activity' : 'download'} className={`text-[20px] ${downloading ? 'animate-spin' : ''}`} />
+                  Download my token
+                </button>
+                <button
+                  onClick={() => {
+                    const text = encodeURIComponent(`Here is my clinic token #${view?.token_number} for ${view?.doctor.name} at ${view?.clinic.name ?? clinic.name}. Track live status here: ${window.location.href}`);
+                    window.open(`https://wa.me/?text=${text}`, '_blank');
+                  }}
+                  className="w-full h-12 mt-3 bg-[#25D366] text-white rounded-xl font-label-lg text-label-lg flex items-center justify-center gap-2 hover:opacity-90 transition-colors"
+                >
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.888-.788-1.489-1.761-1.662-2.06-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+                  </svg>
+                  Share via WhatsApp
+                </button>
+              </div>
+            )}
+          </div>
+
+          {pay && <PaymentCard pay={pay} payUrl={payUrl} />}
+
           {/* Clinic card */}
           <div className="w-full bg-surface-container-lowest rounded-2xl p-space-md shadow-sm flex items-center gap-3">
             <div className="w-11 h-11 rounded-xl bg-primary-container/10 text-primary flex items-center justify-center flex-shrink-0">
@@ -400,9 +531,42 @@ export default function LiveQueuePage() {
             </div>
           </div>
 
+          {/* Multiple Tokens / Family Members */}
+          <div className="w-full mt-4 flex flex-col gap-3">
+            <Link 
+              href={`/patient/${clinic.subdomain}`} 
+              className="w-full h-12 border-2 border-primary text-primary rounded-xl font-label-lg text-label-lg flex items-center justify-center gap-2"
+            >
+              <Icon name="person_add" className="text-[20px]" />
+              Book another patient / Family member
+            </Link>
+
+            {storedTokens.length > 0 && (
+              <div className="w-full bg-surface-container-lowest rounded-2xl p-space-md shadow-sm">
+                <h4 className="font-headline-sm text-headline-sm text-on-surface mb-3">Other active tokens</h4>
+                <div className="flex flex-col gap-2">
+                  {storedTokens.map(t => (
+                    <Link 
+                      key={t.id} 
+                      href={`/patient/${t.clinic_subdomain}/queue/${t.id}`}
+                      className="flex items-center justify-between p-3 rounded-xl bg-surface-container hover:bg-surface-container-high transition-colors"
+                    >
+                      <div>
+                        <div className="font-label-md font-bold text-on-surface">{t.patient_name}</div>
+                        <div className="font-body-sm text-on-surface-variant text-[12px]">Token #{t.number}</div>
+                      </div>
+                      <Icon name="arrow_forward_ios" className="text-[16px] text-on-surface-variant" />
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
           <p className="text-center font-body-sm text-body-sm text-on-surface-variant px-4">
             Keep this page open — it updates by itself when the queue moves.
           </p>
+
         </div>
       </main>
     </>

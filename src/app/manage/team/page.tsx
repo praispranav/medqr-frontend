@@ -42,6 +42,7 @@ function Team({ clinicCode, currentUserId, onDoctorsChanged }: { clinicCode: str
         list: (date) => api.listSessions(doctorId, date),
         add: (body) => api.addSession(doctorId, body),
         repeat: (from, days) => api.repeatSessions(doctorId, from, days),
+        applyWeeklyTemplate: (weeks, template) => api.applyWeeklyTemplate(doctorId, weeks, template),
         setActive: (id, active) => api.setSessionActive(doctorId, id, active),
         remove: (id) => api.deleteSession(doctorId, id),
       }),

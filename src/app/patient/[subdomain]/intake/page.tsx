@@ -1,9 +1,11 @@
 'use client';
 
+import Link from 'next/link';
 import { Suspense, useEffect, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { api, ApiError, patientDevice, type DoctorToday, type Patient, type Tenant } from '@/lib/api';
 import { DoctorAvatar, FullPageMessage, Icon, initials, LoadingPage } from '@/components/patient/ui';
+import { CustomIntakeForm } from '@/components/patient/CustomIntakeForm';
 
 // Screen #1 (returning 1-tap / new patient) + Screen #2 (intake details), on one page. Ported from
 // stitch_medqr_clinic_suite_ui_design/patient_qr_landing_check_in/code.html and
@@ -64,6 +66,7 @@ function IntakeForm() {
 
   // Visit details — all optional
   const [complaint, setComplaint] = useState('');
+  const [intakeAnswers, setIntakeAnswers] = useState<Record<string, any>>({});
   const [weight, setWeight] = useState('');
   const [files, setFiles] = useState<{ url: string; name: string }[]>([]);
   const [uploading, setUploading] = useState(false);
@@ -230,6 +233,7 @@ function IntakeForm() {
         doctorId: doctor.id,
         patientId,
         chief_complaint: complaint.trim() || null,
+        intake_answers: Object.keys(intakeAnswers).length ? intakeAnswers : null,
         weight_kg: weight ? Number(weight) : null,
         bookingDate: bookingDate ?? undefined,
       });
@@ -266,6 +270,7 @@ function IntakeForm() {
               <Icon name="arrow_back" className="text-[20px]" />
               <span>Back</span>
             </button>
+            <Link href={`/patient/${subdomain}`} aria-label="Home" className="flex items-center gap-1 text-primary py-2 px-1 text-label-md font-label-md"><Icon name="home" className="text-[20px]" /></Link>
             <div className="flex items-center gap-2 px-3 py-1 bg-surface-container-low rounded-full min-w-0">
               <span className="w-2 h-2 rounded-full bg-primary animate-pulse flex-shrink-0" />
               <span className="text-label-sm font-label-sm text-on-surface font-semibold tracking-wide truncate">{clinicName}</span>
@@ -525,6 +530,8 @@ function IntakeForm() {
             </>
           )}
 
+          <CustomIntakeForm schema={doctor.intake_schema} answers={intakeAnswers} onChange={setIntakeAnswers} />
+
           {/* ---- Chief complaint (optional) ---- */}
           <div className="bg-surface-container-lowest p-4 rounded-2xl shadow-sm">
             <div className="flex items-center justify-between mb-2">
@@ -721,6 +728,7 @@ function VerifyPhone({
   onBack: () => void;
   onVerified: (token: string, mobile: string) => Promise<void>;
 }) {
+  const { subdomain } = useParams<{ subdomain: string }>();
   const [mobile, setMobile] = useState('');
   const [code, setCode] = useState('');
   const [sentTo, setSentTo] = useState<string | null>(null);
@@ -775,6 +783,9 @@ function VerifyPhone({
             <span>Back</span>
           </button>
           <span className="text-label-sm font-label-sm text-on-surface font-semibold truncate">{clinicName}</span>
+          <Link href={`/patient/${subdomain}`} aria-label="Home" className="flex items-center gap-1 text-primary py-2 px-1 text-label-md font-label-md">
+            <Icon name="home" className="text-[20px]" />
+          </Link>
         </div>
       </header>
 

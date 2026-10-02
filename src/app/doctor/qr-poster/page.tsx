@@ -64,7 +64,7 @@ function QrSuite({ tenant, doctor }: { tenant: Tenant; doctor: DoctorToday }) {
     url: clinicUrl,
     title: doctor.name,
     subtitle: [doctor.specialty, clinicName].filter(Boolean).join(' · '),
-    footer: `${tenant.subdomain}.medqr.in`,
+    footer: tenant.subdomain,
   };
   const isLocal = /localhost|127\.0\.0\.1/.test(base);
   const open = mine?.find((q) => q.id === openId) ?? null;
