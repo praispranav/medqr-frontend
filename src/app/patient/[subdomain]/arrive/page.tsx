@@ -27,7 +27,7 @@ export default function ArrivePage() {
       /* no saved tokens */
     }
     const mine = stored.filter(
-      (t) => t.clinic_subdomain === subdomain && !['done', 'no_show', 'expired'].includes(t.status ?? ''),
+      (t) => t.clinic_subdomain === subdomain && !['done', 'no_show', 'expired', 'cancelled'].includes(t.status ?? ''),
     );
     Promise.all(
       mine.map(async (token): Promise<Result> => {

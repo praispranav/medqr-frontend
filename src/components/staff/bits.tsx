@@ -43,6 +43,7 @@ export const STATUS_LABEL: Record<TokenStatus, string> = {
   done: 'Done',
   no_show: 'No-show',
   expired: 'Expired',
+  cancelled: 'Removed',
 };
 
 export function StatusPill({ status }: { status: TokenStatus }) {
@@ -54,6 +55,7 @@ export function StatusPill({ status }: { status: TokenStatus }) {
     done: 'bg-tertiary-fixed/60 text-on-tertiary-fixed-variant',
     no_show: 'bg-error-container text-on-error-container',
     expired: 'bg-surface-container text-outline',
+    cancelled: 'bg-surface-container text-outline',
   };
   return (
     <span className={`px-2.5 py-1 rounded-full font-label-sm text-label-sm whitespace-nowrap ${cls[status]}`}>
@@ -81,7 +83,7 @@ export function PaidBadge({ row, showDue = false }: { row: Pick<QueueRow, 'visit
       </span>
     );
   }
-  if (!showDue || !row.visit || row.status === 'no_show') return null;
+  if (!showDue || !row.visit || row.status === 'no_show' || row.status === 'cancelled') return null;
   const choice = row.visit.payment_choice;
   return (
     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-secondary-fixed text-on-secondary-fixed font-label-sm text-label-sm whitespace-nowrap">

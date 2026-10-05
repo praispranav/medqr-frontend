@@ -16,6 +16,9 @@ import {
 import { addDays, clinicToday } from '@/lib/clinicTime';
 import { getQueueSocket } from '@/lib/socket';
 
+// Tokens that no longer belong in "your tokens" (removed = Decision 26).
+const FINISHED_TOKEN = new Set(['done', 'no_show', 'expired', 'cancelled']);
+
 // Screen #1A — Doctor Selection / Confirmation. Ported from
 // stitch_medqr_clinic_suite_ui_design/doctor_selection_confirmation_screen_1a/code.html.
 // Variant A (one doctor) is a confirmation card; Variant B (polyclinic) is a pick-list with a
@@ -52,7 +55,7 @@ export default function SelectDoctorPage() {
     const sync = async () => {
       try {
         const stored = JSON.parse(localStorage.getItem('medqr_patient_tokens') || '[]');
-        const active = stored.filter((t: any) => t.status !== 'done' && t.status !== 'no_show');
+        const active = stored.filter((t: any) => !FINISHED_TOKEN.has(t.status));
         setActiveTokens(active.map((t: any) => ({...t, tokenNumber: t.number, patientName: t.patient_name, doctorName: t.doctor_name, doctorPhotoUrl: t.doctor_photo_url})));
 
         const verified: any[] = [];
@@ -60,7 +63,7 @@ export default function SelectDoctorPage() {
         for (const t of active) {
           try {
             const data = await api.getToken(t.id);
-            if (data.status !== 'done' && data.status !== 'no_show') {
+            if (!FINISHED_TOKEN.has(data.status)) {
               verified.push({
                 ...t,
                 status: data.status,
@@ -78,7 +81,7 @@ export default function SelectDoctorPage() {
         }
         setActiveTokens(verified);
         if (updated) {
-           // Update localStorage to remove done/no_show tokens from the active view
+           // Update localStorage to remove finished tokens from the active view
            const newStored = stored.map((s: any) => verified.find(v => v.id === s.id) || { ...s, status: 'done' });
            localStorage.setItem('medqr_patient_tokens', JSON.stringify(newStored));
         }

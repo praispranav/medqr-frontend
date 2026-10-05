@@ -106,6 +106,11 @@ function CommandCenter({ tenant, doctor }: { tenant: Tenant; doctor: DoctorToday
   };
 
   const callNext = () => run(() => api.callNext(doctor.id));
+  // Decision 26: patient doesn't want to consult any more → out of the queue (confirm first).
+  const removeRow = (r: QueueRow) => {
+    const paid = r.visit?.is_paid ? ' They have already paid — reception should refund them.' : '';
+    if (confirm(`Remove token #${r.token_number} ${r.patient?.name ?? ''} from the queue?${paid}`)) run(() => api.removeToken(r.id));
+  };
   // Queue Rules → "Who calls the next patient": reception-only hides every call button here.
   const doctorCalls = tenant.queue_settings.advance_mode !== 'reception';
 
@@ -318,6 +323,7 @@ function CommandCenter({ tenant, doctor }: { tenant: Tenant; doctor: DoctorToday
           {rows === null && <p className="font-body-md text-body-md text-on-surface-variant">Loading…</p>}
           {filter(callable).map((r, i) => (
             <QueueItem key={r.id} row={r} now={now}>
+              <div className="flex items-center gap-1">
               {i === 0 && !query ? (
                 <span className="px-2 py-0.5 rounded-full bg-secondary-fixed text-on-secondary-fixed font-label-sm text-label-sm">Next up</span>
               ) : doctorCalls ? (
@@ -330,6 +336,8 @@ function CommandCenter({ tenant, doctor }: { tenant: Tenant; doctor: DoctorToday
                   <Icon name="arrow_upward" className="text-[16px]" /> Call now
                 </button>
               ) : null}
+                <RemoveButton disabled={busy} onClick={() => removeRow(r)} />
+              </div>
             </QueueItem>
           ))}
 
@@ -354,6 +362,7 @@ function CommandCenter({ tenant, doctor }: { tenant: Tenant; doctor: DoctorToday
                   <Icon name="arrow_upward" className="text-[16px]" /> Call now
                 </button>
                 )}
+                <RemoveButton disabled={busy} onClick={() => removeRow(r)} />
               </div>
             </QueueItem>
           ))}
@@ -470,5 +479,18 @@ function ReceptionCallsNote() {
       <Icon name="support_agent" className="text-[22px] text-primary" />
       Reception calls your patients in.
     </p>
+  );
+}
+
+function RemoveButton({ disabled, onClick }: { disabled: boolean; onClick: () => void }) {
+  return (
+    <button
+      disabled={disabled}
+      onClick={onClick}
+      title="Remove from the queue — patient doesn't want to consult"
+      className="h-9 px-2 rounded-lg text-on-surface-variant font-label-md text-label-md hover:bg-error-container/40 hover:text-error disabled:opacity-60"
+    >
+      Remove
+    </button>
   );
 }

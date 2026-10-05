@@ -29,8 +29,11 @@ const VERIFIED = new Set(['waiting_in_clinic', 'checked_in_early', 'in_consultat
 type PayConfig = { gateway: 'razorpay' | 'mock'; online_available: boolean };
 
 /** Reception should chase this fee now (Decision 8: pay-after clinics only owe once the visit is done). */
+/** Decision 26: tokens that can still be taken out of the queue (not yet with the doctor). */
+const REMOVABLE = new Set<TokenStatus>(['booked', 'waiting_in_clinic', 'checked_in_early']);
+
 function owes(r: QueueRow, tenant: Tenant) {
-  if (!r.visit || r.visit.is_paid || r.status === 'no_show' || Number(r.visit.consultation_fee_inr ?? 0) <= 0) return false;
+  if (!r.visit || r.visit.is_paid || r.status === 'no_show' || r.status === 'cancelled' || Number(r.visit.consultation_fee_inr ?? 0) <= 0) return false;
   return tenant.queue_settings.payment_mode !== 'pay_after_consultation' || r.status === 'done';
 }
 
@@ -92,7 +95,7 @@ function ReceptionDesk({ tenant, doctors }: { tenant: Tenant; doctors: DoctorTod
     const list = (rows ?? []).filter(
       (r) => (doctorFilter === 'all' || r.doctor.id === doctorFilter) && (!unpaidOnly || owes(r, tenant)),
     );
-    const order: Record<TokenStatus, number> = { in_consultation: 0, waiting_in_clinic: 1, checked_in_early: 2, booked: 3, no_show: 4, done: 5, expired: 6 };
+    const order: Record<TokenStatus, number> = { in_consultation: 0, waiting_in_clinic: 1, checked_in_early: 2, booked: 3, no_show: 4, done: 5, expired: 6, cancelled: 7 };
     return [...list].sort((a, b) => order[a.status] - order[b.status] || a.token_number - b.token_number);
   }, [rows, doctorFilter, unpaidOnly, tenant]);
 
@@ -143,9 +146,11 @@ function ReceptionDesk({ tenant, doctors }: { tenant: Tenant; doctors: DoctorTod
   };
 
   const [callBusy, setCallBusy] = useState<string | null>(null);
-  const [callError, setCallError] = useState<string | null>(null);
+  const [callError, setCallError] = useState<{ tokenId: string; message: string } | null>(null);
   // Jump straight to this token — same action the doctor's own "Call now" uses (Decision 19), so
   // reception can call a specific patient on the doctor's behalf without going through Call Next.
+  // Queue Rules → "Who calls the next patient" (Decision 25): reception calls in 'reception' / 'both'.
+  const receptionCalls = tenant.queue_settings.advance_mode === 'reception' || tenant.queue_settings.advance_mode === 'both';
   const callToken = async (tokenId: string) => {
     setCallBusy(tokenId);
     setCallError(null);
@@ -153,7 +158,7 @@ function ReceptionDesk({ tenant, doctors }: { tenant: Tenant; doctors: DoctorTod
       await api.callToken(tokenId);
       await refresh();
     } catch (e) {
-      setCallError(e instanceof ApiError ? e.message : 'Could not call this patient — try again.');
+      setCallError({ tokenId, message: e instanceof ApiError ? e.message : 'Could not call this patient — try again.' });
     } finally {
       setCallBusy(null);
     }
@@ -265,6 +270,9 @@ function ReceptionDesk({ tenant, doctors }: { tenant: Tenant; doctors: DoctorTod
               payConfig={payConfig}
               flash={flash?.tokenId === selected.id ? flash.kind : null}
               onVerify={() => verify(selected)}
+              onCall={receptionCalls ? () => callToken(selected.id) : undefined}
+              calling={callBusy === selected.id}
+              callError={callError?.tokenId === selected.id ? callError.message : null}
               onChanged={refresh}
               onClose={() => {
                 setSelectedId(null);
@@ -351,7 +359,7 @@ function ReceptionDesk({ tenant, doctors }: { tenant: Tenant; doctors: DoctorTod
             </div>
           )}
 
-          {(tenant.queue_settings.advance_mode === 'reception' || tenant.queue_settings.advance_mode === 'both') && (
+          {receptionCalls && (
             <ReceptionCallNext
               doctors={doctorFilter === 'all' ? doctors : doctors.filter((d) => d.id === doctorFilter)}
               shifts={shifts}
@@ -384,7 +392,7 @@ function ReceptionDesk({ tenant, doctors }: { tenant: Tenant; doctors: DoctorTod
                   className={`flex items-center gap-3 p-3 rounded-xl text-left transition-colors cursor-pointer ${
                     r.id === selectedId
                       ? 'bg-primary-fixed/30 ring-2 ring-primary'
-                      : r.status === 'done' || r.status === 'no_show'
+                      : r.status === 'done' || r.status === 'no_show' || r.status === 'cancelled'
                         ? 'bg-surface-container-low opacity-60'
                         : 'bg-surface-container-low hover:bg-surface-container'
                   }`}
@@ -397,7 +405,7 @@ function ReceptionDesk({ tenant, doctors }: { tenant: Tenant; doctors: DoctorTod
                       {r.visit?.chief_complaint || `joined ${minutesSince(r.joined_at)}m ago`}
                     </span>
                   </span>
-                  {showCall && r.status !== 'done' && r.status !== 'no_show' && (
+                  {receptionCalls && showCall && r.status !== 'done' && r.status !== 'no_show' && (
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -407,9 +415,10 @@ function ReceptionDesk({ tenant, doctors }: { tenant: Tenant; doctors: DoctorTod
                       disabled={callBusy === r.id}
                       aria-label={`Call token ${r.token_number} now`}
                       title="Call now"
-                      className="w-9 h-9 rounded-full bg-primary text-on-primary flex items-center justify-center shrink-0 disabled:opacity-50"
+                      className="h-9 px-3 rounded-full bg-primary text-on-primary font-label-md text-label-md flex items-center gap-1 shrink-0 disabled:opacity-50"
                     >
-                      <Icon name="campaign" className="text-[18px]" />
+                      <Icon name={callBusy === r.id ? 'progress_activity' : 'campaign'} className={`text-[18px] ${callBusy === r.id ? 'animate-spin' : ''}`} />
+                      Call
                     </button>
                   )}
                   <span className="flex flex-col items-end gap-1 shrink-0">
@@ -419,7 +428,7 @@ function ReceptionDesk({ tenant, doctors }: { tenant: Tenant; doctors: DoctorTod
                 </div>
               );
             })}
-            {callError && <p className="font-body-sm text-body-sm text-error px-1">{callError}</p>}
+            {callError && callError.tokenId !== selectedId && <p className="font-body-sm text-body-sm text-error px-1">{callError.message}</p>}
             {unpaidOnly && visible.length === 0 && rows && rows.length > 0 && (
               <p className="font-body-md text-body-md text-on-surface-variant py-6 text-center">Everyone who owes a fee has paid. 🎉</p>
             )}
@@ -462,6 +471,9 @@ function TokenPanel({
   payConfig,
   flash,
   onVerify,
+  onCall,
+  calling,
+  callError,
   onChanged,
   onClose,
 }: {
@@ -470,6 +482,10 @@ function TokenPanel({
   payConfig: PayConfig | null;
   flash: 'verified' | 'duplicate' | null;
   onVerify: () => Promise<void>;
+  /** Present when reception may call patients in (Queue Rules 'reception' / 'both'). */
+  onCall?: () => Promise<void>;
+  calling: boolean;
+  callError: string | null;
   onChanged: () => Promise<void>;
   onClose: () => void;
 }) {
@@ -543,6 +559,18 @@ function TokenPanel({
           </button>
         )}
 
+        {onCall && (row.status === 'waiting_in_clinic' || row.status === 'checked_in_early') && (
+          <button
+            disabled={calling}
+            onClick={onCall}
+            className="h-14 bg-primary-container text-on-primary rounded-xl font-label-lg text-label-lg flex items-center justify-center gap-2 disabled:opacity-60"
+          >
+            <Icon name={calling ? 'progress_activity' : 'campaign'} className={`text-[22px] ${calling ? 'animate-spin' : ''}`} />
+            Call #{row.token_number} {row.patient?.name ?? ''} now
+          </button>
+        )}
+        {onCall && callError && <p className="-mt-3 font-body-sm text-body-sm text-error">{callError}</p>}
+
         {row.visit && <div className="vitals-wrapper-debug"><VitalsStrip key={`vitals-${row.visit.id}`} visitId={row.visit.id} initial={row.visit.vitals} onSaved={onChanged} /></div>}
 
         {row.visit && <PaymentBlock key={row.visit.id} row={row} tenant={tenant} payConfig={payConfig} onChanged={onChanged} />}
@@ -554,6 +582,30 @@ function TokenPanel({
           >
             <Icon name="print" className="text-[20px]" />
             Print token slip
+          </button>
+        )}
+
+        {/* Decision 26: patient doesn't want to consult any more → take them out of the queue. */}
+        {REMOVABLE.has(row.status) && (
+          <button
+            disabled={busy}
+            onClick={async () => {
+              const paid = row.visit?.is_paid ? ' They have already paid — refund them at the counter.' : '';
+              if (!confirm(`Remove token #${row.token_number} ${row.patient?.name ?? ''} from the queue?${paid}`)) return;
+              setBusy(true);
+              try {
+                await api.removeToken(row.id);
+                await onChanged();
+              } catch (e) {
+                alert(e instanceof ApiError ? e.message : "Couldn't remove this patient — try again.");
+              } finally {
+                setBusy(false);
+              }
+            }}
+            className="h-11 self-start px-3 rounded-lg text-error font-label-md text-label-md flex items-center gap-1.5 hover:bg-error-container/40 disabled:opacity-60"
+          >
+            <Icon name="person_remove" className="text-[20px]" />
+            Remove from queue
           </button>
         )}
       </div>

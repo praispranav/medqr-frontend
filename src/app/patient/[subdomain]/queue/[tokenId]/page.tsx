@@ -66,7 +66,7 @@ export default function LiveQueuePage() {
         newTokens = newTokens.sort((a, b) => b.timestamp - a.timestamp).slice(0, 10);
         localStorage.setItem('medqr_patient_tokens', JSON.stringify(newTokens));
         
-        setStoredTokens(newTokens.filter(t => t.id !== tokenId && t.status !== 'done' && t.status !== 'no_show' && t.status !== 'expired'));
+        setStoredTokens(newTokens.filter(t => t.id !== tokenId && t.status !== 'done' && t.status !== 'no_show' && t.status !== 'expired' && t.status !== 'cancelled'));
       } catch(e) {}
     }
   }, [view, tokenId]);
@@ -253,26 +253,29 @@ export default function LiveQueuePage() {
     );
   }
 
-  if (view.status === 'done' || view.status === 'no_show') {
+  if (view.status === 'done' || view.status === 'no_show' || view.status === 'cancelled') {
     const done = view.status === 'done';
+    const removed = view.status === 'cancelled'; // Decision 26: the clinic took this token out of the queue
     return (
       <>
         {header}
         <main className="min-h-screen w-full max-w-[480px] mx-auto pt-16 flex flex-col items-center justify-center text-center px-6 gap-3 bg-surface">
           <div
             className={`w-14 h-14 rounded-full flex items-center justify-center ${
-              done ? 'bg-tertiary-fixed text-on-tertiary-fixed' : 'bg-error-container text-error'
+              done ? 'bg-tertiary-fixed text-on-tertiary-fixed' : removed ? 'bg-surface-container-high text-on-surface-variant' : 'bg-error-container text-error'
             }`}
           >
-            <Icon name={done ? 'check' : 'schedule'} fill className="text-[28px]" />
+            <Icon name={done ? 'check' : removed ? 'event_busy' : 'schedule'} fill className="text-[28px]" />
           </div>
           <h1 className="font-headline-md text-headline-md text-on-surface">
-            {done ? 'Consultation complete' : 'Your token was missed'}
+            {done ? 'Consultation complete' : removed ? 'Your token was cancelled' : 'Your token was missed'}
           </h1>
           <p className="font-body-md text-body-md text-on-surface-variant max-w-xs">
             {done
               ? `Thank you for visiting ${clinic.name}. Get well soon!`
-              : `Your turn was called while you were away. Please speak to ${view.front_desk ? 'the reception desk' : 'the clinic staff'}.`}
+              : removed
+                ? `${clinic.name} removed this token from today's queue. If that's a mistake, please speak to ${view.front_desk ? 'the reception desk' : 'the clinic staff'}.`
+                : `Your turn was called while you were away. Please speak to ${view.front_desk ? 'the reception desk' : 'the clinic staff'}.`}
           </p>
           {done && pay && <div className="w-full max-w-xs mt-3"><PaymentCard pay={pay} payUrl={payUrl} afterVisit /></div>}
           <div className="w-full max-w-xs mt-3">

@@ -259,7 +259,7 @@ export interface PaymentReport {
   events: PaymentEvent[];
 }
 
-export type TokenStatus = 'booked' | 'waiting_in_clinic' | 'checked_in_early' | 'in_consultation' | 'done' | 'no_show' | 'expired';
+export type TokenStatus = 'booked' | 'waiting_in_clinic' | 'checked_in_early' | 'in_consultation' | 'done' | 'no_show' | 'expired' | 'cancelled';
 
 export interface TokenStatusView {
   id: string;
@@ -610,6 +610,8 @@ export const api = {
   callNext: (doctorId: string) => request<{ id: string } | null>(`/queue/doctors/${doctorId}/call-next`, { method: 'POST' }),
   callToken: (tokenId: string) => request(`/queue/tokens/${tokenId}/call`, { method: 'POST' }),
   markNoShow: (tokenId: string) => request(`/queue/tokens/${tokenId}/no-show`, { method: 'POST' }),
+  /** Decision 26: take a patient out of the queue before their visit (reception / that doctor). */
+  removeToken: (tokenId: string) => request(`/queue/tokens/${tokenId}/remove`, { method: 'POST' }),
   listQueueToday: (tenantId: string, doctorId?: string) =>
     request<QueueRow[]>(`/queue/tenant/${tenantId}/today${doctorId ? `?doctorId=${doctorId}` : ''}`),
   getVisit: (visitId: string) => request<{ visit: Visit; patient: Patient | null }>(`/patients/visits/${visitId}`),
