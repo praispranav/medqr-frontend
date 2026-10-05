@@ -113,7 +113,7 @@ export function PatientHeader({ eyebrow, title, onBack, homeUrl }: { eyebrow: st
             <button
               aria-label="Go back"
               onClick={onBack}
-              className="w-11 h-11 -ml-space-xs flex items-center justify-center text-on-surface-variant hover:text-on-surface transition-colors shrink-0"
+              className="relative z-10 w-12 h-12 -ml-2 rounded-xl flex items-center justify-center text-on-surface-variant hover:text-on-surface active:bg-surface-container transition-colors shrink-0 touch-manipulation"
             >
               <Icon name="arrow_back" className="text-[24px]" />
             </button>
@@ -127,7 +127,11 @@ export function PatientHeader({ eyebrow, title, onBack, homeUrl }: { eyebrow: st
           </div>
         </div>
         {homeUrl && (
-          <Link href={homeUrl} className="w-11 h-11 -mr-space-xs flex items-center justify-center text-on-surface-variant hover:text-on-surface transition-colors shrink-0" aria-label="Home">
+          <Link
+            href={homeUrl}
+            className="relative z-10 w-12 h-12 -mr-2 rounded-xl flex items-center justify-center text-on-surface-variant hover:text-on-surface active:bg-surface-container transition-colors shrink-0 touch-manipulation"
+            aria-label="Home"
+          >
             <Icon name="home" className="text-[24px]" />
           </Link>
         )}

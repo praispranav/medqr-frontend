@@ -3,7 +3,7 @@
 import { Suspense, useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { api, ApiError, type PatientPaymentStatus } from '@/lib/api';
-import { getQueueSocket } from '@/lib/socket';
+import { getQueueSocket, keepLive } from '@/lib/socket';
 import { FullPageMessage, Icon, LoadingPage, PatientHeader } from '@/components/patient/ui';
 import { UpiQrCard } from '@/components/payments/UpiQrCard';
 
@@ -52,11 +52,11 @@ function Payment() {
     join();
     socket.on('connect', join);
     socket.on('queue:update', refresh);
-    const poll = setInterval(refresh, 15000); // belt and braces if the socket drops
+    const stopKeepLive = keepLive(refresh); // reconnect on resume + refresh every 15 s while on screen
     return () => {
       socket.off('connect', join);
       socket.off('queue:update', refresh);
-      clearInterval(poll);
+      stopKeepLive();
     };
   }, [tokenId, refresh]);
 
@@ -91,7 +91,7 @@ function Payment() {
 
   return (
     <>
-      <PatientHeader eyebrow={`Token #${status.token_number}`} title="Consultation fee" homeUrl={`/patient/${subdomain}`} />
+      <PatientHeader eyebrow={`Token #${status.token_number}`} title="Consultation fee" homeUrl={`/patient/${subdomain}/select-doctor`} />
       <main className="min-h-screen w-full max-w-[480px] mx-auto pt-20 pb-10 px-margin bg-surface flex flex-col gap-4">
         {status.is_paid ? (
           <div className="bg-surface-container-lowest rounded-2xl p-8 shadow-sm flex flex-col items-center text-center gap-3">

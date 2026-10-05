@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { api, type QueueRow } from '@/lib/api';
-import { getQueueSocket } from '@/lib/socket';
+import { getQueueSocket, keepLive } from '@/lib/socket';
 
 /**
  * Today's queue for a clinic (or one doctor), kept live over the shared queue socket.
@@ -39,14 +39,13 @@ export function useLiveQueue(tenantId: string, doctorIds: string[], onlyDoctorId
     socket.on('disconnect', onDisconnect);
     socket.on('session:changed', refresh);
     socket.on('queue:changed', refresh);
-    const onVisible = () => document.visibilityState === 'visible' && refresh();
-    document.addEventListener('visibilitychange', onVisible);
+    const stopKeepLive = keepLive(refresh); // Safari/iPad: reconnect + refetch when the screen comes back
     return () => {
+      stopKeepLive();
       socket.off('connect', join);
       socket.off('disconnect', onDisconnect);
       socket.off('session:changed', refresh);
       socket.off('queue:changed', refresh);
-      document.removeEventListener('visibilitychange', onVisible);
     };
   }, [roomKey, refresh]);
 

@@ -5,8 +5,9 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { QRCodeSVG } from 'qrcode.react';
 import { api, type PatientPaymentStatus, type TokenStatusView } from '@/lib/api';
-import { getQueueSocket } from '@/lib/socket';
+import { getQueueSocket, keepLive } from '@/lib/socket';
 import { QrScanner } from '@/components/staff/QrScanner';
+import { PushAlertCard } from '@/components/patient/PushAlertCard';
 import { FullPageMessage, Icon, LoadingPage, PatientHeader } from '@/components/patient/ui';
 
 // Screen #3 — Live Queue / Token Tracking. Ported from
@@ -119,14 +120,14 @@ export default function LiveQueuePage() {
     socket.on('queue:update', refresh);
     socket.on('session:changed', refresh);
     socket.on('queue:changed', refresh);
-    const onVisible = () => document.visibilityState === 'visible' && refresh();
-    document.addEventListener('visibilitychange', onVisible);
+    // Safari/iOS: reconnect + refetch whenever the page comes back (see keepLive).
+    const stopKeepLive = keepLive(refresh);
     return () => {
       socket.off('connect', join);
       socket.off('queue:update', refresh);
       socket.off('session:changed', refresh);
       socket.off('queue:changed', refresh);
-      document.removeEventListener('visibilitychange', onVisible);
+      stopKeepLive();
     };
   }, [doctorId, tokenId, refresh]);
 
@@ -145,7 +146,7 @@ export default function LiveQueuePage() {
 
   const { doctor, clinic } = view;
   const cabin = doctor.cabin_label ?? 'the consultation room';
-  const header = <PatientHeader eyebrow="MedQR Live" title={clinic.name} homeUrl={`/patient/${clinic.subdomain}`} />;
+  const header = <PatientHeader eyebrow="MedQR Live" title={clinic.name} homeUrl={`/patient/${clinic.subdomain}/select-doctor`} />;
 
   // ---------- Your turn ----------
   if (view.status === 'in_consultation') {
@@ -162,7 +163,7 @@ export default function LiveQueuePage() {
               Thank you for visiting {clinic.name}. The doctor&apos;s session has ended. Get well soon!
             </p>
             <div className="w-full max-w-xs mt-3">
-              <Link href={`/patient/${clinic.subdomain}`} className="w-full h-12 bg-primary text-on-primary rounded-xl font-label-lg text-label-lg flex items-center justify-center">
+              <Link href={`/patient/${clinic.subdomain}/select-doctor`} className="w-full h-12 bg-primary text-on-primary rounded-xl font-label-lg text-label-lg flex items-center justify-center">
                 Back to doctor selection
               </Link>
             </div>
@@ -242,7 +243,7 @@ export default function LiveQueuePage() {
             Token #{view.token_number} was for an earlier day and wasn&apos;t used. Tokens are valid only on the day they&apos;re issued.
           </p>
           <div className="w-full max-w-xs mt-3">
-            <Link href={`/patient/${clinic.subdomain}`} className="w-full h-12 bg-primary text-on-primary rounded-xl font-label-lg text-label-lg flex items-center justify-center">
+            <Link href={`/patient/${clinic.subdomain}/select-doctor`} className="w-full h-12 bg-primary text-on-primary rounded-xl font-label-lg text-label-lg flex items-center justify-center">
               Get a new token
             </Link>
           </div>
@@ -274,7 +275,7 @@ export default function LiveQueuePage() {
           </p>
           {done && pay && <div className="w-full max-w-xs mt-3"><PaymentCard pay={pay} payUrl={payUrl} afterVisit /></div>}
           <div className="w-full max-w-xs mt-3">
-            <Link href={`/patient/${clinic.subdomain}`} className="w-full h-12 bg-surface-container-high text-on-surface rounded-xl font-label-lg text-label-lg flex items-center justify-center">
+            <Link href={`/patient/${clinic.subdomain}/select-doctor`} className="w-full h-12 bg-surface-container-high text-on-surface rounded-xl font-label-lg text-label-lg flex items-center justify-center">
               Back to clinic
             </Link>
           </div>
@@ -465,6 +466,9 @@ export default function LiveQueuePage() {
           )}
 
           {/* Visit progress */}
+          {view.push_available && !view.is_future_booking && (
+            <PushAlertCard tokenId={tokenId} enabled={view.push_enabled} onChange={refresh} />
+          )}
           {arrivalScan && !verified && (
             <div className="w-full bg-primary-fixed/25 ring-2 ring-primary/30 rounded-2xl p-space-md flex flex-col gap-3">
               <div className="flex items-start gap-3">
@@ -630,7 +634,7 @@ export default function LiveQueuePage() {
           {/* Multiple Tokens / Family Members */}
           <div className="w-full mt-4 flex flex-col gap-3">
             <Link 
-              href={`/patient/${clinic.subdomain}`} 
+              href={`/patient/${clinic.subdomain}/select-doctor`} 
               className="w-full h-12 border-2 border-primary text-primary rounded-xl font-label-lg text-label-lg flex items-center justify-center gap-2"
             >
               <Icon name="person_add" className="text-[20px]" />

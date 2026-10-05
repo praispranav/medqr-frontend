@@ -5,6 +5,7 @@ import { api, type DoctorToday, type ShiftView, type Tenant } from '@/lib/api';
 import { DoctorStatusRow } from '@/components/patient/ui';
 import { StaffShell } from '@/components/staff/StaffShell';
 import { HoursEditor } from '@/components/schedule/HoursEditor';
+import { ShiftAlertSettings } from '@/components/doctor/ShiftAlertSettings';
 import { ShiftBar } from '@/components/staff/ShiftBar';
 import { HoursReminderBanner } from '@/components/staff/HoursReminderBanner';
 
@@ -15,12 +16,24 @@ import { HoursReminderBanner } from '@/components/staff/HoursReminderBanner';
 export default function DoctorHoursPage() {
   return (
     <StaffShell variant="doctor" active="/doctor/hours">
-      {({ tenant, doctor, me }) => <MyHours tenant={tenant} doctor={doctor!} canChangeRules={me.user.can_manage_clinic} />}
+      {({ tenant, doctor, me, refreshTenant }) => (
+        <MyHours tenant={tenant} doctor={doctor!} canChangeRules={me.user.can_manage_clinic} onDoctorSaved={refreshTenant} />
+      )}
     </StaffShell>
   );
 }
 
-function MyHours({ tenant, doctor, canChangeRules }: { tenant: Tenant; doctor: DoctorToday; canChangeRules: boolean }) {
+function MyHours({
+  tenant,
+  doctor,
+  canChangeRules,
+  onDoctorSaved,
+}: {
+  tenant: Tenant;
+  doctor: DoctorToday;
+  canChangeRules: boolean;
+  onDoctorSaved: () => void;
+}) {
   const [shift, setShift] = useState<ShiftView | null>(null);
   const [editorKey, setEditorKey] = useState(0); // bumped after the banner marks a day off, to reload the week
 
@@ -80,6 +93,8 @@ function MyHours({ tenant, doctor, canChangeRules }: { tenant: Tenant; doctor: D
           applyWeeklyTemplate: (weeks, template) => api.applyWeeklyTemplate(doctor.id, weeks, template),
         }}
       />
+
+      <ShiftAlertSettings key={doctor.id} doctor={doctor} onSaved={onDoctorSaved} />
     </div>
   );
 }

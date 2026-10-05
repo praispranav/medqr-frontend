@@ -149,6 +149,10 @@ export interface DoctorToday {
   is_publicly_listed?: boolean;
   intake_schema?: any;
   public_slug?: string | null;
+  /** Decision 24: WhatsApp shift alerts to the doctor. */
+  shift_alert_before?: boolean;
+  shift_alert_minutes?: number;
+  shift_alert_at_start?: boolean;
   notify_token_confirmed?: boolean;
   notify_you_are_next?: boolean;
   notify_your_turn?: boolean;
@@ -276,6 +280,9 @@ export interface TokenStatusView {
   front_desk: boolean;
   /** Decision 21: confirm arrival by scanning the clinic's arrival QR. */
   arrival_scan: boolean;
+  /** Firebase push is configured on the server / turned on for this token's phone. */
+  push_available: boolean;
+  push_enabled: boolean;
 }
 
 /** Decision 17 — one bookable future day: the doctors who actually have a scheduled session on it. */
@@ -646,7 +653,7 @@ export const api = {
   // Per-doctor fields: the doctor's own login, or the clinic admin editing any doctor.
   updateDoctorPublicProfile: (
     doctorId: string,
-    patch: { qualification?: string; specialty?: string; photo_url?: string; bio?: string; is_publicly_listed?: boolean; intake_schema?: any; notify_token_confirmed?: boolean; notify_you_are_next?: boolean; notify_your_turn?: boolean; notify_location_override?: string },
+    patch: { qualification?: string; specialty?: string; photo_url?: string; bio?: string; is_publicly_listed?: boolean; intake_schema?: any; notify_token_confirmed?: boolean; notify_you_are_next?: boolean; notify_your_turn?: boolean; notify_location_override?: string; shift_alert_before?: boolean; shift_alert_minutes?: number; shift_alert_at_start?: boolean },
   ) => request<DoctorToday & { bio: string | null; public_slug: string | null }>(`/doctors/${doctorId}/public-profile`, { method: 'PATCH', body: JSON.stringify(patch) }),
   // Doctor portal "My Hours"
   listSessions: (doctorId: string, date: string) => request<DoctorSession[]>(`/doctors/${doctorId}/sessions?date=${date}`),
@@ -657,6 +664,9 @@ export const api = {
     request(`/doctors/${doctorId}/sessions/day`, { method: 'POST', body: JSON.stringify({ date, slots }) }),
   arrivalQr: (tenantId: string) => request<ArrivalQr>(`/tenants/${tenantId}/arrival-qr`),
   regenerateArrivalQr: (tenantId: string) => request<ArrivalQr>(`/tenants/${tenantId}/arrival-qr/regenerate`, { method: 'POST' }),
+  /** "Alert me when it's my turn": this phone's Firebase push token (null = stop). */
+  setTokenPush: (tokenId: string, fcm_token: string | null) =>
+    request<{ push_enabled: boolean }>(`/queue/tokens/${tokenId}/push`, { method: 'POST', body: JSON.stringify({ fcm_token }) }),
   /** Decision 21 — patient: "I've arrived" with the code from the clinic's arrival QR. */
   arriveByScan: (tokenId: string, code: string) =>
     request<{ status: TokenStatus; already: boolean }>(`/queue/tokens/${tokenId}/arrive`, { method: 'POST', body: JSON.stringify({ code }) }),

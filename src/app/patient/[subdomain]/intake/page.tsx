@@ -43,6 +43,10 @@ function IntakeForm() {
   // Decision 17 — set only when this visit was booked from the advance-booking date strip.
   const bookingDate = params.get('date');
   const router = useRouter();
+  // Back / Home always land on Doctor Selection (which also lists this phone's tokens). Not
+  // router.back(): a patient who arrived straight from a doctor's QR has no history to go back to.
+  const doctorsPage = `/patient/${subdomain}/select-doctor`;
+  const goBack = () => router.push(doctorsPage);
 
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [doctor, setDoctor] = useState<DoctorToday | null>(null);
@@ -167,7 +171,7 @@ function IntakeForm() {
       <VerifyPhone
         clinicName={tenant.display_name ?? subdomain}
         doctorName={doctor.name}
-        onBack={() => router.back()}
+        onBack={goBack}
         onVerified={async (token, verifiedMobile) => {
           patientDevice.set(token, verifiedMobile);
           setPhoneState('checking');
@@ -267,13 +271,13 @@ function IntakeForm() {
           <div className="flex items-center justify-between mb-2.5 gap-2">
             <button
               type="button"
-              onClick={() => router.back()}
-              className="flex items-center gap-1.5 text-primary py-2 px-1 -ml-1 text-label-md font-label-md active:opacity-70"
+              onClick={goBack}
+              className="min-h-[44px] min-w-[44px] flex items-center gap-1.5 text-primary px-2 -ml-2 rounded-xl text-label-md font-label-md active:bg-primary-fixed/30 touch-manipulation"
             >
               <Icon name="arrow_back" className="text-[20px]" />
               <span>Back</span>
             </button>
-            <Link href={`/patient/${subdomain}`} aria-label="Home" className="flex items-center gap-1 text-primary py-2 px-1 text-label-md font-label-md"><Icon name="home" className="text-[20px]" /></Link>
+            <Link href={doctorsPage} aria-label="Home" className="min-h-[44px] min-w-[44px] flex items-center justify-center text-primary rounded-xl active:bg-primary-fixed/30 touch-manipulation"><Icon name="home" className="text-[22px]" /></Link>
             <div className="flex items-center gap-2 px-3 py-1 bg-surface-container-low rounded-full min-w-0">
               <span className="w-2 h-2 rounded-full bg-primary animate-pulse flex-shrink-0" />
               <span className="text-label-sm font-label-sm text-on-surface font-semibold tracking-wide truncate">{clinicName}</span>
@@ -781,13 +785,13 @@ function VerifyPhone({
     <div className="min-h-screen bg-surface flex flex-col">
       <header className="w-full bg-surface-container-lowest px-margin pt-3 pb-3 shadow-sm pt-safe">
         <div className="max-w-[480px] mx-auto flex items-center justify-between gap-2">
-          <button type="button" onClick={onBack} className="flex items-center gap-1.5 text-primary py-2 px-1 -ml-1 text-label-md font-label-md">
+          <button type="button" onClick={onBack} className="min-h-[44px] min-w-[44px] flex items-center gap-1.5 text-primary px-2 -ml-2 rounded-xl text-label-md font-label-md active:bg-primary-fixed/30 touch-manipulation">
             <Icon name="arrow_back" className="text-[20px]" />
             <span>Back</span>
           </button>
           <span className="text-label-sm font-label-sm text-on-surface font-semibold truncate">{clinicName}</span>
-          <Link href={`/patient/${subdomain}`} aria-label="Home" className="flex items-center gap-1 text-primary py-2 px-1 text-label-md font-label-md">
-            <Icon name="home" className="text-[20px]" />
+          <Link href={`/patient/${subdomain}/select-doctor`} aria-label="Home" className="min-h-[44px] min-w-[44px] flex items-center justify-center text-primary rounded-xl active:bg-primary-fixed/30 touch-manipulation">
+            <Icon name="home" className="text-[22px]" />
           </Link>
         </div>
       </header>
