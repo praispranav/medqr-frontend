@@ -254,11 +254,12 @@ function DayRow({
           {active.map((s, i) => (
             <span
               key={`${s.starts_at}-${i}`}
-              className={`inline-flex items-center gap-1 pl-3 pr-1 py-1 rounded-full font-label-md text-label-md ${
-                s.is_break ? 'bg-secondary-fixed text-on-secondary-fixed' : 'bg-primary-fixed/60 text-on-primary-fixed-variant'
+              className={`inline-flex items-center gap-1 pl-2.5 pr-1 py-1 rounded-full font-label-md text-label-md shadow-sm ${
+                s.is_break ? 'bg-secondary-fixed text-on-secondary-fixed' : 'bg-primary text-on-primary'
               }`}
             >
-              <button disabled={past || busy} onClick={() => setEditIdx(i)} className="disabled:cursor-default">
+              <button disabled={past || busy} onClick={() => setEditIdx(i)} title="Change this time" className="flex items-center gap-1 disabled:cursor-default">
+                <Icon name={s.is_break ? 'coffee' : 'schedule'} className="text-[16px]" />
                 {s.is_break ? 'Break ' : ''}
                 {time12(s.starts_at)} – {time12(s.ends_at)}
               </button>
@@ -267,7 +268,7 @@ function DayRow({
                   disabled={busy}
                   aria-label="Remove"
                   onClick={() => onSave(without(i))}
-                  className="w-6 h-6 rounded-full hover:bg-black/10 flex items-center justify-center"
+                  className="w-6 h-6 rounded-full hover:bg-white/20 flex items-center justify-center"
                 >
                   <Icon name="close" className="text-[14px]" />
                 </button>
@@ -279,35 +280,37 @@ function DayRow({
       </div>
 
       {!past && (
-        <div className="flex flex-wrap gap-1.5 sm:pl-[124px]">
+        <div className="flex flex-wrap items-center gap-1.5 sm:pl-[124px]">
+          <span className="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wide mr-0.5">Add:</span>
           {PRESETS.filter((p) => !active.some((s) => s.starts_at === p.slot.starts_at && s.ends_at === p.slot.ends_at)).map((p) => (
             <button
               key={p.label}
               disabled={busy}
               onClick={() => onSave([...active, p.slot])}
-              className="h-8 px-3 rounded-full bg-surface-container-low text-primary font-label-sm text-label-sm flex items-center gap-1 hover:bg-surface-container"
+              className="h-8 px-3 rounded-full border border-dashed border-primary/50 text-primary font-label-sm text-label-sm flex items-center gap-1 hover:bg-primary-fixed/20"
             >
-              <Icon name={p.icon} className="text-[16px]" /> + {p.label} {time12(p.slot.starts_at).replace(':00', '')}–{time12(p.slot.ends_at).replace(':00', '')}
+              <Icon name={p.icon} className="text-[16px]" /> {p.label} {time12(p.slot.starts_at).replace(':00', '')}–{time12(p.slot.ends_at).replace(':00', '')}
             </button>
           ))}
           <button
             disabled={busy}
             onClick={() => setAdding(true)}
-            className="h-8 px-3 rounded-full bg-surface-container-low text-primary font-label-sm text-label-sm flex items-center gap-1 hover:bg-surface-container"
+            className="h-8 px-3 rounded-full border border-dashed border-primary/50 text-primary font-label-sm text-label-sm flex items-center gap-1 hover:bg-primary-fixed/20"
           >
             <Icon name="add" className="text-[16px]" /> Other time
           </button>
           {(active.length > 0 || !off) && (
             <button
+              title={isToday ? 'Mark today as off' : 'Mark this day as off'}
               disabled={busy}
               onClick={() => {
                 if (!isToday || window.confirm('Not coming today? Patients will see you as off today. Anyone already holding a token today should be told.')) {
                   onSave([], isToday ? 'Marked as not coming today.' : undefined);
                 }
               }}
-              className="h-8 px-3 rounded-full bg-error-container/50 text-error font-label-sm text-label-sm flex items-center gap-1"
+              className="sm:ml-auto h-8 px-3 rounded-full text-error font-label-sm text-label-sm flex items-center gap-1 hover:bg-error-container/40"
             >
-              <Icon name="event_busy" className="text-[16px]" /> {isToday ? 'Not coming today' : 'Day off'}
+              <Icon name="event_busy" className="text-[16px]" /> {isToday ? 'Not coming today' : 'Mark day off'}
             </button>
           )}
         </div>
