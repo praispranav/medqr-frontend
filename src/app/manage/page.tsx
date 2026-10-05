@@ -6,6 +6,7 @@ import { api, type ManageOverview, type ShiftState } from '@/lib/api';
 import { Icon } from '@/components/patient/ui';
 import { StaffShell } from '@/components/staff/StaffShell';
 import { inr } from '@/components/staff/bits';
+import { WhatsAppIcon } from '@/components/team/ShareLinkCard';
 import { getQueueSocket } from '@/lib/socket';
 
 // Clinic admin — "Today" (Decision 14). One row per doctor: shift state, patients, money.
@@ -26,6 +27,19 @@ const SHIFT: Record<ShiftState, { label: string; cls: string }> = {
   not_started: { label: 'Not started', cls: 'bg-surface-container text-on-surface-variant' },
   ended: { label: 'Shift ended', cls: 'bg-surface-container text-on-surface-variant' },
 };
+
+/** wa.me click-to-chat to the doctor's own number with a polite "please set today's hours" note. */
+function hoursReminderHref(doctorName: string, mobile: string | null) {
+  const digits = (mobile ?? '').replace(/\D/g, '');
+  const number = digits.length === 10 ? `91${digits}` : digits;
+  const day = new Date().toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'Asia/Kolkata' });
+  const text = [
+    `Hello ${doctorName}, a gentle reminder: your consulting hours for today (${day}) aren't set on MedQR yet, so patients can't join your queue.`,
+    '',
+    `Please add today's hours, or mark today as off, here: ${window.location.origin}/doctor/hours`,
+  ].join('\n');
+  return `https://wa.me/${number}?text=${encodeURIComponent(text)}`;
+}
 
 const time = (iso: string | null) => (iso ? new Date(iso).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' }) : '');
 
@@ -115,6 +129,17 @@ function Today({ clinicName, doctorIds }: { clinicName: string; doctorIds: strin
                   <div className="min-w-[150px]">
                     <span className={`px-2.5 py-1 rounded-full font-label-sm text-label-sm ${shift.cls}`}>{shift.label}</span>
                     <p className="font-body-sm text-body-sm text-on-surface-variant mt-1">{since}</p>
+                    {d.needs_hours_today && (
+                      // Decision 21: from the admin's own WhatsApp — no template needed.
+                      <a
+                        href={hoursReminderHref(d.doctor_name, d.mobile)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-2 inline-flex items-center gap-1.5 h-8 px-3 rounded-full bg-[#25D366] text-white font-label-sm text-label-sm hover:opacity-90"
+                      >
+                        <WhatsAppIcon size={14} /> No hours today · Remind
+                      </a>
+                    )}
                   </div>
                   <div className="min-w-[140px] font-body-md text-body-md">
                     <p>

@@ -6,6 +6,7 @@ import { Icon } from '@/components/patient/ui';
 import { inr, STATUS_LABEL } from '@/components/staff/bits';
 import { PaymentLog } from '@/components/payments/PaymentLog';
 import { getQueueSocket } from '@/lib/socket';
+import { clinicToday } from '@/lib/clinicTime';
 
 // One day of payments for the logged-in clinic: totals by method, who still owes, and the full
 // append-only log (who marked what, QR created/abandoned/expired, online payments, undo, duplicates).
@@ -13,7 +14,7 @@ import { getQueueSocket } from '@/lib/socket';
 // admin ('owner' scope, Decision 14) also gets a doctor filter, per-doctor totals, the cash
 // handover per staff member and a CSV download.
 
-const todayUtc = () => new Date().toISOString().slice(0, 10); // backend "today" is the UTC date
+const todayUtc = () => clinicToday(); // clinic (India) date, same as the backend
 
 export function PaymentsReport({
   tenant,

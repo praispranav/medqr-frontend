@@ -4,8 +4,9 @@ import { useCallback, useEffect, useState } from 'react';
 import { api, type DoctorToday, type ShiftView, type Tenant } from '@/lib/api';
 import { DoctorStatusRow } from '@/components/patient/ui';
 import { StaffShell } from '@/components/staff/StaffShell';
-import { ScheduleEditor } from '@/components/schedule/ScheduleEditor';
+import { HoursEditor } from '@/components/schedule/HoursEditor';
 import { ShiftBar } from '@/components/staff/ShiftBar';
+import { HoursReminderBanner } from '@/components/staff/HoursReminderBanner';
 
 // Doctor portal — "My Hours": the PLANNED consulting hours (day by day) that patients see as
 // "From 5:00 PM" etc. (Decision 6). Actual shift and breaks are the one-tap ShiftBar — the same
@@ -21,6 +22,7 @@ export default function DoctorHoursPage() {
 
 function MyHours({ tenant, doctor, canChangeRules }: { tenant: Tenant; doctor: DoctorToday; canChangeRules: boolean }) {
   const [shift, setShift] = useState<ShiftView | null>(null);
+  const [editorKey, setEditorKey] = useState(0); // bumped after the banner marks a day off, to reload the week
 
   const refresh = useCallback(async () => {
     setShift(await api.doctorShift(doctor.id).catch(() => null));
@@ -37,11 +39,20 @@ function MyHours({ tenant, doctor, canChangeRules }: { tenant: Tenant; doctor: D
       <div>
         <h1 className="font-headline-lg text-headline-lg text-on-surface">My consulting hours</h1>
         <p className="font-body-md text-body-md text-on-surface-variant">
-          Plan your hours below. Start/End shift and breaks are one tap — here or on your queue screen.
+          Tap to add your hours for each day. Start/End shift and breaks are one tap — here or on your queue screen.
         </p>
       </div>
 
       <ShiftBar doctorId={doctor.id} shift={shift} hasPatientInCabin={false} onChanged={setShift} />
+      <HoursReminderBanner
+        doctorId={doctor.id}
+        linkToHours={false}
+        refreshKey={shift}
+        onChanged={() => {
+          refresh();
+          setEditorKey((k) => k + 1);
+        }}
+      />
 
       {shift && (
         <section className="bg-surface-container-lowest rounded-2xl p-5 shadow-sm flex flex-col gap-2">
@@ -58,16 +69,15 @@ function MyHours({ tenant, doctor, canChangeRules }: { tenant: Tenant; doctor: D
         </section>
       )}
 
-      <ScheduleEditor
-        title={doctor.name}
+      <HoursEditor
+        reloadKey={editorKey}
         onChanged={refresh}
         api={{
-          list: (date) => api.listSessions(doctor.id, date),
-          add: (body) => api.addSession(doctor.id, body),
-          repeat: (from, days) => api.repeatSessions(doctor.id, from, days),
+          week: (from) => api.hoursWeek(doctor.id, from),
+          setDay: (date, slots) => api.setHoursDay(doctor.id, date, slots),
+          daysOff: (from, to) => api.setDaysOff(doctor.id, from, to),
+          getWeeklyTemplate: () => api.getWeeklyTemplate(doctor.id),
           applyWeeklyTemplate: (weeks, template) => api.applyWeeklyTemplate(doctor.id, weeks, template),
-          setActive: (id, active) => api.setSessionActive(doctor.id, id, active),
-          remove: (id) => api.deleteSession(doctor.id, id),
         }}
       />
     </div>

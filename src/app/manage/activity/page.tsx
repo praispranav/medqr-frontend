@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api, type ActivityItem } from '@/lib/api';
 import { Icon } from '@/components/patient/ui';
 import { StaffShell } from '@/components/staff/StaffShell';
+import { clinicToday } from '@/lib/clinicTime';
 
 // Clinic admin — one timeline per day (Decision 14): payments, shifts & breaks, patients joining /
 // being called, and staff actions (logins, doctors/logins changed, queue rules changed).
@@ -16,7 +17,7 @@ export default function ManageActivityPage() {
   );
 }
 
-const todayUtc = () => new Date().toISOString().slice(0, 10); // backend "today" is the UTC date
+const todayUtc = () => clinicToday(); // clinic (India) date, same as the backend
 
 const KINDS: { key: ActivityItem['kind']; label: string; icon: string; cls: string }[] = [
   { key: 'payment', label: 'Payments', icon: 'currency_rupee', cls: 'bg-tertiary-fixed text-on-tertiary-fixed' },

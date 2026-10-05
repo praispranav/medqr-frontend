@@ -48,7 +48,7 @@ function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
   const [clinic, setClinic] = useState(params.get('clinic') ?? '');
-  const [username, setUsername] = useState('');
+  const [username, setUsername] = useState((params.get('username') ?? '').toLowerCase()); // set-password page links here prefilled
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -246,7 +246,7 @@ function LoginForm() {
           <span className="font-label-md text-label-md">Username</span>
           <input
             ref={usernameRef}
-            autoFocus
+            autoFocus={!params.get('username')}
             value={username}
             onChange={(e) => setUsername(e.target.value.toLowerCase())}
             autoCapitalize="none"
@@ -258,6 +258,7 @@ function LoginForm() {
           <span className="font-label-md text-label-md">Password</span>
           <input
             type="password"
+            autoFocus={!!params.get('username')}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             autoComplete="current-password"
@@ -271,7 +272,7 @@ function LoginForm() {
         >
           {busy ? 'Logging in…' : 'Log in'}
         </button>
-        <p className="font-body-sm text-body-sm text-outline">Forgot your password? Ask MedQR support to reset it.</p>
+        <p className="font-body-sm text-body-sm text-outline">Forgot your password? Ask your clinic admin to send you a new password link.</p>
       </form>
     </main>
   );

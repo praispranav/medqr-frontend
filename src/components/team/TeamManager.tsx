@@ -2,8 +2,10 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import type { AdminDoctor, StaffLogin } from '@/lib/adminApi';
-import { ScheduleEditor, type ScheduleApi } from '@/components/schedule/ScheduleEditor';
+import { HoursEditor, type HoursApi } from '@/components/schedule/HoursEditor';
 import { Icon } from '@/components/patient/ui';
+import type { StaffLinkResult } from '@/lib/api';
+import { ShareLinkCard, WhatsAppIcon, whatsappHref, type ShareTarget } from '@/components/team/ShareLinkCard';
 import { inr } from '@/components/staff/bits';
 
 // Doctors (+ their planned hours) and staff logins for one clinic. Shared by the platform admin
@@ -19,7 +21,7 @@ export interface TeamApi {
   createDoctor: (body: DoctorBody) => Promise<AdminDoctor>;
   updateDoctor: (id: string, body: DoctorBody) => Promise<unknown>;
   deleteDoctor: (id: string) => Promise<unknown>;
-  schedule: (doctorId: string) => ScheduleApi;
+  schedule: (doctorId: string) => HoursApi;
   users: () => Promise<StaffLogin[]>;
   /** A setup link is generated and returned once, here. */
   createUser: (body: {
@@ -29,10 +31,12 @@ export interface TeamApi {
     mobile_number: string;
     doctor_id: string | null;
     is_owner?: boolean;
-  }) => Promise<{ setup_link: string }>;
+  }) => Promise<StaffLinkResult>;
   updateUser: (id: string, body: { name?: string; is_active?: boolean; password?: string; mobile_number?: string | null; is_owner?: boolean }) => Promise<unknown>;
-  /** Generates a new setup link and sends it to the login's own WhatsApp number. */
-  resetPassword: (id: string) => Promise<{ sent: boolean; setup_link: string; error?: string }>;
+  /** Old password stops working; returns a set-password link for the admin to share (Decision 15). */
+  resetPassword: (id: string) => Promise<StaffLinkResult>;
+  /** A fresh setup link for a login that hasn't been set up yet (no change to the account). */
+  setupLink: (id: string) => Promise<StaffLinkResult>;
   deleteUser: (id: string) => Promise<unknown>;
   /** Platform admin only: create owner logins and make a doctor the clinic admin. */
   canGrantOwner: boolean;
@@ -165,7 +169,7 @@ export function DoctorsTab({ api }: { api: TeamApi }) {
       </section>
 
       {selected ? (
-        <ScheduleEditor
+        <HoursEditor
           key={selected.id}
           title={selected.name}
           api={api.schedule(selected.id)}
@@ -274,10 +278,9 @@ export function LoginsTab({ api, clinicCode }: { api: TeamApi; clinicCode: strin
   const [username, setUsername] = useState('');
   const [mobile, setMobile] = useState('');
   const [doctorId, setDoctorId] = useState('');
-  const [msg, setMsg] = useState<{ kind: 'ok' | 'error'; text: string; link?: string } | null>(null);
-  const [copied, setCopied] = useState(false);
-  const [resetLinks, setResetLinks] = useState<Record<string, string>>({});
-  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [msg, setMsg] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
+  // Decision 15: the link the admin should share right now (after create / reset).
+  const [share, setShare] = useState<ShareTarget | null>(null);
 
   const load = useCallback(async () => {
     const [u, d] = await Promise.all([api.users(), api.doctors()]);
@@ -292,9 +295,8 @@ export function LoginsTab({ api, clinicCode }: { api: TeamApi; clinicCode: strin
   const doctorName = (id: string | null) => doctors.find((d) => d.id === id)?.name ?? '—';
   const doctorsWithoutLogin = doctors.filter((d) => !logins?.some((l) => l.doctor_id === d.id));
 
-  const act = async <T,>(fn: () => Promise<T>, ok: string | ((result: T) => string | { text: string; link?: string })) => {
+  const act = async <T,>(fn: () => Promise<T>, ok: string | ((result: T) => string | { text: string })) => {
     setMsg(null);
-    setCopied(false);
     try {
       const result = await fn();
       await load();
@@ -316,6 +318,7 @@ export function LoginsTab({ api, clinicCode }: { api: TeamApi; clinicCode: strin
           doctor_id: role === 'doctor' ? doctorId : null,
           ...(api.canGrantOwner && role === 'doctor' && makeOwner ? { is_owner: true } : {}),
         });
+        setShare({ ...res, name, mobile, kind: 'invite' });
         setMakeOwner(false);
         setName('');
         setUsername('');
@@ -323,14 +326,16 @@ export function LoginsTab({ api, clinicCode }: { api: TeamApi; clinicCode: strin
         setDoctorId('');
         return res;
       },
-      (res) => ({
-        text: `Login “${username}” created. Share this setup link with them — they can use it within 24 hours to set their password. (If they have a mobile number, we also tried sending it to them via WhatsApp).`,
-        link: res.setup_link,
-      }),
+      () => `Login “${username}” created — share the link above with them.`,
     );
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-6">
+      {share && (
+        <div className="lg:col-span-2">
+          <ShareLinkCard target={share} onClose={() => setShare(null)} />
+        </div>
+      )}
       <section className="bg-surface-container-lowest rounded-2xl shadow-sm overflow-hidden self-start">
         <div className="px-5 pt-5 pb-3">
           <h2 className="font-headline-sm text-headline-sm">Who can log in</h2>
@@ -357,12 +362,12 @@ export function LoginsTab({ api, clinicCode }: { api: TeamApi; clinicCode: strin
                 {l.role === 'doctor' ? `Doctor · ${doctorName(l.doctor_id)}` : l.role === 'owner' ? 'Clinic admin (not a doctor)' : 'Reception'}
                 {' · '}
                 {l.is_active ? (l.last_login_at ? `last login ${new Date(l.last_login_at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}` : 'never logged in') : 'deactivated'}
-                {l.must_change_password && ' · password not yet set by them'}
+                {l.must_change_password && ' · not set up yet'}
               </p>
               {(api.canGrantOwner || (!l.is_owner && l.id !== api.currentUserId)) ? (
                 <button
                   onClick={() => {
-                    const num = window.prompt(`Mobile number for @${l.username} (used to send WhatsApp password resets):`, l.mobile_number ?? '');
+                    const num = window.prompt(`Mobile number for @${l.username} (used by the Share on WhatsApp button):`, l.mobile_number ?? '');
                     if (num !== null) act(() => api.updateUser(l.id, { mobile_number: num.trim() || null }), `Mobile number updated for @${l.username}.`);
                   }}
                   className="font-body-sm text-body-sm text-primary text-left"
@@ -387,13 +392,37 @@ export function LoginsTab({ api, clinicCode }: { api: TeamApi; clinicCode: strin
               </button>
             )}
             {(api.canGrantOwner || (!l.is_owner && l.id !== api.currentUserId)) && (<>
+            {l.must_change_password && l.is_active && (
+              <button
+                onClick={async () => {
+                  // Open the tab now (inside the click) so the browser doesn't block it, then point it at WhatsApp.
+                  const win = window.open('about:blank', '_blank');
+                  try {
+                    const res = await api.setupLink(l.id);
+                    const target: ShareTarget = { ...res, name: l.name, mobile: l.mobile_number ?? null, kind: 'invite' };
+                    setShare(target);
+                    setMsg(null);
+                    if (win) win.location.href = whatsappHref(target);
+                    else window.scrollTo({ top: 0, behavior: 'smooth' });
+                  } catch (e) {
+                    win?.close();
+                    setMsg({ kind: 'error', text: (e as Error).message });
+                  }
+                }}
+                title="Send them a fresh setup link from your WhatsApp"
+                className="h-9 px-3 rounded-lg bg-[#25D366] text-white font-label-md text-label-md flex items-center gap-1.5 hover:opacity-90"
+              >
+                <WhatsAppIcon size={16} /> Share on WhatsApp
+              </button>
+            )}
             <button
               onClick={async () => {
-                if (!window.confirm(`Generate a new password for @${l.username} and send it to their WhatsApp? They will be signed out everywhere.`)) return;
+                if (!window.confirm(`Reset @${l.username}'s password? Their current password stops working right away and they're signed out. You'll get a link to send them.`)) return;
                 try {
                   const res = await api.resetPassword(l.id);
-                  setResetLinks((prev) => ({ ...prev, [l.id]: res.setup_link }));
-                  setMsg({ kind: 'ok', text: res.sent ? `Setup link sent to @${l.username}’s WhatsApp.` : `Couldn’t send via WhatsApp. Copy the setup link directly.` });
+                  setShare({ ...res, name: l.name, mobile: l.mobile_number ?? null, kind: 'reset' });
+                  setMsg(null);
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
                 } catch (e) {
                   setMsg({ kind: 'error', text: (e as Error).message });
                 }
@@ -402,23 +431,6 @@ export function LoginsTab({ api, clinicCode }: { api: TeamApi; clinicCode: strin
             >
               Reset password
             </button>
-            {resetLinks[l.id] && (
-              <button
-                onClick={async () => {
-                  try {
-                    await navigator.clipboard.writeText(resetLinks[l.id]);
-                    setCopiedId(l.id);
-                    setTimeout(() => setCopiedId(null), 2000);
-                  } catch {
-                    /* fallback */
-                  }
-                }}
-                className="h-9 px-3 rounded-lg bg-primary text-on-primary font-label-md text-label-md flex items-center gap-1"
-              >
-                <Icon name={copiedId === l.id ? 'check' : 'content_copy'} className="text-[16px]" />
-                {copiedId === l.id ? 'Copied link' : 'Copy link'}
-              </button>
-            )}
             <button
               onClick={() => act(() => api.updateUser(l.id, { is_active: !l.is_active }), l.is_active ? `@${l.username} can no longer log in.` : `@${l.username} can log in again.`)}
               className="h-9 px-3 rounded-lg bg-surface-container-low font-label-md text-label-md text-on-surface-variant"
@@ -516,7 +528,7 @@ export function LoginsTab({ api, clinicCode }: { api: TeamApi; clinicCode: strin
           </label>
         ))}
         <p className="font-body-sm text-body-sm text-on-surface-variant -mt-1">
-          A setup link will be generated for them to choose their own password. Their mobile number is where this link will be sent, via WhatsApp.
+          No password to type — you get a link to send them (one tap opens your WhatsApp to their number). They set their own password from it.
         </p>
         <button
           disabled={!name.trim() || !username || mobile.replace(/\D/g, '').length < 10 || (role === 'doctor' && !doctorId)}
@@ -527,27 +539,6 @@ export function LoginsTab({ api, clinicCode }: { api: TeamApi; clinicCode: strin
         {msg && (
           <div className="flex flex-col gap-2">
             <p className={`font-body-sm text-body-sm ${msg.kind === 'ok' ? 'text-tertiary' : 'text-error'}`}>{msg.text}</p>
-            {msg.link && (
-              <div className="flex items-center gap-2 bg-surface-container-low rounded-lg pl-3 pr-1.5 py-1.5">
-                <code className="flex-1 min-w-0 font-body-sm text-body-sm text-on-surface break-all select-all">{msg.link}</code>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    try {
-                      await navigator.clipboard.writeText(msg.link!);
-                      setCopied(true);
-                      setTimeout(() => setCopied(false), 2000);
-                    } catch {
-                      /* clipboard blocked (e.g. no HTTPS/permission) — the link text is select-all, copy it manually */
-                    }
-                  }}
-                  className="h-8 px-3 rounded-md bg-primary text-on-primary font-label-sm text-label-sm shrink-0 flex items-center gap-1"
-                >
-                  <Icon name={copied ? 'check' : 'content_copy'} className="text-[16px]" />
-                  {copied ? 'Copied' : 'Copy'}
-                </button>
-              </div>
-            )}
           </div>
         )}
       </form>

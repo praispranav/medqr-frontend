@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { StaffShell } from '@/components/staff/StaffShell';
 import { api, ApiError, type DoctorToday, type Tenant } from '@/lib/api';
 import { Icon, DoctorAvatar } from '@/components/patient/ui';
-import { IntakeBuilder, type IntakeField } from '@/components/staff/IntakeBuilder';
+import { ClinicDetails } from '@/components/clinic/ClinicDetails';
 
 // A doctor's own public directory profile (medqr.in/doctors) — self-service, no admin needed. Every
 // doctor can edit their own listing regardless of being the clinic admin; the clinic as a whole still
@@ -13,7 +13,15 @@ import { IntakeBuilder, type IntakeField } from '@/components/staff/IntakeBuilde
 export default function DoctorProfilePage() {
   return (
     <StaffShell variant="doctor" active="/doctor/profile">
-      {({ doctor, tenant, refreshTenant }) => (doctor ? <ProfileForm doctor={doctor} tenant={tenant} onSaved={refreshTenant} /> : null)}
+      {({ doctor, tenant, refreshTenant, me }) =>
+        doctor ? (
+          <div className="max-w-2xl flex flex-col gap-6 pb-10">
+            <ProfileForm doctor={doctor} tenant={tenant} onSaved={refreshTenant} />
+            {/* Address & listing moved here from Queue Rules; editable by the solo doctor or clinic admin (Decision 14). */}
+            <ClinicDetails key={tenant.id} tenant={tenant} onSaved={refreshTenant} canEdit={me.user.can_manage_clinic} />
+          </div>
+        ) : null
+      }
     </StaffShell>
   );
 }
@@ -24,10 +32,6 @@ function ProfileForm({ doctor, tenant, onSaved }: { doctor: DoctorToday; tenant:
   const [specialty, setSpecialty] = useState(doctor.specialty ?? '');
   const [bio, setBio] = useState(doctor.bio ?? '');
   const [listed, setListed] = useState(!!doctor.is_publicly_listed);
-  const [intakeSchema, setIntakeSchema] = useState<IntakeField[]>(doctor.intake_schema || []);
-  const [notifyTokenConfirmed, setNotifyTokenConfirmed] = useState(doctor.notify_token_confirmed ?? true);
-  const [notifyYouAreNext, setNotifyYouAreNext] = useState(doctor.notify_you_are_next ?? true);
-  const [notifyYourTurn, setNotifyYourTurn] = useState(doctor.notify_your_turn ?? true);
   const [notifyLocationOverride, setNotifyLocationOverride] = useState(doctor.notify_location_override ?? '');
   const [state, setState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [error, setError] = useState<string | null>(null);
@@ -38,10 +42,6 @@ function ProfileForm({ doctor, tenant, onSaved }: { doctor: DoctorToday; tenant:
     specialty !== (doctor.specialty ?? '') ||
     bio !== (doctor.bio ?? '') ||
     listed !== !!doctor.is_publicly_listed ||
-    JSON.stringify(intakeSchema) !== JSON.stringify(doctor.intake_schema || []) ||
-    notifyTokenConfirmed !== (doctor.notify_token_confirmed ?? true) ||
-    notifyYouAreNext !== (doctor.notify_you_are_next ?? true) ||
-    notifyYourTurn !== (doctor.notify_your_turn ?? true) ||
     notifyLocationOverride !== (doctor.notify_location_override ?? '');
 
   const save = async () => {
@@ -53,11 +53,7 @@ function ProfileForm({ doctor, tenant, onSaved }: { doctor: DoctorToday; tenant:
         qualification, 
         specialty, 
         bio, 
-        is_publicly_listed: listed, 
-        intake_schema: intakeSchema,
-        notify_token_confirmed: notifyTokenConfirmed,
-        notify_you_are_next: notifyYouAreNext,
-        notify_your_turn: notifyYourTurn,
+        is_publicly_listed: listed,
         notify_location_override: notifyLocationOverride,
       });
       await onSaved();
@@ -69,7 +65,7 @@ function ProfileForm({ doctor, tenant, onSaved }: { doctor: DoctorToday; tenant:
   };
 
   return (
-    <div className="max-w-2xl flex flex-col gap-6 pb-10">
+    <div className="flex flex-col gap-6">
       <div>
         <span className="px-2.5 py-1 rounded-full bg-primary-fixed/50 text-on-primary-fixed-variant font-label-sm text-label-sm uppercase">
           medqr.in/doctors
@@ -184,6 +180,17 @@ function ProfileForm({ doctor, tenant, onSaved }: { doctor: DoctorToday; tenant:
           </Link>
         )}
 
+        <label className="flex flex-col gap-1">
+          <span className="font-label-sm text-label-sm text-on-surface-variant">Where patients find you (optional)</span>
+          <input
+            value={notifyLocationOverride}
+            onChange={(e) => setNotifyLocationOverride(e.target.value)}
+            placeholder={doctor.cabin_label ? `e.g. ${doctor.cabin_label}, 1st floor` : 'e.g. Room 101, 1st floor'}
+            className="h-11 rounded-lg bg-surface-container-low px-3 font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-primary/30"
+          />
+          <span className="font-body-sm text-body-sm text-on-surface-variant">Used in the “You are next” message instead of your cabin name.</span>
+        </label>
+
         {error && <p className="font-body-sm text-body-sm text-error">{error}</p>}
         <div className="flex items-center gap-3">
           <button
@@ -198,102 +205,7 @@ function ProfileForm({ doctor, tenant, onSaved }: { doctor: DoctorToday; tenant:
         </div>
       </section>
 
-      <section className="bg-surface-container-lowest rounded-2xl p-5 shadow-sm flex flex-col gap-4">
-        <div>
-          <h2 className="font-headline-sm text-headline-sm text-on-surface">Custom Intake Form</h2>
-          <p className="font-body-sm text-body-sm text-on-surface-variant">Ask patients for specific information when they join your queue.</p>
-        </div>
-        <IntakeBuilder schema={intakeSchema} onChange={setIntakeSchema} />
-        
-        {error && <p className="font-body-sm text-body-sm text-error">{error}</p>}
-        <div className="flex items-center gap-3">
-          <button
-            disabled={!dirty || state === 'saving'}
-            onClick={save}
-            className="h-11 px-5 rounded-xl bg-primary text-on-primary font-label-lg text-label-lg flex items-center gap-2 disabled:opacity-40"
-          >
-            <Icon name="save" className="text-[20px]" />
-            {state === 'saving' ? 'Saving…' : 'Save intake form'}
-          </button>
-          {state === 'saved' && !dirty && <p className="font-body-sm text-body-sm text-tertiary">Saved ✓</p>}
-        </div>
-      </section>
 
-      <section className="bg-surface-container-lowest rounded-2xl p-5 shadow-sm flex flex-col gap-4">
-        <div>
-          <h2 className="font-headline-sm text-headline-sm text-on-surface">WhatsApp Message Controls</h2>
-          <p className="font-body-sm text-body-sm text-on-surface-variant">Manage the automated messages sent to your patients.</p>
-        </div>
-        
-        <label className="flex items-center justify-between gap-3">
-          <div>
-            <p className="font-label-lg text-label-lg">Notify when token confirmed</p>
-            <p className="font-body-sm text-body-sm text-on-surface-variant">Send a message when a patient joins your queue.</p>
-          </div>
-          <button
-            role="switch"
-            aria-checked={notifyTokenConfirmed}
-            onClick={() => setNotifyTokenConfirmed((v) => !v)}
-            className={`w-14 h-8 rounded-full p-1 transition-colors shrink-0 ${notifyTokenConfirmed ? 'bg-primary' : 'bg-surface-container-high'}`}
-          >
-            <span className={`block w-6 h-6 rounded-full bg-white shadow transition-transform ${notifyTokenConfirmed ? 'translate-x-6' : ''}`} />
-          </button>
-        </label>
-
-        <label className="flex items-center justify-between gap-3">
-          <div>
-            <p className="font-label-lg text-label-lg">Notify &quot;You are next&quot;</p>
-            <p className="font-body-sm text-body-sm text-on-surface-variant">Send a message when they are the next patient.</p>
-          </div>
-          <button
-            role="switch"
-            aria-checked={notifyYouAreNext}
-            onClick={() => setNotifyYouAreNext((v) => !v)}
-            className={`w-14 h-8 rounded-full p-1 transition-colors shrink-0 ${notifyYouAreNext ? 'bg-primary' : 'bg-surface-container-high'}`}
-          >
-            <span className={`block w-6 h-6 rounded-full bg-white shadow transition-transform ${notifyYouAreNext ? 'translate-x-6' : ''}`} />
-          </button>
-        </label>
-
-        <label className="flex items-center justify-between gap-3">
-          <div>
-            <p className="font-label-lg text-label-lg">Notify &quot;It&apos;s your turn&quot;</p>
-            <p className="font-body-sm text-body-sm text-on-surface-variant">Send a message when it is their turn.</p>
-          </div>
-          <button
-            role="switch"
-            aria-checked={notifyYourTurn}
-            onClick={() => setNotifyYourTurn((v) => !v)}
-            className={`w-14 h-8 rounded-full p-1 transition-colors shrink-0 ${notifyYourTurn ? 'bg-primary' : 'bg-surface-container-high'}`}
-          >
-            <span className={`block w-6 h-6 rounded-full bg-white shadow transition-transform ${notifyYourTurn ? 'translate-x-6' : ''}`} />
-          </button>
-        </label>
-
-        <label className="flex flex-col gap-1">
-          <span className="font-label-sm text-label-sm text-on-surface-variant">Location Override (Optional)</span>
-          <input
-            value={notifyLocationOverride}
-            onChange={(e) => setNotifyLocationOverride(e.target.value)}
-            placeholder="e.g. Room 101"
-            className="h-11 rounded-lg bg-surface-container-low px-3 font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-primary/30"
-          />
-          <p className="font-body-sm text-body-sm text-on-surface-variant">Override the cabin label used in the &quot;You are next&quot; message.</p>
-        </label>
-
-        {error && <p className="font-body-sm text-body-sm text-error">{error}</p>}
-        <div className="flex items-center gap-3">
-          <button
-            disabled={!dirty || state === 'saving'}
-            onClick={save}
-            className="h-11 px-5 rounded-xl bg-primary text-on-primary font-label-lg text-label-lg flex items-center gap-2 disabled:opacity-40"
-          >
-            <Icon name="save" className="text-[20px]" />
-            {state === 'saving' ? 'Saving…' : 'Save message settings'}
-          </button>
-          {state === 'saved' && !dirty && <p className="font-body-sm text-body-sm text-tertiary">Saved ✓</p>}
-        </div>
-      </section>
     </div>
   );
 }

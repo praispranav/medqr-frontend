@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { QRCodeSVG } from 'qrcode.react';
 import { api, type PatientPaymentStatus, type TokenStatusView } from '@/lib/api';
 import { getQueueSocket } from '@/lib/socket';
+import { QrScanner } from '@/components/staff/QrScanner';
 import { FullPageMessage, Icon, LoadingPage, PatientHeader } from '@/components/patient/ui';
 
 // Screen #3 — Live Queue / Token Tracking. Ported from
@@ -31,6 +32,8 @@ function countdownTo(hm: string, now: Date) {
 export default function LiveQueuePage() {
   const { tokenId } = useParams<{ tokenId: string }>();
   const [view, setView] = useState<TokenStatusView | null>(null);
+  const [scanning, setScanning] = useState(false); // Decision 21: arrival QR scanner open
+  const [arriveError, setArriveError] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [now, setNow] = useState(() => new Date());
   
@@ -61,7 +64,7 @@ export default function LiveQueuePage() {
         newTokens = newTokens.sort((a, b) => b.timestamp - a.timestamp).slice(0, 10);
         localStorage.setItem('medqr_patient_tokens', JSON.stringify(newTokens));
         
-        setStoredTokens(newTokens.filter(t => t.id !== tokenId && t.status !== 'done' && t.status !== 'no_show'));
+        setStoredTokens(newTokens.filter(t => t.id !== tokenId && t.status !== 'done' && t.status !== 'no_show' && t.status !== 'expired'));
       } catch(e) {}
     }
   }, [view, tokenId]);
@@ -137,7 +140,7 @@ export default function LiveQueuePage() {
   }, [view, refresh]);
 
   if (notFound)
-    return <FullPageMessage icon="confirmation_number" title="Token not found" body="This link may have expired. Please ask the reception desk." />;
+    return <FullPageMessage icon="confirmation_number" title="Token not found" body="This link may have expired. Please ask the clinic staff." />;
   if (!view) return <LoadingPage />;
 
   const { doctor, clinic } = view;
@@ -225,6 +228,29 @@ export default function LiveQueuePage() {
   // ---------- Finished / missed ----------
   const payUrl = `/patient/${clinic.subdomain}/payment?token=${tokenId}`;
 
+  // A token is only good for its own day — anything left over is closed at clinic midnight.
+  if (view.status === 'expired') {
+    return (
+      <>
+        {header}
+        <main className="min-h-screen w-full max-w-[480px] mx-auto pt-16 flex flex-col items-center justify-center text-center px-6 gap-3 bg-surface">
+          <div className="w-14 h-14 rounded-full flex items-center justify-center bg-surface-container text-on-surface-variant">
+            <Icon name="event_busy" className="text-[28px]" />
+          </div>
+          <h1 className="font-headline-md text-headline-md text-on-surface">This token has expired</h1>
+          <p className="font-body-md text-body-md text-on-surface-variant max-w-xs">
+            Token #{view.token_number} was for an earlier day and wasn&apos;t used. Tokens are valid only on the day they&apos;re issued.
+          </p>
+          <div className="w-full max-w-xs mt-3">
+            <Link href={`/patient/${clinic.subdomain}`} className="w-full h-12 bg-primary text-on-primary rounded-xl font-label-lg text-label-lg flex items-center justify-center">
+              Get a new token
+            </Link>
+          </div>
+        </main>
+      </>
+    );
+  }
+
   if (view.status === 'done' || view.status === 'no_show') {
     const done = view.status === 'done';
     return (
@@ -244,7 +270,7 @@ export default function LiveQueuePage() {
           <p className="font-body-md text-body-md text-on-surface-variant max-w-xs">
             {done
               ? `Thank you for visiting ${clinic.name}. Get well soon!`
-              : 'Your turn was called while you were away. Please speak to the reception desk.'}
+              : `Your turn was called while you were away. Please speak to ${view.front_desk ? 'the reception desk' : 'the clinic staff'}.`}
           </p>
           {done && pay && <div className="w-full max-w-xs mt-3"><PaymentCard pay={pay} payUrl={payUrl} afterVisit /></div>}
           <div className="w-full max-w-xs mt-3">
@@ -258,6 +284,11 @@ export default function LiveQueuePage() {
   }
 
   const verified = view.status === 'waiting_in_clinic' || view.status === 'checked_in_early';
+  // Decision 19: no reception desk → nobody verifies arrival; the doctor calls patients directly.
+  const noDesk = !view.front_desk;
+  // Decision 21: no desk, but the patient confirms arrival by scanning the clinic's arrival QR.
+  const arrivalScan = noDesk && view.arrival_scan && !view.is_future_booking;
+  const arrived = verified || (noDesk && !arrivalScan);
   // Pre-session = the doctor hasn't actually started (Start shift, or hours in auto mode) — Decision 7.
   const preSession = view.doctor_state.state === 'not_started';
   const plannedStart = view.session_starts_at;
@@ -301,7 +332,7 @@ export default function LiveQueuePage() {
             <div className="w-full bg-error-container/60 text-on-error-container p-space-sm px-space-md rounded-xl flex items-center gap-space-sm shadow-sm">
               <Icon name="info" className="text-error text-[22px] flex-shrink-0" />
               <p className="font-body-sm text-body-sm leading-tight flex-1">
-                {doctor.name} has finished for today. Please speak to the reception desk.
+                {doctor.name} has finished for today. Please speak to {view.front_desk ? 'the reception desk' : 'the clinic staff'}.
               </p>
             </div>
           )}
@@ -434,6 +465,49 @@ export default function LiveQueuePage() {
           )}
 
           {/* Visit progress */}
+          {arrivalScan && !verified && (
+            <div className="w-full bg-primary-fixed/25 ring-2 ring-primary/30 rounded-2xl p-space-md flex flex-col gap-3">
+              <div className="flex items-start gap-3">
+                <Icon name="qr_code_scanner" className="text-[28px] text-primary" />
+                <div>
+                  <p className="font-label-lg text-label-lg text-on-surface">At the clinic? Confirm you’ve arrived</p>
+                  <p className="font-body-sm text-body-sm text-on-surface-variant">
+                    Scan the <strong>Arrival QR</strong> poster at the clinic. The doctor can call you only after this.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setArriveError(null);
+                  setScanning(true);
+                }}
+                className="w-full h-12 bg-primary text-on-primary rounded-xl font-label-lg text-label-lg flex items-center justify-center gap-2"
+              >
+                <Icon name="photo_camera" className="text-[20px]" /> I’ve arrived — scan the QR
+              </button>
+              {arriveError && <p className="font-body-sm text-body-sm text-error">{arriveError}</p>}
+            </div>
+          )}
+          {scanning && (
+            <QrScanner
+              onClose={() => setScanning(false)}
+              onScan={async (value) => {
+                setScanning(false);
+                let code = value.trim();
+                try {
+                  code = new URL(code).searchParams.get('c') ?? code; // the poster encodes …/arrive?c=<code>
+                } catch {
+                  /* a bare code */
+                }
+                try {
+                  await api.arriveByScan(tokenId, code);
+                  await refresh();
+                } catch (e) {
+                  setArriveError(e instanceof Error ? e.message : 'Could not confirm your arrival');
+                }
+              }}
+            />
+          )}
           <div className="w-full bg-surface-container-lowest rounded-2xl p-space-md shadow-sm">
             <div className="flex items-center justify-between mb-4">
               <h4 className="font-headline-sm text-headline-sm text-on-surface">Visit progress</h4>
@@ -444,14 +518,30 @@ export default function LiveQueuePage() {
             <div className="relative flex flex-col space-y-5 pl-2">
               <div className="absolute left-6 top-3 bottom-3 w-0.5 bg-surface-container-high z-0" />
               <Step state="done" icon="check" title="Token booked" subtitle="Your place in line is saved" />
+              {arrivalScan ? (
+                <Step
+                  state={verified ? 'done' : 'active'}
+                  icon={verified ? 'check' : 'qr_code_scanner'}
+                  title={verified ? 'Arrival confirmed' : 'Confirm you’ve arrived'}
+                  subtitle={verified ? 'Please wait nearby — the doctor will call your number' : 'When you reach the clinic, scan the Arrival QR poster'}
+                />
+              ) : noDesk ? (
+                <Step
+                  state="done"
+                  icon="check"
+                  title="No check-in needed"
+                  subtitle="The doctor calls you directly — please wait near the cabin, within calling range"
+                />
+              ) : (
+                <Step
+                  state={verified ? 'done' : 'active'}
+                  icon={verified ? 'check' : 'how_to_reg'}
+                  title={verified ? 'Verified at reception' : 'Check in at reception'}
+                  subtitle={verified ? 'Please wait in the lobby, within calling range' : `Show Token #${view.token_number} at the desk when you arrive`}
+                />
+              )}
               <Step
-                state={verified ? 'done' : 'active'}
-                icon={verified ? 'check' : 'how_to_reg'}
-                title={verified ? 'Verified at reception' : 'Check in at reception'}
-                subtitle={verified ? 'Please wait in the lobby, within calling range' : `Show Token #${view.token_number} at the desk when you arrive`}
-              />
-              <Step
-                state={verified && !preSession ? 'active' : 'upcoming'}
+                state={arrived && !preSession ? 'active' : 'upcoming'}
                 icon="stethoscope"
                 title={`Consultation · ${doctor.cabin_label ?? doctor.name}`}
                 subtitle={[doctor.name, doctor.qualification].filter(Boolean).join(', ')}
@@ -469,7 +559,7 @@ export default function LiveQueuePage() {
               <p style={{ fontSize: 48, fontWeight: 800, color: '#005c55', lineHeight: 1 }}>#{view.token_number}</p>
               
               <div style={{ margin: '20px 0 12px', padding: 12, border: '2px solid #cfe9e5', borderRadius: 20 }}>
-                {verified ? (
+                {arrived ? (
                   <div style={{ padding: '20px 0', display: 'flex', justifyContent: 'center' }}>
                     <Icon name="check_circle" className="text-[80px] text-primary" fill />
                   </div>
@@ -478,9 +568,15 @@ export default function LiveQueuePage() {
                 )}
               </div>
               <p style={{ fontSize: 13, fontWeight: 700, color: '#0f766e' }}>
-                {verified ? 'Verified at reception' : 'Scan at reception to verify arrival'}
+                {arrivalScan && !verified
+                  ? 'Scan the clinic’s Arrival QR when you get there'
+                  : noDesk
+                    ? 'Wait for the doctor to call your number'
+                    : verified
+                      ? 'Verified at reception'
+                      : 'Scan at reception to verify arrival'}
               </p>
-              {!verified && (
+              {!arrived && (
                 <p style={{ fontSize: 11, color: '#3e4947', marginTop: 8, textTransform: 'uppercase' }}>
                   ID: {tokenId.split('-')[0]}
                 </p>

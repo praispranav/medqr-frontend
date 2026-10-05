@@ -40,6 +40,8 @@ const NAV: Record<Variant, NavItem[]> = {
     { href: '/doctor/profile', label: 'Public Profile', icon: 'badge' },
     { label: 'Settings', isCategory: true },
     { href: '/doctor/settings', label: 'Queue Rules', icon: 'tune', managersOnly: true },
+    { href: '/doctor/notifications', label: 'Patient Notifications', icon: 'notifications_active' },
+    { href: '/doctor/intake-form', label: 'Intake Form', icon: 'assignment' },
     { href: '/doctor/qr-poster', label: 'QR Standee', icon: 'qr_code_2' },
     { href: '/doctor/billing', label: 'Billing & Add-ons', icon: 'account_balance_wallet', managersOnly: true },
   ],
@@ -53,6 +55,7 @@ const NAV: Record<Variant, NavItem[]> = {
     { href: '/manage/activity', label: 'Activity', icon: 'history' },
     { href: '/manage/team', label: 'Doctors & Staff', icon: 'group' },
     { href: '/manage/qr', label: 'QR Standees', icon: 'qr_code_2' },
+    { href: '/manage/clinic', label: 'Clinic Profile', icon: 'apartment' },
     { href: '/manage/settings', label: 'Queue Rules', icon: 'tune' },
     { href: '/manage/billing', label: 'Billing & Add-ons', icon: 'account_balance_wallet' },
   ],
@@ -61,7 +64,7 @@ const NAV: Record<Variant, NavItem[]> = {
 const ROLE_LABEL: Record<Me['user']['role'], string> = { doctor: 'Doctor', reception: 'Reception', owner: 'Clinic admin' };
 
 // Decision 18: the public read-only demo never shows payments or admin-ish config screens.
-const DEMO_HIDDEN_HREFS = new Set(['/doctor/payments', '/doctor/settings', '/doctor/billing', '/doctor/profile', '/reception/payments']);
+const DEMO_HIDDEN_HREFS = new Set(['/doctor/payments', '/doctor/settings', '/doctor/billing', '/doctor/profile', '/doctor/notifications', '/doctor/intake-form', '/reception/payments']);
 
 function navFor(variant: Variant, me: Me, isDemo: boolean): NavItem[] {
   let items: NavItem[];

@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { Suspense, useEffect, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { api, ApiError, patientDevice, type DoctorToday, type Patient, type Tenant } from '@/lib/api';
-import { DoctorAvatar, FullPageMessage, Icon, initials, LoadingPage } from '@/components/patient/ui';
+import { DoctorAvatar, FullPageMessage, Icon, initials, LoadingPage, nextSessionLabel } from '@/components/patient/ui';
 import { CustomIntakeForm } from '@/components/patient/CustomIntakeForm';
 
 // Screen #1 (returning 1-tap / new patient) + Screen #2 (intake details), on one page. Ported from
@@ -95,7 +95,10 @@ function IntakeForm() {
           const doctors = await api.getDoctorsToday(t.id);
           d = doctors.find((x) => x.id === doctorId);
           if (!d) return setLoadError(true);
-          if (d.today_status === 'off_today') return setOffToday({ name: d.name, detail: d.today_status_detail });
+          // A doctor's own QR lands here directly, so check today's status (Decision 6).
+          if (d.today_status === 'off_today') {
+            return setOffToday({ name: d.name, detail: d.next_session ? `Next consulting: ${nextSessionLabel(d.next_session)}` : d.today_status_detail });
+          }
         }
         setTenant(t);
         setDoctor(d);
@@ -155,7 +158,7 @@ function IntakeForm() {
       <FullPageMessage
         icon="event_busy"
         title={`${offToday.name} is not consulting today`}
-        body={`${offToday.detail}. Please check with the reception desk.`}
+        body={`${offToday.detail}. Tokens can be taken on the day the doctor is consulting.`}
       />
     );
   if (!tenant || !doctor || phoneState === 'checking') return <LoadingPage />;

@@ -10,7 +10,7 @@ import { clinicFromHost } from '@/lib/clinicHost';
 // login pre-fills that clinic's code), and
 // the main domain is not affected at all — the clinic QR printed from the doctor portal keeps working.
 
-const PATIENT_PATHS = /^\/(?:$|intake$|select-doctor$|payment$|queue\/[^/]+$)/;
+const PATIENT_PATHS = /^\/(?:$|intake$|select-doctor$|payment$|arrive$|queue\/[^/]+$)/;
 
 export function middleware(req: NextRequest) {
   const sub = clinicFromHost(req.headers.get('host') ?? '');

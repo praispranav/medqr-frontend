@@ -92,6 +92,8 @@ export interface QueueSettings {
   advance_booking_days?: number;
   /** Decision 19 */
   front_desk_verifies_arrivals?: boolean;
+  /** Decision 21: with no front desk, patients confirm arrival by scanning the clinic's arrival QR. */
+  arrival_scan_required?: boolean;
   late_arrival_priority?: 'keep_position' | 'insert_after_n' | 'back_of_queue';
   late_arrival_insert_after?: number;
 }
@@ -126,6 +128,12 @@ export interface Tenant {
 /** Decision 6 — today-only, four states. */
 export type DoctorTodayStatus = 'available' | 'on_break' | 'starts_later_today' | 'off_today';
 
+export interface NextSession {
+  date: string;
+  starts_at: string;
+  bookable: boolean;
+}
+
 export interface DoctorToday {
   id: string;
   name: string;
@@ -135,6 +143,8 @@ export interface DoctorToday {
   photo_url: string | null;
   today_status: DoctorTodayStatus;
   today_status_detail: string;
+  /** Decision 6 (amended): off-today doctors only — their next planned session; bookable only inside the advance-booking window. */
+  next_session?: NextSession | null;
   bio?: string | null;
   is_publicly_listed?: boolean;
   intake_schema?: any;
@@ -244,7 +254,7 @@ export interface PaymentReport {
   events: PaymentEvent[];
 }
 
-export type TokenStatus = 'booked' | 'waiting_in_clinic' | 'checked_in_early' | 'in_consultation' | 'done' | 'no_show';
+export type TokenStatus = 'booked' | 'waiting_in_clinic' | 'checked_in_early' | 'in_consultation' | 'done' | 'no_show' | 'expired';
 
 export interface TokenStatusView {
   id: string;
@@ -262,6 +272,10 @@ export interface TokenStatusView {
   /** Decision 17 — booked for a future date, not today; there's no live shift state yet. */
   is_future_booking: boolean;
   booking_date: string | null;
+  /** Decision 19: false when the clinic runs without a reception desk. */
+  front_desk: boolean;
+  /** Decision 21: confirm arrival by scanning the clinic's arrival QR. */
+  arrival_scan: boolean;
 }
 
 /** Decision 17 — one bookable future day: the doctors who actually have a scheduled session on it. */
@@ -287,6 +301,35 @@ export interface ShiftView {
   /** Decision 16: manual mode, not started, running late — "I'll start by…" (30 min per tap). */
   delayed_until: string | null;
   can_delay: boolean;
+}
+
+/** One consulting (or break) block on a day, as My Hours edits it. */
+export interface HoursSlot {
+  starts_at: string; // 'HH:MM'
+  ends_at: string;
+  is_break: boolean;
+}
+
+/** Seven days of a doctor's hours, for the My Hours week view. `off` = deliberately off (not just unset). */
+export interface HoursWeek {
+  today: string;
+  days: { date: string; off: boolean; sessions: DoctorSession[] }[];
+}
+
+/** Reminder banner: does today / tomorrow have consulting hours, and is the doctor deliberately off? */
+export interface HoursStatus {
+  today: { date: string; has_hours: boolean; off: boolean };
+  tomorrow: { date: string; has_hours: boolean; off: boolean };
+}
+
+/** Decision 21: the clinic's one arrival QR. */
+export interface ArrivalQr {
+  code: string;
+  url: string;
+  clinic_name: string;
+  subdomain: string;
+  /** Front desk off and arrival scan on — patients must scan it. */
+  required: boolean;
 }
 
 export interface DoctorSession {
@@ -448,6 +491,9 @@ export interface ManageOverview {
   doctors: {
     doctor_id: string;
     doctor_name: string;
+    /** Decision 21: no consulting hours today and not deliberately off — nudge them. */
+    needs_hours_today: boolean;
+    mobile: string | null;
     specialty: string | null;
     cabin_label: string | null;
     shift_state: ShiftState;
@@ -511,8 +557,10 @@ export const api = {
   demoLogin: () => request<Me>('/auth/demo-login', { method: 'POST' }),
   logout: () => request('/auth/logout', { method: 'POST' }),
   me: () => request<Me>('/auth/me'),
+  /** Public, token-gated: whose set-password link this is (Decision 15). */
+  setupInfo: (token: string) => request<SetupInfo>(`/auth/setup-info?token=${encodeURIComponent(token)}`),
   setupPassword: (body: { token: string; newPassword: string }) =>
-    request<{ success: boolean }>('/auth/setup-password', { method: 'POST', body: JSON.stringify(body) }),
+    request<{ success: true } & LoginHints>('/auth/setup-password', { method: 'POST', body: JSON.stringify(body) }),
   changePassword: (body: { currentPassword: string; newPassword: string }) =>
     request<Me>('/auth/change-password', { method: 'POST', body: JSON.stringify(body) }),
   getMyTenant: () => request<Tenant>('/tenants/mine'),
@@ -602,10 +650,26 @@ export const api = {
   ) => request<DoctorToday & { bio: string | null; public_slug: string | null }>(`/doctors/${doctorId}/public-profile`, { method: 'PATCH', body: JSON.stringify(patch) }),
   // Doctor portal "My Hours"
   listSessions: (doctorId: string, date: string) => request<DoctorSession[]>(`/doctors/${doctorId}/sessions?date=${date}`),
+  hoursStatus: (doctorId: string) => request<HoursStatus>(`/doctors/${doctorId}/hours-status`),
+  // ---- My Hours week view ----
+  hoursWeek: (doctorId: string, from: string) => request<HoursWeek>(`/doctors/${doctorId}/sessions/week?from=${from}`),
+  setHoursDay: (doctorId: string, date: string, slots: HoursSlot[]) =>
+    request(`/doctors/${doctorId}/sessions/day`, { method: 'POST', body: JSON.stringify({ date, slots }) }),
+  arrivalQr: (tenantId: string) => request<ArrivalQr>(`/tenants/${tenantId}/arrival-qr`),
+  regenerateArrivalQr: (tenantId: string) => request<ArrivalQr>(`/tenants/${tenantId}/arrival-qr/regenerate`, { method: 'POST' }),
+  /** Decision 21 — patient: "I've arrived" with the code from the clinic's arrival QR. */
+  arriveByScan: (tokenId: string, code: string) =>
+    request<{ status: TokenStatus; already: boolean }>(`/queue/tokens/${tokenId}/arrive`, { method: 'POST', body: JSON.stringify({ code }) }),
+  setDaysOff: (doctorId: string, from: string, to: string) =>
+    request(`/doctors/${doctorId}/sessions/days-off`, { method: 'POST', body: JSON.stringify({ from, to }) }),
   addSession: (doctorId: string, body: { session_date: string; starts_at: string; ends_at: string; is_break: boolean }) =>
     request<DoctorSession>(`/doctors/${doctorId}/sessions`, { method: 'POST', body: JSON.stringify(body) }),
   repeatSessions: (doctorId: string, from_date: string, days: number) =>
     request<{ copied_to: string[] }>(`/doctors/${doctorId}/sessions/repeat`, { method: 'POST', body: JSON.stringify({ from_date, days }) }),
+  getWeeklyTemplate: (doctorId: string) =>
+    request<{ template: Record<string, { starts_at: string; ends_at: string; is_break: boolean }[]>; weeks: number; applied_until: string | null }>(
+      `/doctors/${doctorId}/sessions/weekly-template`,
+    ),
   applyWeeklyTemplate: (doctorId: string, weeks: number, template: Record<string, { starts_at: string; ends_at: string; is_break: boolean }[]>) =>
     request(`/doctors/${doctorId}/sessions/weekly-template`, { method: 'POST', body: JSON.stringify({ weeks, template }) }),
   setSessionActive: (doctorId: string, sessionId: string, is_active: boolean) =>
@@ -654,11 +718,12 @@ export const api = {
     deleteDoctor: (id: string) => request(`/manage/doctors/${id}`, { method: 'DELETE' }),
     users: () => request<ManagedLogin[]>('/manage/users'),
     createUser: (body: { role: 'reception' | 'doctor'; name: string; username: string; mobile_number: string; doctor_id: string | null }) =>
-      request<ManagedLogin & { setup_link: string }>('/manage/users', { method: 'POST', body: JSON.stringify(body) }),
+      request<ManagedLogin & StaffLinkResult>('/manage/users', { method: 'POST', body: JSON.stringify(body) }),
     updateUser: (id: string, body: { name?: string; is_active?: boolean; password?: string; mobile_number?: string | null }) =>
       request<ManagedLogin>(`/manage/users/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
     resetPassword: (id: string) =>
-      request<{ sent: boolean; setup_link: string; error?: string }>(`/manage/users/${id}/reset-password`, { method: 'POST' }),
+      request<StaffLinkResult>(`/manage/users/${id}/reset-password`, { method: 'POST' }),
+    setupLink: (id: string) => request<StaffLinkResult>(`/manage/users/${id}/setup-link`, { method: 'POST' }),
     deleteUser: (id: string) => request(`/manage/users/${id}`, { method: 'DELETE' }),
     qrCodes: () => request<QrCodeView[]>('/manage/qr-codes'),
     /** Always for a chosen doctor of this clinic, or the whole clinic (doctor selection on scan). */
@@ -668,6 +733,28 @@ export const api = {
     requestModule: (module_key: string) => request<ModuleRequest>('/manage/module-requests', { method: 'POST', body: JSON.stringify({ module_key }) }),
   },
 };
+
+export interface LoginHints {
+  username: string;
+  clinic_code: string;
+  clinic_name: string;
+}
+export type SetupInfo =
+  | ({ valid: true; name: string; role: StaffRole; expires_at: string } & LoginHints)
+  | ({ valid: false; reason: 'used' } & LoginHints)
+  | { valid: false; reason: 'expired' };
+
+/** Decision 15: a set-password link for the admin to share (and whether WhatsApp sent it too). */
+export interface StaffLinkResult {
+  setup_link: string;
+  sent: boolean;
+  /** 'not_configured' = no approved WhatsApp template yet, so nothing was sent — share it yourself. */
+  whatsapp: 'sent' | 'not_configured' | 'no_mobile' | 'failed';
+  error?: string;
+  username: string;
+  clinic_code: string;
+  clinic_name: string;
+}
 
 export interface ManagedDoctor {
   id: string;

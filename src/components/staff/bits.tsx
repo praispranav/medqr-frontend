@@ -42,6 +42,7 @@ export const STATUS_LABEL: Record<TokenStatus, string> = {
   in_consultation: 'In cabin',
   done: 'Done',
   no_show: 'No-show',
+  expired: 'Expired',
 };
 
 export function StatusPill({ status }: { status: TokenStatus }) {
@@ -52,6 +53,7 @@ export function StatusPill({ status }: { status: TokenStatus }) {
     in_consultation: 'bg-primary-container text-on-primary',
     done: 'bg-tertiary-fixed/60 text-on-tertiary-fixed-variant',
     no_show: 'bg-error-container text-on-error-container',
+    expired: 'bg-surface-container text-outline',
   };
   return (
     <span className={`px-2.5 py-1 rounded-full font-label-sm text-label-sm whitespace-nowrap ${cls[status]}`}>

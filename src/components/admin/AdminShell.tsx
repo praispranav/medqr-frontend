@@ -3,11 +3,12 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { ApiError } from '@/lib/api';
-import { ADMIN_KEY_STORAGE, adminApi, readAdminKey, type AdminApi } from '@/lib/adminApi';
+import { ADMIN_KEY_STORAGE, adminApi, platformAuth, type AdminApi, type PlatformAdminMe } from '@/lib/adminApi';
 import { Icon, LoadingPage } from '@/components/patient/ui';
 
-// Platform admin chrome (MedQR operators, not clinic staff). Until real auth exists the API is
-// protected by ADMIN_API_KEY from backend/.env; the key is entered once and kept on this device.
+// Platform admin chrome (MedQR operators, not clinic staff). Sign in with email + password; the
+// session is an httpOnly cookie (12 hours). Admin accounts are created on the server with
+// `npm run admin:create -- <email>` — there's no sign-up page.
 
 const NAV = [
   { href: '/owner', label: 'Activity', icon: 'monitoring' },
@@ -18,22 +19,24 @@ const NAV = [
 ];
 
 export function AdminShell({ active, children }: { active: string; children: (api: AdminApi) => ReactNode }) {
-  const [key, setKey] = useState<string | null | undefined>(undefined);
-  const api = useMemo(() => (key ? adminApi(key) : null), [key]);
+  // undefined = checking, null = signed out
+  const [me, setMe] = useState<PlatformAdminMe | null | undefined>(undefined);
+  const api = useMemo(() => adminApi(''), []);
 
-  useEffect(() => setKey(readAdminKey()), []);
+  useEffect(() => {
+    platformAuth
+      .me()
+      .then(setMe)
+      .catch(() => setMe(null));
+  }, []);
 
-  const signOut = () => {
-    try {
-      localStorage.removeItem(ADMIN_KEY_STORAGE);
-    } catch {
-      /* ignore */
-    }
-    setKey(null);
+  const signOut = async () => {
+    await platformAuth.logout().catch(() => undefined);
+    setMe(null);
   };
 
-  if (key === undefined) return <LoadingPage />;
-  if (!key || !api) return <KeyGate onOk={setKey} />;
+  if (me === undefined) return <LoadingPage />;
+  if (!me) return <SignIn onOk={setMe} />;
 
   return (
     <div className="min-h-screen bg-surface text-on-surface lg:flex">
@@ -66,8 +69,9 @@ export function AdminShell({ active, children }: { active: string; children: (ap
             <Icon name="home" className="text-[18px]" /> Website
           </Link>
           <button onClick={signOut} className="flex items-center gap-2 px-3 py-2 rounded-xl opacity-80 hover:bg-white/10 font-label-md text-label-md text-left">
-            <Icon name="logout" className="text-[18px]" /> Lock admin
+            <Icon name="logout" className="text-[18px]" /> Sign out
           </button>
+          <p className="px-3 font-body-sm text-body-sm opacity-60 truncate">{me.email}</p>
         </div>
       </aside>
 
@@ -80,7 +84,7 @@ export function AdminShell({ active, children }: { active: string; children: (ap
               {n.label}
             </Link>
           ))}
-          <button onClick={signOut} aria-label="Lock admin"><Icon name="logout" className="text-[20px]" /></button>
+          <button onClick={signOut} aria-label="Sign out"><Icon name="logout" className="text-[20px]" /></button>
         </header>
         <main className="p-4 lg:p-8 max-w-6xl">{children(api)}</main>
       </div>
@@ -88,26 +92,25 @@ export function AdminShell({ active, children }: { active: string; children: (ap
   );
 }
 
-function KeyGate({ onOk }: { onOk: (key: string) => void }) {
-  const [value, setValue] = useState('');
+function SignIn({ onOk }: { onOk: (me: PlatformAdminMe) => void }) {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const submit = async () => {
-    const k = value.trim();
-    if (!k) return;
     setBusy(true);
     setError(null);
     try {
-      await adminApi(k).ping();
+      const me = await platformAuth.login(email.trim(), password);
       try {
-        localStorage.setItem(ADMIN_KEY_STORAGE, k);
+        localStorage.removeItem(ADMIN_KEY_STORAGE); // the old key login isn't used any more
       } catch {
-        /* session-only */
+        /* ignore */
       }
-      onOk(k);
+      onOk(me);
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Can't reach the backend on port 4000.");
+      setError(e instanceof ApiError ? e.message : "Can't reach the MedQR server.");
       setBusy(false);
     }
   };
@@ -126,21 +129,32 @@ function KeyGate({ onOk }: { onOk: (key: string) => void }) {
         </div>
         <div>
           <h1 className="font-headline-md text-headline-md">MedQR platform admin</h1>
-          <p className="font-body-md text-body-md text-on-surface-variant mt-1">
-            Enter the admin key — it&apos;s <code>ADMIN_API_KEY</code> in <code>backend/.env</code>.
-          </p>
+          <p className="font-body-md text-body-md text-on-surface-variant mt-1">Sign in to manage clinics, QR codes and modules.</p>
         </div>
-        <input
-          autoFocus
-          type="password"
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          placeholder="Admin key"
-          className="h-12 rounded-xl bg-surface-container-low px-3 font-body-lg text-body-lg focus:outline-none focus:ring-2 focus:ring-primary/30"
-        />
+        <label className="flex flex-col gap-1">
+          <span className="font-label-md text-label-md">Email</span>
+          <input
+            autoFocus
+            type="email"
+            autoComplete="username"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="h-12 rounded-xl bg-surface-container-low px-3 font-body-lg text-body-lg focus:outline-none focus:ring-2 focus:ring-primary/30"
+          />
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className="font-label-md text-label-md">Password</span>
+          <input
+            type="password"
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="h-12 rounded-xl bg-surface-container-low px-3 font-body-lg text-body-lg focus:outline-none focus:ring-2 focus:ring-primary/30"
+          />
+        </label>
         {error && <p className="font-body-sm text-body-sm text-error">{error}</p>}
-        <button disabled={busy} className="h-12 rounded-xl bg-primary text-on-primary font-label-lg text-label-lg disabled:opacity-60">
-          {busy ? 'Checking…' : 'Unlock'}
+        <button disabled={busy || !email.trim() || !password} className="h-12 rounded-xl bg-primary text-on-primary font-label-lg text-label-lg disabled:opacity-60">
+          {busy ? 'Signing in…' : 'Sign in'}
         </button>
       </form>
     </main>

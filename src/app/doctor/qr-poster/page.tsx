@@ -5,6 +5,7 @@ import { api, ApiError, type DoctorToday, type QrCodeView, type Tenant } from '@
 import { Icon } from '@/components/patient/ui';
 import { StaffShell } from '@/components/staff/StaffShell';
 import { patientBaseUrl, PosterCard, posterContentFor, POSTER_FORMATS, type PosterContent } from '@/components/qr/QrPoster';
+import { ArrivalQrCard } from '@/components/qr/ArrivalQrCard';
 
 // Doctor portal — QR standees. Ported from
 // stitch_medqr_clinic_suite_ui_design/reception_counter_qr_standee_print_suite/code.html.
@@ -18,7 +19,17 @@ import { patientBaseUrl, PosterCard, posterContentFor, POSTER_FORMATS, type Post
 export default function QrPosterPage() {
   return (
     <StaffShell variant="doctor" active="/doctor/qr-poster">
-      {({ tenant, doctor }) => <QrSuite tenant={tenant} doctor={doctor!} />}
+      {({ tenant, doctor, me }) => (
+        <div className="max-w-6xl flex flex-col gap-6">
+          <QrSuite tenant={tenant} doctor={doctor!} />
+          {/* Decision 21: the clinic's single arrival QR, shown by default. */}
+          <ArrivalQrCard
+            load={() => api.arrivalQr(tenant.id)}
+            regenerate={me.user.can_manage_clinic ? () => api.regenerateArrivalQr(tenant.id) : undefined}
+            rulesHint={me.user.can_manage_clinic ? 'Queue Rules' : 'Queue Rules (ask your clinic admin)'}
+          />
+        </div>
+      )}
     </StaffShell>
   );
 }

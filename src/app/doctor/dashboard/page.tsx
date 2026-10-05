@@ -4,10 +4,12 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { api, ApiError, type DoctorToday, type QueueRow, type ShiftView, type Tenant } from '@/lib/api';
 import { ShiftBar } from '@/components/staff/ShiftBar';
+import { HoursReminderBanner } from '@/components/staff/HoursReminderBanner';
 import { Icon } from '@/components/patient/ui';
 import { StaffShell } from '@/components/staff/StaffShell';
 import { useLiveQueue } from '@/components/staff/useLiveQueue';
 import { minutesSince, PaidBadge, STATUS_LABEL, StatusPill, VitalsChips } from '@/components/staff/bits';
+import { clinicToday } from '@/lib/clinicTime';
 
 // Screen #5 — Doctor Queue Command Center. Ported from
 // stitch_medqr_clinic_suite_ui_design/doctor_queue_command_center/code.html.
@@ -50,12 +52,15 @@ function CommandCenter({ tenant, doctor }: { tenant: Tenant; doctor: DoctorToday
   }, []);
 
   const current = rows?.find((r) => r.status === 'in_consultation') ?? null;
+  // Arrival is confirmed by reception (Decision 19) or by the patient scanning the arrival QR
+  // (Decision 21). Only with neither is a 'booked' token treated as already here.
+  const confirmsArrival = tenant.queue_settings.front_desk_verifies_arrivals !== false || !!tenant.queue_settings.arrival_scan_required;
   const callable = useMemo(() => {
-    if (tenant.queue_settings.front_desk_verifies_arrivals === false) {
+    if (!confirmsArrival) {
       return (rows ?? []).filter((r) => CALLABLE.has(r.status) || r.status === 'booked');
     }
     return (rows ?? []).filter((r) => CALLABLE.has(r.status));
-  }, [rows, tenant.queue_settings.front_desk_verifies_arrivals]);
+  }, [rows, confirmsArrival]);
   const notArrived = useMemo(() => (rows ?? []).filter((r) => r.status === 'booked'), [rows]);
   const finished = useMemo(() => (rows ?? []).filter((r) => r.status === 'done' || r.status === 'no_show'), [rows]);
   const next = callable[0] ?? null;
@@ -117,6 +122,7 @@ function CommandCenter({ tenant, doctor }: { tenant: Tenant; doctor: DoctorToday
     <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_440px] gap-5 max-w-[1400px] pb-24 xl:pb-0">
       <div className="flex flex-col gap-5 min-w-0">
         <ShiftBar doctorId={doctor.id} shift={shift} hasPatientInCabin={!!current} onChanged={(v) => { setShift(v); refresh(); }} />
+        <HoursReminderBanner doctorId={doctor.id} />
         {!live && notLiveReason && (
           <p className="flex items-center gap-2 bg-secondary-fixed/40 text-on-secondary-fixed-variant rounded-xl px-4 py-3 font-label-lg text-label-lg">
             <Icon name="info" className="text-[20px]" /> {notLiveReason}
@@ -320,10 +326,10 @@ function CommandCenter({ tenant, doctor }: { tenant: Tenant; doctor: DoctorToday
             </QueueItem>
           ))}
 
-          {tenant.queue_settings.front_desk_verifies_arrivals !== false && filter(notArrived).length > 0 && (
+          {confirmsArrival && filter(notArrived).length > 0 && (
             <p className="font-label-sm text-label-sm text-on-surface-variant uppercase mt-3">Booked · not arrived yet</p>
           )}
-          {tenant.queue_settings.front_desk_verifies_arrivals !== false && filter(notArrived).map((r) => (
+          {confirmsArrival && filter(notArrived).map((r) => (
             <QueueItem key={r.id} row={r} now={now} muted>
               <div className="flex items-center gap-3">
                 <StatusPill status={r.status} />
@@ -419,7 +425,7 @@ function downloadTodayPatientsCsv(rows: QueueRow[], doctorName: string) {
           .join(','),
       ),
   ];
-  const today = new Date().toISOString().slice(0, 10);
+  const today = clinicToday();
   const url = URL.createObjectURL(new Blob([lines.join('\n')], { type: 'text/csv' }));
   const a = document.createElement('a');
   a.href = url;

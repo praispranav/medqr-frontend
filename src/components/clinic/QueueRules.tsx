@@ -37,7 +37,16 @@ const PAYMENT_OPTIONS: { value: PaymentMode; title: string; body: string; badge?
   },
 ];
 
-export function QueueRules({ tenant, onSaved }: { tenant: Tenant; onSaved: () => Promise<void> }) {
+export function QueueRules({
+  tenant,
+  onSaved,
+  save: saveFn = (patch) => api.updateQueueSettings(tenant.id, patch),
+}: {
+  tenant: Tenant;
+  onSaved: () => Promise<void>;
+  /** Platform admin passes its own (x-admin-key) save; clinic screens use the staff session. */
+  save?: (patch: Partial<QueueSettings>) => Promise<unknown>;
+}) {
   const original = tenant.queue_settings;
   const [s, setS] = useState<QueueSettings>(original);
   const [state, setState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
@@ -60,7 +69,7 @@ export function QueueRules({ tenant, onSaved }: { tenant: Tenant; onSaved: () =>
   const save = async () => {
     setState('saving');
     try {
-      await api.updateQueueSettings(tenant.id, patch);
+      await saveFn(patch);
       await onSaved();
       setState('saved');
     } catch {
@@ -234,6 +243,18 @@ export function QueueRules({ tenant, onSaved }: { tenant: Tenant; onSaved: () =>
             </div>
             <Toggle checked={s.front_desk_verifies_arrivals !== false} onChange={(v) => set('front_desk_verifies_arrivals', v)} />
           </label>
+          {s.front_desk_verifies_arrivals === false && (
+            <label className="flex items-center justify-between gap-4 cursor-pointer pl-4 border-l-2 border-primary/30">
+              <div>
+                <p className="font-label-lg text-label-lg text-on-surface">Patients confirm arrival by scanning the clinic QR</p>
+                <p className="font-body-sm text-body-sm text-on-surface-variant">
+                  Put up the <strong>Arrival QR</strong> poster (QR Standee page). Patients scan it when they reach the clinic, and only
+                  then can the doctor call them with “Call next”. Off = everyone who joins is treated as already here.
+                </p>
+              </div>
+              <Toggle checked={!!s.arrival_scan_required} onChange={(v) => set('arrival_scan_required', v)} />
+            </label>
+          )}
           <label className="flex items-center justify-between gap-4 cursor-pointer">
             <div>
               <p className="font-label-lg text-label-lg text-on-surface">Offer “Print token slip” after check-in</p>
@@ -330,8 +351,6 @@ export function QueueRules({ tenant, onSaved }: { tenant: Tenant; onSaved: () =>
         </div>
       </Section>
 
-      <PublicDirectorySection tenant={tenant} onSaved={onSaved} />
-
       {/* Save bar */}
       <div className="fixed bottom-0 left-0 right-0 lg:left-64 z-30 bg-surface-container-lowest/95 backdrop-blur-md border-t border-surface-container">
         <div className="max-w-5xl px-4 lg:px-6 py-3 flex items-center gap-3">
@@ -362,84 +381,6 @@ export function QueueRules({ tenant, onSaved }: { tenant: Tenant; onSaved: () =>
         </div>
       </div>
     </div>
-  );
-}
-
-/** Clinic-wide medqr.in directory listing — the master switch for every doctor's own listing (doctor/profile). */
-function PublicDirectorySection({ tenant, onSaved }: { tenant: Tenant; onSaved: () => Promise<void> }) {
-  const [listed, setListed] = useState(!!tenant.is_publicly_listed);
-  const [city, setCity] = useState(tenant.city ?? '');
-  const [address, setAddress] = useState(tenant.address ?? '');
-  const [phone, setPhone] = useState(tenant.public_phone ?? '');
-  const [state, setState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
-  const [error, setError] = useState<string | null>(null);
-
-  const dirty =
-    listed !== !!tenant.is_publicly_listed || city !== (tenant.city ?? '') || address !== (tenant.address ?? '') || phone !== (tenant.public_phone ?? '');
-
-  const save = async () => {
-    setState('saving');
-    setError(null);
-    try {
-      await api.updateTenantPublicProfile(tenant.id, { is_publicly_listed: listed, city: city || null, address: address || null, public_phone: phone || null });
-      await onSaved();
-      setState('saved');
-    } catch (e) {
-      setState('error');
-      setError(e instanceof ApiError ? e.message : 'Could not save right now.');
-    }
-  };
-
-  return (
-    <Section title="Public directory" subtitle="List this clinic on medqr.in/doctors so patients searching online can find you.">
-      <div className="flex flex-col gap-4">
-        <label className="flex items-center justify-between gap-3">
-          <div>
-            <p className="font-label-lg text-label-lg">List this clinic publicly</p>
-            <p className="font-body-sm text-body-sm text-on-surface-variant">Each doctor also needs their own listing switched on, from their Public Profile page.</p>
-          </div>
-          <button
-            role="switch"
-            aria-checked={listed}
-            onClick={() => setListed((v) => !v)}
-            className={`w-14 h-8 rounded-full p-1 transition-colors shrink-0 ${listed ? 'bg-primary' : 'bg-surface-container-high'}`}
-          >
-            <span className={`block w-6 h-6 rounded-full bg-white shadow transition-transform ${listed ? 'translate-x-6' : ''}`} />
-          </button>
-        </label>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <label className="flex flex-col gap-1">
-            <span className="font-label-sm text-label-sm text-on-surface-variant">City</span>
-            <input value={city} onChange={(e) => setCity(e.target.value)} placeholder="Trivandrum" className="h-11 rounded-lg bg-surface-container-low px-3 font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-primary/30" />
-          </label>
-          <label className="flex flex-col gap-1">
-            <span className="font-label-sm text-label-sm text-on-surface-variant">Public phone (optional)</span>
-            <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="0471 234 5678" className="h-11 rounded-lg bg-surface-container-low px-3 font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-primary/30" />
-          </label>
-        </div>
-        <label className="flex flex-col gap-1">
-          <span className="font-label-sm text-label-sm text-on-surface-variant">Address (optional)</span>
-          <input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="2nd Floor, MG Road" className="h-11 rounded-lg bg-surface-container-low px-3 font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-primary/30" />
-        </label>
-        {tenant.public_slug && listed && (
-          <Link href={`/clinics/${tenant.public_slug}`} target="_blank" className="font-label-md text-label-md text-primary flex items-center gap-1.5 self-start">
-            <Icon name="open_in_new" className="text-[18px]" /> View your clinic&apos;s live page
-          </Link>
-        )}
-        {error && <p className="font-body-sm text-body-sm text-error">{error}</p>}
-        <div className="flex items-center gap-3">
-          <button
-            disabled={!dirty || state === 'saving'}
-            onClick={save}
-            className="h-11 px-5 rounded-xl bg-primary text-on-primary font-label-lg text-label-lg flex items-center gap-2 disabled:opacity-40 self-start"
-          >
-            <Icon name="save" className="text-[20px]" />
-            {state === 'saving' ? 'Saving…' : 'Save directory listing'}
-          </button>
-          {state === 'saved' && !dirty && <p className="font-body-sm text-body-sm text-tertiary">Saved ✓</p>}
-        </div>
-      </div>
-    </Section>
   );
 }
 

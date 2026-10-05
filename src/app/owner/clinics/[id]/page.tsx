@@ -3,16 +3,24 @@
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
-import { api as publicApi, type CatalogAddOn, type Tenant } from '@/lib/api';
+import { api as publicApi, type CatalogAddOn, type DoctorToday, type Tenant } from '@/lib/api';
+import { QueueRules } from '@/components/clinic/QueueRules';
+import { ClinicDetails } from '@/components/clinic/ClinicDetails';
+import { PatientNotifications } from '@/components/doctor/PatientNotifications';
+import { IntakeFormEditor } from '@/components/doctor/IntakeFormEditor';
 import type { AdminApi, SubscriptionStatusView } from '@/lib/adminApi';
 import { DoctorsTab, LoginsTab, type TeamApi } from '@/components/team/TeamManager';
 import { Icon } from '@/components/patient/ui';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { inr } from '@/components/staff/bits';
+import { ArrivalQrCard } from '@/components/qr/ArrivalQrCard';
 
 // One clinic: doctors, their day-by-day consulting sessions (these drive the today-only
 // availability chips, Decision 6), module switches (Decision 3 keeps OCR and Image-to-Text
 // separate), and manual WhatsApp-wallet credit until the payment gateway exists.
+// Onboarding help: the platform admin can also set the clinic's address + Queue Rules ("Clinic &
+// queue") and each doctor's Patient Notifications + Intake Form ("Doctor setup") — the same
+// screens the clinic uses, saved through the admin API.
 
 export default function AdminClinicPage() {
   return <AdminShell active="/owner/clinics">{(api) => <ClinicDetail api={api} />}</AdminShell>;
@@ -22,7 +30,7 @@ export default function AdminClinicPage() {
 function ClinicDetail({ api }: { api: AdminApi }) {
   const { id } = useParams<{ id: string }>();
   const [tenant, setTenant] = useState<Tenant | null>(null);
-  const [tab, setTab] = useState<'doctors' | 'logins' | 'modules'>('doctors');
+  const [tab, setTab] = useState<'doctors' | 'setup' | 'clinic' | 'logins' | 'modules'>('doctors');
   const [error, setError] = useState<string | null>(null);
   const team = useMemo(() => adminTeamApi(api, id), [api, id]);
 
@@ -65,10 +73,12 @@ function ClinicDetail({ api }: { api: AdminApi }) {
 
       <SubscriptionCard api={api} tenantId={tenant.id} />
 
-      <div className="flex gap-2">
+      <div className="flex gap-2 flex-wrap">
         {(
           [
             ['doctors', 'Doctors & schedule'],
+            ['setup', 'Doctor setup'],
+            ['clinic', 'Clinic & queue rules'],
             ['logins', 'Doctor/Staff Logins'],
             ['modules', 'Settings, modules & wallet'],
           ] as const
@@ -84,8 +94,79 @@ function ClinicDetail({ api }: { api: AdminApi }) {
       </div>
 
       {tab === 'doctors' && <DoctorsTab api={team} />}
+      {tab === 'setup' && <DoctorSetupTab api={api} tenant={tenant} />}
+      {tab === 'clinic' && (
+        <div className="flex flex-col gap-6 pb-24">
+          <ClinicDetails
+            key={`details-${tenant.address}-${tenant.city}-${tenant.public_phone}-${tenant.is_publicly_listed}`}
+            tenant={tenant}
+            canEdit
+            onSaved={async () => setTenant(await api.tenant(tenant.id))}
+            save={(patch) => api.updateTenant(tenant.id, patch)}
+          />
+          <ArrivalQrCard load={() => api.arrivalQr(tenant.id)} regenerate={() => api.regenerateArrivalQr(tenant.id)} rulesHint="Queue Rules below" />
+          <QueueRules
+            key={`rules-${JSON.stringify(tenant.queue_settings)}`}
+            tenant={tenant}
+            onSaved={async () => setTenant(await api.tenant(tenant.id))}
+            save={(patch) => api.updateTenant(tenant.id, { queue_settings: patch })}
+          />
+        </div>
+      )}
       {tab === 'logins' && <LoginsTab api={team} clinicCode={tenant.subdomain} />}
       {tab === 'modules' && <ModulesTab api={api} tenant={tenant} onSaved={setTenant} />}
+    </div>
+  );
+}
+
+/** Pick a doctor, then set what they'd set themselves: Patient Notifications and Intake Form. */
+function DoctorSetupTab({ api, tenant }: { api: AdminApi; tenant: Tenant }) {
+  const [doctors, setDoctors] = useState<DoctorToday[] | null>(null);
+  const [doctorId, setDoctorId] = useState('');
+  const load = async () => {
+    const list = (await api.doctors(tenant.id)) as unknown as DoctorToday[];
+    setDoctors(list);
+    setDoctorId((cur) => cur || list[0]?.id || '');
+  };
+  useEffect(() => {
+    load().catch(() => setDoctors([]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tenant.id]);
+
+  if (!doctors) return <p className="font-body-md text-body-md text-on-surface-variant">Loading…</p>;
+  if (!doctors.length) return <p className="font-body-md text-body-md text-on-surface-variant">Add a doctor first (Doctors &amp; schedule).</p>;
+  const doctor = doctors.find((d) => d.id === doctorId) ?? doctors[0];
+
+  return (
+    <div className="flex flex-col gap-6">
+      <label className="flex flex-col gap-1 max-w-sm">
+        <span className="font-label-md text-label-md">Doctor</span>
+        <select value={doctor.id} onChange={(e) => setDoctorId(e.target.value)} className="h-11 rounded-lg bg-surface-container-lowest px-3 font-body-md text-body-md shadow-sm">
+          {doctors.map((d) => (
+            <option key={d.id} value={d.id}>
+              {d.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      <p className="font-body-sm text-body-sm text-on-surface-variant -mt-3">
+        Hours are in “Doctors &amp; schedule”. Everything here is what the doctor can also change themselves under Settings.
+      </p>
+      <PatientNotifications
+        key={`n-${doctor.id}`}
+        doctor={doctor}
+        tenant={tenant}
+        title={`Patient Notifications — ${doctor.name}`}
+        onSaved={load}
+        save={(patch) => api.updateDoctorProfile(doctor.id, patch)}
+      />
+      <IntakeFormEditor
+        key={`i-${doctor.id}`}
+        doctor={doctor}
+        title={`Intake Form — ${doctor.name}`}
+        onSaved={load}
+        save={(schema) => api.updateDoctorProfile(doctor.id, { intake_schema: schema })}
+      />
     </div>
   );
 }
@@ -97,17 +178,17 @@ function adminTeamApi(api: AdminApi, tenantId: string): TeamApi {
     updateDoctor: (id, b) => api.updateDoctor(id, b),
     deleteDoctor: (id) => api.deleteDoctor(id),
     schedule: (doctorId) => ({
-      list: (date) => api.sessions(doctorId, date),
-      add: (body) => api.addSession(doctorId, body),
-      repeat: (from, days) => api.repeatSchedule(doctorId, from, days),
+      week: (from) => api.hoursWeek(doctorId, from),
+      setDay: (date, slots) => api.setHoursDay(doctorId, date, slots),
+      daysOff: (from, to) => api.setDaysOff(doctorId, from, to),
+      getWeeklyTemplate: () => api.getWeeklyTemplate(doctorId),
       applyWeeklyTemplate: (weeks, template) => api.applyWeeklyTemplate(doctorId, weeks, template),
-      setActive: (id, active) => api.setSessionActive(id, active),
-      remove: (id) => api.deleteSession(id),
     }),
     users: () => api.users(tenantId),
     createUser: (b) => api.createUser(tenantId, b),
     updateUser: (id, b) => api.updateUser(id, b),
     resetPassword: (id) => api.resetPassword(id),
+    setupLink: (id) => api.setupLink(id),
     deleteUser: (id) => api.deleteUser(id),
     canGrantOwner: true,
     directoryFields: true,

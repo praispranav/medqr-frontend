@@ -1,7 +1,7 @@
 'use client';
 import Link from "next/link";
 
-import type { DoctorToday, DoctorTodayStatus } from '@/lib/api';
+import type { DoctorToday, DoctorTodayStatus, NextSession } from '@/lib/api';
 
 /** Material Symbols glyph, as used throughout the Stitch exports. */
 export function Icon({ name, className = '', fill = false }: { name: string; className?: string; fill?: boolean }) {
@@ -51,7 +51,14 @@ export function DoctorAvatar({
 }
 
 /** The per-doctor status strip from Screen #1A — one look per today-only state (Decision 6). */
-export function DoctorStatusRow({ status, detail }: { status: DoctorTodayStatus; detail: string }) {
+/** "Mon 6 Oct, 5:00 PM" for an off-today doctor's next session (Decision 6, amended: information only). */
+export function nextSessionLabel(n: NextSession) {
+  const day = new Date(`${n.date}T00:00:00`).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
+  const [h, m] = n.starts_at.split(':').map(Number);
+  return `${day}, ${h % 12 === 0 ? 12 : h % 12}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
+}
+
+export function DoctorStatusRow({ status, detail, next }: { status: DoctorTodayStatus; detail: string; next?: NextSession | null }) {
   switch (status) {
     case 'available':
       return (
@@ -90,7 +97,7 @@ export function DoctorStatusRow({ status, detail }: { status: DoctorTodayStatus;
             <span className="w-2 h-2 rounded-full bg-error" />
             <span className="font-label-sm text-label-sm text-error font-bold">Off today</span>
           </div>
-          <span className="font-label-sm text-label-sm text-on-surface-variant font-medium">{detail}</span>
+          <span className="font-label-sm text-label-sm text-on-surface-variant font-medium">{next ? `Next: ${nextSessionLabel(next)}` : detail}</span>
         </div>
       );
   }

@@ -7,11 +7,14 @@ import { api, type AdvanceBookingDay, type DoctorToday, type DoctorTodayStatus, 
 import {
   DoctorAvatar,
   DoctorStatusRow,
+  nextSessionLabel,
   FullPageMessage,
   Icon,
   LoadingPage,
   PatientHeader,
 } from '@/components/patient/ui';
+import { addDays, clinicToday } from '@/lib/clinicTime';
+import { getQueueSocket } from '@/lib/socket';
 
 // Screen #1A — Doctor Selection / Confirmation. Ported from
 // stitch_medqr_clinic_suite_ui_design/doctor_selection_confirmation_screen_1a/code.html.
@@ -29,7 +32,7 @@ const isSelectable = (status: DoctorTodayStatus) => status !== 'off_today';
 
 const formatDate = (iso: string) => {
   const d = new Date(`${iso}T00:00:00`);
-  const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+  const tomorrow = addDays(clinicToday(), 1);
   if (iso === tomorrow) return 'Tomorrow';
   return d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
 };
@@ -92,6 +95,7 @@ export default function SelectDoctorPage() {
         if (!t) return setError('not_found');
         setTenant(t);
         setDoctors(await api.getDoctorsToday(t.id));
+        setTenantId(t.id);
         api
           .getAdvanceBooking(t.id)
           .then((r) => setAdvanceDays(r.days.filter((d) => d.doctors.length > 0)))
@@ -101,6 +105,39 @@ export default function SelectDoctorPage() {
       }
     })();
   }, [subdomain]);
+
+  // Live: a doctor starting a shift, going on a break or having hours added flips their status here
+  // without a reload — socket events from each doctor's room, plus a slow refresh for the clock
+  // (a planned session starting) and when the patient comes back to the tab.
+  const [tenantId, setTenantId] = useState<string | null>(null);
+  const doctorKey = (doctors ?? []).map((d) => d.id).join(',');
+  useEffect(() => {
+    if (!tenantId) return;
+    const refresh = () => api.getDoctorsToday(tenantId).then(setDoctors).catch(() => undefined);
+    const socket = getQueueSocket();
+    const join = () => doctorKey.split(',').filter(Boolean).forEach((id) => socket.emit('join_doctor_room', id));
+    join();
+    socket.on('connect', join);
+    socket.on('queue:changed', refresh);
+    socket.on('session:changed', refresh);
+    const timer = setInterval(refresh, 60_000);
+    const onFocus = () => document.visibilityState === 'visible' && refresh();
+    document.addEventListener('visibilitychange', onFocus);
+    return () => {
+      socket.off('connect', join);
+      socket.off('queue:changed', refresh);
+      socket.off('session:changed', refresh);
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', onFocus);
+    };
+  }, [tenantId, doctorKey]);
+
+  /** Off today but bookable ahead (Decision 17 window) → jump to that day with this doctor picked. */
+  const bookNext = (d: DoctorToday) => {
+    if (!d.next_session?.bookable) return;
+    setSelectedDate(d.next_session.date);
+    setSelectedId(d.id);
+  };
 
   const isFutureView = selectedDate !== null;
   // Unify today's real doctors and a future day's bookable doctors into one shape: presence in a
@@ -264,7 +301,7 @@ export default function SelectDoctorPage() {
                   <span className="font-label-sm text-label-sm text-on-surface font-semibold">Consulting on {formatDate(selectedDate!)}</span>
                 </div>
               ) : (
-                <DoctorStatusRow status={d.today_status} detail={d.today_status_detail} />
+                <DoctorStatusRow status={d.today_status} detail={d.today_status_detail} next={d.next_session} />
               )}
             </div>
 
@@ -276,14 +313,24 @@ export default function SelectDoctorPage() {
             </div>
 
             <div className="flex flex-col gap-space-sm pt-2">
-              <button
-                disabled={!selectable}
-                onClick={() => goToIntake(d.id)}
-                className="w-full h-14 bg-primary text-on-primary font-label-lg text-label-lg rounded-xl flex items-center justify-center gap-2 shadow-md active:opacity-95 transition-all disabled:opacity-40 disabled:shadow-none"
-              >
-                <span>{selectable ? 'Confirm & Continue' : 'Not consulting today'}</span>
-                {selectable && <Icon name="arrow_forward" className="text-[20px]" />}
-              </button>
+              {!selectable && d.next_session?.bookable ? (
+                <button
+                  onClick={() => bookNext(d)}
+                  className="w-full h-14 bg-primary text-on-primary font-label-lg text-label-lg rounded-xl flex items-center justify-center gap-2 shadow-md active:opacity-95 transition-all"
+                >
+                  <Icon name="event_available" className="text-[20px]" />
+                  <span>Book for {nextSessionLabel(d.next_session)}</span>
+                </button>
+              ) : (
+                <button
+                  disabled={!selectable}
+                  onClick={() => goToIntake(d.id)}
+                  className="w-full h-14 bg-primary text-on-primary font-label-lg text-label-lg rounded-xl flex items-center justify-center gap-2 shadow-md active:opacity-95 transition-all disabled:opacity-40 disabled:shadow-none"
+                >
+                  <span>{selectable ? 'Confirm & Continue' : 'Not consulting today'}</span>
+                  {selectable && <Icon name="arrow_forward" className="text-[20px]" />}
+                </button>
+              )}
               <p className="text-center font-body-sm text-body-sm text-on-surface-variant">
                 Wrong clinic? Scan the QR code again.
               </p>
@@ -341,15 +388,18 @@ export default function SelectDoctorPage() {
           <div className="flex flex-col gap-space-sm">
             {filtered.map((d) => {
               const selectable = isFutureView || isSelectable(d.today_status);
+              const canBookAhead = !selectable && !!d.next_session?.bookable;
               const isSelected = d.id === selectedId;
               return (
                 <button
                   key={d.id}
-                  disabled={!selectable}
-                  onClick={() => setSelectedId(d.id)}
+                  disabled={!selectable && !canBookAhead}
+                  onClick={() => (canBookAhead ? bookNext(d) : setSelectedId(d.id))}
                   aria-pressed={isSelected}
                   className={`text-left rounded-xl p-space-md flex flex-col gap-space-xs transition-all ${
-                    !selectable
+                    canBookAhead
+                      ? 'bg-surface-container-low hover:shadow'
+                      : !selectable
                       ? 'bg-surface-container-low opacity-70 cursor-not-allowed'
                       : isSelected
                         ? 'bg-primary-fixed/20 shadow-md ring-2 ring-primary'
@@ -385,7 +435,12 @@ export default function SelectDoctorPage() {
                       <span className="font-label-sm text-label-sm text-on-surface">Consulting on {formatDate(selectedDate!)}</span>
                     </div>
                   ) : (
-                    <DoctorStatusRow status={d.today_status} detail={d.today_status_detail} />
+                    <DoctorStatusRow status={d.today_status} detail={d.today_status_detail} next={d.next_session} />
+                  )}
+                  {canBookAhead && (
+                    <span className="self-start flex items-center gap-1 font-label-sm text-label-sm text-primary font-bold">
+                      <Icon name="event_available" className="text-[14px]" /> Book for {nextSessionLabel(d.next_session!)}
+                    </span>
                   )}
                 </button>
               );
@@ -397,7 +452,7 @@ export default function SelectDoctorPage() {
 
           {activeTokensWidget}
           <p className="py-2 text-center font-label-md text-label-md text-on-surface-variant">
-            Need assistance? Talk to the reception desk.
+            Need assistance? Talk to {tenant?.queue_settings?.front_desk_verifies_arrivals === false ? 'the clinic staff' : 'the reception desk'}.
           </p>
         </div>
       </main>

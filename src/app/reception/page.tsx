@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { api, ApiError, type DoctorToday, type PaymentEvent, type PaymentQrView, type QueueRow, type ShiftView, type Tenant, type Vitals } from '@/lib/api';
+import { api, ApiError, type DoctorToday, type PaymentEvent, type PaymentQrView, type QueueRow, type ShiftView, type Tenant, type TokenStatus, type Vitals } from '@/lib/api';
 import { PaymentLog } from '@/components/payments/PaymentLog';
 import { UpiQrCard } from '@/components/payments/UpiQrCard';
 import { Icon } from '@/components/patient/ui';
@@ -9,6 +9,7 @@ import { StaffShell } from '@/components/staff/StaffShell';
 import { useLiveQueue } from '@/components/staff/useLiveQueue';
 import { QrScanner } from '@/components/staff/QrScanner';
 import { inr, minutesSince, PaidBadge, StatusPill, VitalsChips } from '@/components/staff/bits';
+import { clinicToday } from '@/lib/clinicTime';
 
 // Screen #4 — Reception Verifier. Ported from
 // stitch_medqr_clinic_suite_ui_design/reception_verifier_portal/code.html (desktop) with the
@@ -91,7 +92,7 @@ function ReceptionDesk({ tenant, doctors }: { tenant: Tenant; doctors: DoctorTod
     const list = (rows ?? []).filter(
       (r) => (doctorFilter === 'all' || r.doctor.id === doctorFilter) && (!unpaidOnly || owes(r, tenant)),
     );
-    const order = { in_consultation: 0, waiting_in_clinic: 1, checked_in_early: 2, booked: 3, no_show: 4, done: 5 };
+    const order: Record<TokenStatus, number> = { in_consultation: 0, waiting_in_clinic: 1, checked_in_early: 2, booked: 3, no_show: 4, done: 5, expired: 6 };
     return [...list].sort((a, b) => order[a.status] - order[b.status] || a.token_number - b.token_number);
   }, [rows, doctorFilter, unpaidOnly, tenant]);
 
@@ -368,7 +369,7 @@ function ReceptionDesk({ tenant, doctors }: { tenant: Tenant; doctors: DoctorTod
             {visible.map((r) => {
               const callable = r.status === 'waiting_in_clinic' || r.status === 'checked_in_early';
               const notVerifiedYet = r.status === 'booked';
-              const canCallDirectly = tenant.queue_settings.front_desk_verifies_arrivals === false;
+              const canCallDirectly = tenant.queue_settings.front_desk_verifies_arrivals === false && !tenant.queue_settings.arrival_scan_required;
               const showCall = callable || notVerifiedYet; // booked still offers a call, gated by confirm below unless canCallDirectly
               return (
                 <div
@@ -1043,7 +1044,7 @@ function downloadTodayPatientsCsv(rows: QueueRow[]) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `Reception_Patients_${new Date().toISOString().slice(0, 10)}.csv`;
+  a.download = `Reception_Patients_${clinicToday()}.csv`;
   a.click();
   URL.revokeObjectURL(url);
 }

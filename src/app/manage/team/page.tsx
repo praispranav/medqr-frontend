@@ -39,18 +39,18 @@ function Team({ clinicCode, currentUserId, onDoctorsChanged }: { clinicCode: str
         await onDoctorsChanged();
       },
       schedule: (doctorId) => ({
-        list: (date) => api.listSessions(doctorId, date),
-        add: (body) => api.addSession(doctorId, body),
-        repeat: (from, days) => api.repeatSessions(doctorId, from, days),
+        week: (from) => api.hoursWeek(doctorId, from),
+        setDay: (date, slots) => api.setHoursDay(doctorId, date, slots),
+        daysOff: (from, to) => api.setDaysOff(doctorId, from, to),
+        getWeeklyTemplate: () => api.getWeeklyTemplate(doctorId),
         applyWeeklyTemplate: (weeks, template) => api.applyWeeklyTemplate(doctorId, weeks, template),
-        setActive: (id, active) => api.setSessionActive(doctorId, id, active),
-        remove: (id) => api.deleteSession(doctorId, id),
       }),
       users: () => api.manage.users(),
       createUser: (b) =>
         api.manage.createUser({ role: b.role === 'doctor' ? 'doctor' : 'reception', name: b.name, username: b.username, mobile_number: b.mobile_number, doctor_id: b.doctor_id }),
       updateUser: (id, b) => api.manage.updateUser(id, { name: b.name, is_active: b.is_active, password: b.password, mobile_number: b.mobile_number }),
       resetPassword: (id) => api.manage.resetPassword(id),
+      setupLink: (id) => api.manage.setupLink(id),
       deleteUser: (id) => api.manage.deleteUser(id),
       canGrantOwner: false,
       currentUserId,

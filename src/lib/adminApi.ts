@@ -1,20 +1,18 @@
-import { ApiError, type DoctorSession, type Entitlements, type QrCodeView, type Tenant, type TokenStatus } from '@/lib/api';
+import { ApiError, type ArrivalQr, type DoctorSession, type Entitlements, type HoursSlot, type HoursWeek, type QrCodeView, type QueueSettings, type StaffLinkResult, type Tenant, type TokenStatus } from '@/lib/api';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:4000';
+/** Old key-in-the-browser storage — cleared on sign-in; the admin panel now uses an email + password login. */
 export const ADMIN_KEY_STORAGE = 'medqr:admin-key';
 
-export function readAdminKey() {
-  try {
-    return localStorage.getItem(ADMIN_KEY_STORAGE);
-  } catch {
-    return null;
-  }
-}
-
+/**
+ * Platform admin requests ride on the httpOnly `medqr_admin_session` cookie (credentials:
+ * 'include'). `key` is only for scripts that still use ADMIN_API_KEY; the web panel passes ''.
+ */
 async function request<T>(key: string, path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}/owner${path}`, {
     ...options,
-    headers: { 'Content-Type': 'application/json', 'x-admin-key': key, ...(options?.headers ?? {}) },
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json', ...(key ? { 'x-admin-key': key } : {}), ...(options?.headers ?? {}) },
   });
   if (!res.ok) {
     const body = await res.json().catch(() => null);
@@ -136,8 +134,20 @@ export const adminApi = (key: string) => ({
       city?: string | null;
       address?: string | null;
       public_phone?: string | null;
+      queue_settings?: Partial<QueueSettings>;
     },
   ) => request<Tenant>(key, `/tenants/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  /** Help a doctor set up: profile fields, Patient Notifications toggles, Intake Form. */
+  updateDoctorProfile: (
+    id: string,
+    body: {
+      intake_schema?: unknown;
+      notify_token_confirmed?: boolean;
+      notify_you_are_next?: boolean;
+      notify_your_turn?: boolean;
+      notify_location_override?: string;
+    },
+  ) => request<AdminDoctor>(key, `/doctors/${id}/profile`, { method: 'PATCH', body: JSON.stringify(body) }),
   adjustWallet: (id: string, amount_inr: number) =>
     request<Tenant>(key, `/tenants/${id}/wallet`, { method: 'POST', body: JSON.stringify({ amount_inr }) }),
   doctors: (tenantId: string) => request<AdminDoctor[]>(key, `/tenants/${tenantId}/doctors`),
@@ -154,6 +164,18 @@ export const adminApi = (key: string) => ({
       method: 'POST',
       body: JSON.stringify({ from_date, days }),
     }),
+  getWeeklyTemplate: (doctorId: string) =>
+    request<{ template: Record<string, { starts_at: string; ends_at: string; is_break: boolean }[]>; weeks: number; applied_until: string | null }>(
+      key,
+      `/doctors/${doctorId}/sessions/weekly-template`,
+    ),
+  hoursWeek: (doctorId: string, from: string) => request<HoursWeek>(key, `/doctors/${doctorId}/sessions/week?from=${from}`),
+  setHoursDay: (doctorId: string, date: string, slots: HoursSlot[]) =>
+    request(key, `/doctors/${doctorId}/sessions/day`, { method: 'POST', body: JSON.stringify({ date, slots }) }),
+  arrivalQr: (tenantId: string) => request<ArrivalQr>(key, `/tenants/${tenantId}/arrival-qr`),
+  regenerateArrivalQr: (tenantId: string) => request<ArrivalQr>(key, `/tenants/${tenantId}/arrival-qr/regenerate`, { method: 'POST' }),
+  setDaysOff: (doctorId: string, from: string, to: string) =>
+    request(key, `/doctors/${doctorId}/sessions/days-off`, { method: 'POST', body: JSON.stringify({ from, to }) }),
   applyWeeklyTemplate: (doctorId: string, weeks: number, template: Record<string, { starts_at: string; ends_at: string; is_break: boolean }[]>) =>
     request(key, `/doctors/${doctorId}/sessions/weekly-template`, {
       method: 'POST',
@@ -166,11 +188,12 @@ export const adminApi = (key: string) => ({
   createUser: (
     tenantId: string,
     body: { role: 'reception' | 'doctor' | 'owner'; name: string; username: string; mobile_number: string; doctor_id?: string | null; is_owner?: boolean },
-  ) => request<StaffLogin & { setup_link: string }>(key, `/tenants/${tenantId}/users`, { method: 'POST', body: JSON.stringify(body) }),
+  ) => request<StaffLogin & StaffLinkResult>(key, `/tenants/${tenantId}/users`, { method: 'POST', body: JSON.stringify(body) }),
   updateUser: (id: string, body: { name?: string; is_active?: boolean; password?: string; mobile_number?: string | null; is_owner?: boolean }) =>
     request<StaffLogin>(key, `/users/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
   resetPassword: (id: string) =>
-    request<{ sent: boolean; setup_link: string; error?: string }>(key, `/users/${id}/reset-password`, { method: 'POST' }),
+    request<StaffLinkResult>(key, `/users/${id}/reset-password`, { method: 'POST' }),
+  setupLink: (id: string) => request<StaffLinkResult>(key, `/users/${id}/setup-link`, { method: 'POST' }),
   deleteUser: (id: string) => request(key, `/users/${id}`, { method: 'DELETE' }),
   qrCodes: (status?: string) => request<QrCodeView[]>(key, `/qr-codes${status ? `?status=${status}` : ''}`),
   /** Always says who they're for: { doctor_id }, { tenant_id } (whole clinic), or both null (unassigned, print ahead). */
@@ -187,3 +210,29 @@ export const adminApi = (key: string) => ({
 });
 
 export type AdminApi = ReturnType<typeof adminApi>;
+
+/** Platform admin sign-in (email + password → httpOnly session cookie). */
+async function authRequest<T>(path: string, body?: unknown): Promise<T> {
+  const res = await fetch(`${API_BASE}/owner-auth${path}`, {
+    method: body === undefined ? 'GET' : 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const b = await res.json().catch(() => null);
+    throw new ApiError(res.status, typeof b?.message === 'string' ? b.message : `Request failed (${res.status})`);
+  }
+  return res.json();
+}
+
+export interface PlatformAdminMe {
+  email: string;
+  name: string;
+}
+
+export const platformAuth = {
+  me: () => authRequest<PlatformAdminMe>('/me'),
+  login: (email: string, password: string) => authRequest<PlatformAdminMe>('/login', { email, password }),
+  logout: () => authRequest<{ ok: true }>('/logout', {}),
+};
