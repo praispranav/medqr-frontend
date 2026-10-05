@@ -8,6 +8,7 @@ import { api, type PatientPaymentStatus, type TokenStatusView } from '@/lib/api'
 import { getQueueSocket, keepLive } from '@/lib/socket';
 import { QrScanner } from '@/components/staff/QrScanner';
 import { PushAlertCard } from '@/components/patient/PushAlertCard';
+import { AddToHomeScreen } from '@/components/patient/AddToHomeScreen';
 import { FullPageMessage, Icon, LoadingPage, PatientHeader } from '@/components/patient/ui';
 
 // Screen #3 — Live Queue / Token Tracking. Ported from
@@ -309,6 +310,7 @@ export default function LiveQueuePage() {
   return (
     <>
       {header}
+      <AddToHomeScreen active />
       <main className="min-h-screen w-full max-w-[480px] mx-auto pt-20 pb-10 bg-surface">
         <div className="flex flex-col w-full px-gutter space-y-space-md">
           {preSession && (

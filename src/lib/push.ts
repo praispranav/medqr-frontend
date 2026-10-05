@@ -2,6 +2,7 @@
 // Config is the Firebase web app config (public by design). The VAPID key comes from Firebase
 // console → Project settings → Cloud Messaging → Web Push certificates (public key, safe in code). iPhone: web push only works once the page is added to the Home Screen
 // (iOS 16.4+), so we show that hint instead of a button that can't work.
+import { isIos, isStandalone } from '@/lib/homeScreen';
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY ?? 'AIzaSyDsOnQA1kATykSpgxKnIx3Sr5LT2oSV-fQ',
@@ -20,9 +21,7 @@ export type PushSupport = 'ok' | 'not_configured' | 'ios_needs_home_screen' | 'u
 export function pushSupport(): PushSupport {
   if (typeof window === 'undefined') return 'unsupported';
   if (!VAPID_KEY) return 'not_configured';
-  const ios = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-  const standalone = window.matchMedia?.('(display-mode: standalone)').matches || (navigator as { standalone?: boolean }).standalone === true;
-  if (ios && !standalone) return 'ios_needs_home_screen';
+  if (isIos() && !isStandalone()) return 'ios_needs_home_screen';
   if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) return 'unsupported';
   if (Notification.permission === 'denied') return 'denied';
   return 'ok';

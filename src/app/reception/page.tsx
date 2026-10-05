@@ -22,7 +22,7 @@ import { clinicToday } from '@/lib/clinicTime';
 // - Vitals strip -> POST /patients/visits/:visitId/vitals, every field optional (Decision 5)
 // - Payment tag driven by tenant.queue_settings.payment_mode (Decision 8); never blocks (Decision 9)
 // - Print Token Slip only when tenant.queue_settings.print_slip_on_checkin (Decision 2)
-// - "Call next" per doctor only when advance_mode === 'reception'
+// - "Call next" per doctor when advance_mode is 'reception' or 'both'
 
 const VERIFIED = new Set(['waiting_in_clinic', 'checked_in_early', 'in_consultation', 'done']);
 
@@ -351,7 +351,7 @@ function ReceptionDesk({ tenant, doctors }: { tenant: Tenant; doctors: DoctorTod
             </div>
           )}
 
-          {tenant.queue_settings.advance_mode === 'reception' && (
+          {(tenant.queue_settings.advance_mode === 'reception' || tenant.queue_settings.advance_mode === 'both') && (
             <ReceptionCallNext
               doctors={doctorFilter === 'all' ? doctors : doctors.filter((d) => d.id === doctorFilter)}
               shifts={shifts}

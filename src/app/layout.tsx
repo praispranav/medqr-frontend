@@ -12,6 +12,8 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 export const metadata: Metadata = {
   title: 'MedQR — Digital Clinic Queue',
   description: 'QR-based digital tokens and smart prescriptions for Indian clinics.',
+  appleWebApp: { capable: true, title: 'MedQR', statusBarStyle: 'default' }, // Home Screen app opens full-screen
+  icons: { apple: '/icons/180' }, // iPhone Home Screen icon
 };
 
 export const viewport: Viewport = {

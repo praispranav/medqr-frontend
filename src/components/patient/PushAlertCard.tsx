@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { Icon } from '@/components/patient/ui';
 import { getPushToken, pushSupport, type PushSupport } from '@/lib/push';
+import { OPEN_A2HS_EVENT } from '@/lib/homeScreen';
 
 // "Alert me when it's my turn" — Firebase web push for this token: one alert when the patient is
 // next, one when the doctor calls them (free; works with the screen locked). Hidden when the
@@ -36,13 +37,16 @@ export function PushAlertCard({ tokenId, enabled, onChange }: { tokenId: string;
 
   if (support === 'ios_needs_home_screen') {
     return (
-      <div className="w-full bg-surface-container-lowest rounded-2xl p-4 shadow-sm flex items-start gap-3">
-        <Icon name="notifications" className="text-[22px] text-primary mt-0.5" />
-        <p className="font-body-sm text-body-sm text-on-surface-variant">
-          <strong className="text-on-surface">Want an alert when it&apos;s your turn?</strong> On iPhone, tap <strong>Share</strong> →{' '}
-          <strong>Add to Home Screen</strong>, open MedQR from your Home Screen, then turn alerts on there.
-        </p>
-      </div>
+      <button
+        onClick={() => window.dispatchEvent(new Event(OPEN_A2HS_EVENT))}
+        className="w-full bg-surface-container-lowest rounded-2xl p-4 shadow-sm flex items-center gap-3 text-left"
+      >
+        <Icon name="notifications" className="text-[22px] text-primary" />
+        <span className="flex-1 font-body-sm text-body-sm text-on-surface-variant">
+          <strong className="text-on-surface">Want an alert when it&apos;s your turn?</strong> Add MedQR to your Home Screen first.
+        </span>
+        <Icon name="chevron_right" className="text-[22px] text-on-surface-variant" />
+      </button>
     );
   }
 

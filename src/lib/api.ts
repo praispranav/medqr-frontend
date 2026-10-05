@@ -64,7 +64,8 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 export type PaymentMode = 'cash_at_counter' | 'prepay_remote_only' | 'prepay_always' | 'pay_after_consultation';
 
 export type BookingMode = 'token' | 'time_slot' | 'hybrid';
-export type AdvanceMode = 'manual' | 'auto_timer' | 'reception';
+/** Who calls patients in: 'manual' = the doctor, 'reception' = the front desk only, 'both' = either. */
+export type AdvanceMode = 'manual' | 'auto_timer' | 'reception' | 'both';
 export type NoShowAction = 'skip_to_end' | 'push_back' | 'notify_and_hold';
 
 export interface QueueSettings {
@@ -665,6 +666,11 @@ export const api = {
   arrivalQr: (tenantId: string) => request<ArrivalQr>(`/tenants/${tenantId}/arrival-qr`),
   regenerateArrivalQr: (tenantId: string) => request<ArrivalQr>(`/tenants/${tenantId}/arrival-qr/regenerate`, { method: 'POST' }),
   /** "Alert me when it's my turn": this phone's Firebase push token (null = stop). */
+  /** "Add to Home Screen" hand-off: park this browser's patient keys under a one-time code (iPhone). */
+  createHandoff: (data: Record<string, string>) =>
+    request<{ code: string }>('/patients/handoff', { method: 'POST', body: JSON.stringify({ data }) }),
+  redeemHandoff: (code: string) =>
+    request<{ data: Record<string, string> }>('/patients/handoff/redeem', { method: 'POST', body: JSON.stringify({ code }) }),
   setTokenPush: (tokenId: string, fcm_token: string | null) =>
     request<{ push_enabled: boolean }>(`/queue/tokens/${tokenId}/push`, { method: 'POST', body: JSON.stringify({ fcm_token }) }),
   /** Decision 21 — patient: "I've arrived" with the code from the clinic's arrival QR. */

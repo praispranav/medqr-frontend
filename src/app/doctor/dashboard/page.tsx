@@ -106,13 +106,15 @@ function CommandCenter({ tenant, doctor }: { tenant: Tenant; doctor: DoctorToday
   };
 
   const callNext = () => run(() => api.callNext(doctor.id));
+  // Queue Rules → "Who calls the next patient": reception-only hides every call button here.
+  const doctorCalls = tenant.queue_settings.advance_mode !== 'reception';
 
   // Design: "Press Enter" completes and calls the next patient (ignored while typing in a field).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement;
       if (e.key !== 'Enter' || busy || ['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON'].includes(t.tagName)) return;
-      if (live && (next || current)) callNext();
+      if (doctorCalls && live && (next || current)) callNext();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -205,25 +207,29 @@ function CommandCenter({ tenant, doctor }: { tenant: Tenant; doctor: DoctorToday
                     Open consultation
                   </Link>
                 )}
+                {doctorCalls ? (
                 <button
-                  disabled={busy || !live}
-                  onClick={callNext}
-                  className={`w-full sm:w-auto sm:flex-1 shrink-0 h-14 px-5 rounded-xl text-on-primary font-label-lg text-label-lg flex items-center justify-between gap-3 shadow-md disabled:opacity-50 ${
-                    breakDue ? 'bg-secondary' : 'bg-primary-container'
-                  }`}
-                >
-                  <span className="flex items-center gap-2 min-w-0">
-                    <Icon name={breakDue ? 'coffee' : 'arrow_forward'} className="text-[22px]" />
-                    <span className="truncate">
-                      {breakDue
-                        ? 'Complete & start break'
-                        : next
-                          ? `Complete & call #${next.token_number} ${next.patient?.name ?? ''}`
-                          : 'Complete visit'}
+                    disabled={busy || !live}
+                    onClick={callNext}
+                    className={`w-full sm:w-auto sm:flex-1 shrink-0 h-14 px-5 rounded-xl text-on-primary font-label-lg text-label-lg flex items-center justify-between gap-3 shadow-md disabled:opacity-50 ${
+                      breakDue ? 'bg-secondary' : 'bg-primary-container'
+                    }`}
+                  >
+                    <span className="flex items-center gap-2 min-w-0">
+                      <Icon name={breakDue ? 'coffee' : 'arrow_forward'} className="text-[22px]" />
+                      <span className="truncate">
+                        {breakDue
+                          ? 'Complete & start break'
+                          : next
+                            ? `Complete & call #${next.token_number} ${next.patient?.name ?? ''}`
+                            : 'Complete visit'}
+                      </span>
                     </span>
-                  </span>
-                  <span className="hidden sm:inline px-2 py-1 rounded-lg bg-on-primary/15 font-label-sm text-label-sm">Enter ↵</span>
-                </button>
+                    <span className="hidden sm:inline px-2 py-1 rounded-lg bg-on-primary/15 font-label-sm text-label-sm">Enter ↵</span>
+                  </button>
+                ) : (
+                  <ReceptionCallsNote />
+                )}
               </div>
               <button
                 disabled={busy}
@@ -247,7 +253,8 @@ function CommandCenter({ tenant, doctor }: { tenant: Tenant; doctor: DoctorToday
                     ? `${notArrived.length} booked patient${notArrived.length > 1 ? 's have' : ' has'} not been verified at reception yet.`
                     : 'Patients appear here once reception verifies they have arrived.'}
               </p>
-              {next && (
+              {next && !doctorCalls && <ReceptionCallsNote />}
+              {next && doctorCalls && (
                 <button
                   disabled={busy || !live}
                   onClick={callNext}
@@ -313,7 +320,7 @@ function CommandCenter({ tenant, doctor }: { tenant: Tenant; doctor: DoctorToday
             <QueueItem key={r.id} row={r} now={now}>
               {i === 0 && !query ? (
                 <span className="px-2 py-0.5 rounded-full bg-secondary-fixed text-on-secondary-fixed font-label-sm text-label-sm">Next up</span>
-              ) : (
+              ) : doctorCalls ? (
                 <button
                   disabled={busy || !live || breakDue}
                   onClick={() => run(() => api.callToken(r.id))}
@@ -322,7 +329,7 @@ function CommandCenter({ tenant, doctor }: { tenant: Tenant; doctor: DoctorToday
                 >
                   <Icon name="arrow_upward" className="text-[16px]" /> Call now
                 </button>
-              )}
+              ) : null}
             </QueueItem>
           ))}
 
@@ -333,6 +340,7 @@ function CommandCenter({ tenant, doctor }: { tenant: Tenant; doctor: DoctorToday
             <QueueItem key={r.id} row={r} now={now} muted>
               <div className="flex items-center gap-3">
                 <StatusPill status={r.status} />
+                {doctorCalls && (
                 <button
                   disabled={busy || !live || breakDue}
                   onClick={() => {
@@ -345,6 +353,7 @@ function CommandCenter({ tenant, doctor }: { tenant: Tenant; doctor: DoctorToday
                 >
                   <Icon name="arrow_upward" className="text-[16px]" /> Call now
                 </button>
+                )}
               </div>
             </QueueItem>
           ))}
@@ -382,6 +391,7 @@ function CommandCenter({ tenant, doctor }: { tenant: Tenant; doctor: DoctorToday
           <Icon name="list" className="text-[22px]" />
           Queue list
         </button>
+        {doctorCalls && (
         <button
           disabled={busy || !live}
           onClick={callNext}
@@ -396,6 +406,7 @@ function CommandCenter({ tenant, doctor }: { tenant: Tenant; doctor: DoctorToday
             </span>
           </span>
         </button>
+        )}
       </div>
     </div>
   );
@@ -450,5 +461,14 @@ function QueueItem({ row, now, muted = false, children }: { row: QueueRow; now: 
       </div>
       {children}
     </div>
+  );
+}
+
+function ReceptionCallsNote() {
+  return (
+    <p className="flex-1 flex items-center gap-2 font-body-md text-body-md text-on-surface-variant">
+      <Icon name="support_agent" className="text-[22px] text-primary" />
+      Reception calls your patients in.
+    </p>
   );
 }

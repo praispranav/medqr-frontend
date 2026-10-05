@@ -160,7 +160,13 @@ export function QueueRules({
               checked={s.advance_mode === 'reception'}
               onChange={() => set('advance_mode', 'reception')}
               title="Reception desk calls patients in"
-              body="Front-desk staff get a “Call next” button per doctor on their screen."
+              body="Front-desk staff get a “Call next” button per doctor. The doctor's screen shows the queue without call buttons."
+            />
+            <Radio
+              checked={s.advance_mode === 'both'}
+              onChange={() => set('advance_mode', 'both')}
+              title="Both — doctor or reception"
+              body="Whoever is free calls the next patient: the doctor from their screen, or reception with “Call next”."
             />
             <Radio checked={false} disabled onChange={() => {}} title="Auto-advance on a timer" body="Not available yet." />
           </div>
