@@ -23,16 +23,17 @@ import { ArrivalQrCard } from '@/components/qr/ArrivalQrCard';
 // screens the clinic uses, saved through the admin API.
 
 export default function AdminClinicPage() {
-  return <AdminShell active="/owner/clinics">{(api) => <ClinicDetail api={api} />}</AdminShell>;
+  return <AdminShell active="/owner/clinics">{(api, me) => <ClinicDetail api={api} referrer={me.role === 'referrer'} />}</AdminShell>;
 }
 
 
-function ClinicDetail({ api }: { api: AdminApi }) {
+/** referrer = Decision 27 referral partner: setup only — no deleting, billing, modules or wallet. */
+function ClinicDetail({ api, referrer }: { api: AdminApi; referrer: boolean }) {
   const { id } = useParams<{ id: string }>();
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [tab, setTab] = useState<'doctors' | 'setup' | 'clinic' | 'logins' | 'modules'>('doctors');
   const [error, setError] = useState<string | null>(null);
-  const team = useMemo(() => adminTeamApi(api, id), [api, id]);
+  const team = useMemo(() => adminTeamApi(api, id, referrer), [api, id, referrer]);
 
   useEffect(() => {
     api.tenant(id).then(setTenant).catch((e: Error) => setError(e.message));
@@ -57,6 +58,7 @@ function ClinicDetail({ api }: { api: AdminApi }) {
             <Icon name="login" className="text-[18px]" /> Doctor/Staff Login page
           </Link>
           <div className="flex-1" />
+          {!referrer && (
           <button
             onClick={async () => {
               if (window.prompt(`Type ${tenant.subdomain} to delete this clinic and ALL its data (doctors, logins, queue, past patients):`) === tenant.subdomain) {
@@ -68,10 +70,11 @@ function ClinicDetail({ api }: { api: AdminApi }) {
           >
             <Icon name="delete" className="text-[18px]" /> Delete clinic
           </button>
+          )}
         </div>
       </section>
 
-      <SubscriptionCard api={api} tenantId={tenant.id} />
+      {!referrer && <SubscriptionCard api={api} tenantId={tenant.id} />}
 
       <div className="flex gap-2 flex-wrap">
         {(
@@ -82,7 +85,7 @@ function ClinicDetail({ api }: { api: AdminApi }) {
             ['logins', 'Doctor/Staff Logins'],
             ['modules', 'Settings, modules & wallet'],
           ] as const
-        ).map(([k, label]) => (
+        ).filter(([k]) => !(referrer && k === 'modules')).map(([k, label]) => (
           <button
             key={k}
             onClick={() => setTab(k)}
@@ -114,7 +117,7 @@ function ClinicDetail({ api }: { api: AdminApi }) {
         </div>
       )}
       {tab === 'logins' && <LoginsTab api={team} clinicCode={tenant.subdomain} />}
-      {tab === 'modules' && <ModulesTab api={api} tenant={tenant} onSaved={setTenant} />}
+      {tab === 'modules' && !referrer && <ModulesTab api={api} tenant={tenant} onSaved={setTenant} />}
     </div>
   );
 }
@@ -171,12 +174,12 @@ function DoctorSetupTab({ api, tenant }: { api: AdminApi; tenant: Tenant }) {
   );
 }
 
-function adminTeamApi(api: AdminApi, tenantId: string): TeamApi {
+function adminTeamApi(api: AdminApi, tenantId: string, referrer: boolean): TeamApi {
   return {
     doctors: () => api.doctors(tenantId),
     createDoctor: (b) => api.createDoctor(tenantId, b),
     updateDoctor: (id, b) => api.updateDoctor(id, b),
-    deleteDoctor: (id) => api.deleteDoctor(id),
+    deleteDoctor: referrer ? undefined : (id) => api.deleteDoctor(id),
     schedule: (doctorId) => ({
       week: (from) => api.hoursWeek(doctorId, from),
       setDay: (date, slots) => api.setHoursDay(doctorId, date, slots),
@@ -189,8 +192,8 @@ function adminTeamApi(api: AdminApi, tenantId: string): TeamApi {
     updateUser: (id, b) => api.updateUser(id, b),
     resetPassword: (id) => api.resetPassword(id),
     setupLink: (id) => api.setupLink(id),
-    deleteUser: (id) => api.deleteUser(id),
-    canGrantOwner: true,
+    deleteUser: referrer ? undefined : (id) => api.deleteUser(id),
+    canGrantOwner: !referrer, // clinic admins are granted by MedQR only
     directoryFields: true,
   };
 }
@@ -250,6 +253,8 @@ const STATUS_LABEL: Record<SubscriptionStatusView['status'], { text: string; cla
   read_only: { text: 'Read-only (unpaid)', className: 'bg-error text-white' },
 };
 
+const fmt = (iso: string) => new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+
 function SubscriptionCard({ api, tenantId }: { api: AdminApi; tenantId: string }) {
   const [sub, setSub] = useState<SubscriptionStatusView | null>(null);
   const [days, setDays] = useState('14');
@@ -261,6 +266,19 @@ function SubscriptionCard({ api, tenantId }: { api: AdminApi; tenantId: string }
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [api, tenantId]);
+
+  const n = Number(days);
+  const run = async (fn: () => Promise<SubscriptionStatusView>) => {
+    setBusy(true);
+    setError(null);
+    try {
+      setSub(await fn());
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
 
   if (!sub) return null;
   const label = STATUS_LABEL[sub.status];
@@ -283,17 +301,23 @@ function SubscriptionCard({ api, tenantId }: { api: AdminApi; tenantId: string }
 
       {windowEnd && (
         <p className="font-body-md text-body-md text-on-surface-variant">
-          {sub.status === 'grace' ? 'Grace period ends' : 'Trial ends'} {new Date(windowEnd).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+          {sub.status === 'grace' ? 'Grace period ends' : 'Trial ends'} {fmt(windowEnd)}
           {left !== null && ` (${left >= 0 ? `${left} day${left === 1 ? '' : 's'} left` : 'expired'})`}
         </p>
       )}
+      {sub.status === 'active' && (
+        <p className="font-body-md text-body-md text-on-surface-variant">
+          {sub.current_period_end ? `Paid through ${fmt(sub.current_period_end)}` : 'Paid — no end date set'}
+          {sub.autopay_active ? ' · autopay renews it each month' : ''}
+        </p>
+      )}
       {sub.status === 'read_only' && (
-        <p className="font-body-md text-body-md text-error">Staff can view but not change anything for this clinic until it's marked active.</p>
+        <p className="font-body-md text-body-md text-error">Staff can view but not change anything for this clinic until it's marked active or given a grace period.</p>
       )}
 
       <div className="flex flex-wrap items-end gap-2 pt-1">
         <div>
-          <label className="font-label-sm text-label-sm text-on-surface-variant block mb-1">Extend trial by (days)</label>
+          <label className="font-label-sm text-label-sm text-on-surface-variant block mb-1">Days</label>
           <input
             inputMode="numeric"
             value={days}
@@ -301,40 +325,26 @@ function SubscriptionCard({ api, tenantId }: { api: AdminApi; tenantId: string }
             className="w-24 h-10 rounded-xl bg-surface-container-low px-3 font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-primary/30"
           />
         </div>
-        <button
-          disabled={busy || !Number(days)}
-          onClick={async () => {
-            setBusy(true);
-            setError(null);
-            try {
-              setSub(await api.extendTrial(tenantId, Number(days)));
-            } catch (e) {
-              setError((e as Error).message);
-            } finally {
-              setBusy(false);
-            }
-          }}
-          className="h-10 px-4 rounded-xl bg-surface-container-low text-primary font-label-md text-label-md disabled:opacity-60"
-        >
-          Extend trial
-        </button>
-        <button
-          disabled={busy || sub.status === 'active'}
-          onClick={async () => {
-            setBusy(true);
-            setError(null);
-            try {
-              setSub(await api.setSubscriptionActive(tenantId));
-            } catch (e) {
-              setError((e as Error).message);
-            } finally {
-              setBusy(false);
-            }
-          }}
-          className="h-10 px-4 rounded-xl bg-primary text-on-primary font-label-md text-label-md disabled:opacity-60"
-        >
-          Mark active (paid offline)
-        </button>
+        {(sub.status === 'trial' || sub.status === 'read_only') && (
+          <button disabled={busy || !n} onClick={() => run(() => api.extendTrial(tenantId, n))} className="h-10 px-4 rounded-xl bg-surface-container-low text-primary font-label-md text-label-md disabled:opacity-60">
+            Extend trial
+          </button>
+        )}
+        {sub.status === 'active' && (
+          <button disabled={busy || !n} onClick={() => run(() => api.extendSubscription(tenantId, n))} className="h-10 px-4 rounded-xl bg-surface-container-low text-primary font-label-md text-label-md disabled:opacity-60">
+            Extend subscription
+          </button>
+        )}
+        {(sub.status === 'grace' || sub.status === 'read_only') && (
+          <button disabled={busy || !n} onClick={() => run(() => api.grantGrace(tenantId, n))} className="h-10 px-4 rounded-xl bg-surface-container-low text-primary font-label-md text-label-md disabled:opacity-60">
+            Give grace period
+          </button>
+        )}
+        {sub.status !== 'active' && (
+          <button disabled={busy} onClick={() => run(() => api.setSubscriptionActive(tenantId))} className="h-10 px-4 rounded-xl bg-primary text-on-primary font-label-md text-label-md disabled:opacity-60">
+            Mark active (paid offline)
+          </button>
+        )}
       </div>
       {error && <p className="font-body-sm text-body-sm text-error">{error}</p>}
     </section>

@@ -7,18 +7,25 @@ import { ADMIN_KEY_STORAGE, adminApi, platformAuth, type AdminApi, type Platform
 import { Icon, LoadingPage } from '@/components/patient/ui';
 
 // Platform admin chrome (MedQR operators, not clinic staff). Sign in with email + password; the
-// session is an httpOnly cookie (12 hours). Admin accounts are created on the server with
-// `npm run admin:create -- <email>` — there's no sign-up page.
+// session is an httpOnly cookie (12 hours). Super admin accounts are created on the server with
+// `npm run admin:create -- <email>` — there's no sign-up page. Referral partners (Decision 27) are
+// created in Owner › Referrers and get a cut-down panel: their clinics + My earnings.
 
 const NAV = [
   { href: '/owner', label: 'Activity', icon: 'monitoring' },
   { href: '/owner/clinics', label: 'Clinics', icon: 'local_hospital' },
+  { href: '/owner/referrers', label: 'Referrers', icon: 'handshake' },
   { href: '/owner/leads', label: 'Trial requests', icon: 'inbox' },
   { href: '/owner/module-requests', label: 'Module requests', icon: 'extension' },
   { href: '/owner/qr-codes', label: 'QR codes', icon: 'qr_code_2' },
 ];
 
-export function AdminShell({ active, children }: { active: string; children: (api: AdminApi) => ReactNode }) {
+const REFERRER_NAV = [
+  { href: '/owner/clinics', label: 'My clinics', icon: 'local_hospital' },
+  { href: '/owner/earnings', label: 'My earnings', icon: 'payments' },
+];
+
+export function AdminShell({ active, children }: { active: string; children: (api: AdminApi, me: PlatformAdminMe) => ReactNode }) {
   // undefined = checking, null = signed out
   const [me, setMe] = useState<PlatformAdminMe | null | undefined>(undefined);
   const api = useMemo(() => adminApi(''), []);
@@ -38,6 +45,14 @@ export function AdminShell({ active, children }: { active: string; children: (ap
   if (me === undefined) return <LoadingPage />;
   if (!me) return <SignIn onOk={setMe} />;
 
+  const referrer = me.role === 'referrer';
+  const nav = referrer ? REFERRER_NAV : NAV;
+  // A referrer on a super-admin page (bookmark, old link) goes to their clinics instead.
+  if (referrer && !nav.some((n) => n.href === active)) {
+    if (typeof window !== 'undefined') window.location.replace('/owner/clinics');
+    return <LoadingPage />;
+  }
+
   return (
     <div className="min-h-screen bg-surface text-on-surface lg:flex">
       <aside className="hidden lg:flex w-60 shrink-0 flex-col bg-inverse-surface text-white min-h-screen sticky top-0 h-screen p-4 gap-4">
@@ -47,11 +62,11 @@ export function AdminShell({ active, children }: { active: string; children: (ap
           </div>
           <div>
             <p className="font-headline-sm text-headline-sm leading-tight">MedQR</p>
-            <p className="font-label-sm text-label-sm uppercase opacity-70">Platform admin</p>
+            <p className="font-label-sm text-label-sm uppercase opacity-70">{referrer ? 'Referral partner' : 'Platform admin'}</p>
           </div>
         </div>
         <nav className="flex flex-col gap-1">
-          {NAV.map((n) => (
+          {nav.map((n) => (
             <Link
               key={n.href}
               href={n.href}
@@ -78,15 +93,15 @@ export function AdminShell({ active, children }: { active: string; children: (ap
       <div className="flex-1 min-w-0">
         <header className="lg:hidden sticky top-0 z-30 bg-inverse-surface text-white px-4 h-14 flex items-center gap-3">
           <Icon name="admin_panel_settings" className="text-[22px]" />
-          <span className="font-label-lg text-label-lg flex-1">MedQR admin</span>
-          {NAV.map((n) => (
+          <span className="font-label-lg text-label-lg flex-1">{referrer ? 'MedQR partner' : 'MedQR admin'}</span>
+          {nav.map((n) => (
             <Link key={n.href} href={n.href} className={`px-3 py-1.5 rounded-full font-label-md text-label-md ${active === n.href ? 'bg-primary-container' : 'opacity-80'}`}>
               {n.label}
             </Link>
           ))}
           <button onClick={signOut} aria-label="Sign out"><Icon name="logout" className="text-[20px]" /></button>
         </header>
-        <main className="p-4 lg:p-8 max-w-6xl">{children(api)}</main>
+        <main className="p-4 lg:p-8 max-w-6xl">{children(api, me)}</main>
       </div>
     </div>
   );

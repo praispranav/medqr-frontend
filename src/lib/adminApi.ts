@@ -62,6 +62,8 @@ export interface AdminTenant extends Tenant {
   doctor_count: number;
   tokens_today: number;
   subscription?: { status: SubscriptionStatus; trial_ends_at: string | null; grace_ends_at: string | null };
+  /** Decision 27: the referral partner who looks after this clinic, if any. */
+  referrer_id?: string | null;
 }
 
 export interface AdminDoctor {
@@ -122,6 +124,10 @@ export const adminApi = (key: string) => ({
   subscription: (id: string) => request<SubscriptionStatusView>(key, `/tenants/${id}/subscription`),
   extendTrial: (id: string, days: number) =>
     request<SubscriptionStatusView>(key, `/tenants/${id}/subscription/extend-trial`, { method: 'POST', body: JSON.stringify({ days }) }),
+  extendSubscription: (id: string, days: number) =>
+    request<SubscriptionStatusView>(key, `/tenants/${id}/subscription/extend`, { method: 'POST', body: JSON.stringify({ days }) }),
+  grantGrace: (id: string, days: number) =>
+    request<SubscriptionStatusView>(key, `/tenants/${id}/subscription/grace`, { method: 'POST', body: JSON.stringify({ days }) }),
   setSubscriptionActive: (id: string) =>
     request<SubscriptionStatusView>(key, `/tenants/${id}/subscription/set-active`, { method: 'POST' }),
   updateTenant: (
@@ -207,6 +213,28 @@ export const adminApi = (key: string) => ({
   moduleRequests: () => request<ModuleRequest[]>(key, '/module-requests'),
   setModuleRequestStatus: (id: string, status: 'pending' | 'approved' | 'denied') =>
     request<ModuleRequest>(key, `/module-requests/${id}`, { method: 'PATCH', body: JSON.stringify({ status }) }),
+
+  // Referral partners (Decision 27) — super admin
+  referrers: () => request<ReferrerSummary[]>(key, '/referrers'),
+  referrer: (id: string) => request<ReferrerDetail>(key, `/referrers/${id}`),
+  createReferrer: (body: { name: string; email: string; mobile_number?: string } & ReferrerRates) =>
+    request<{ referrer: ReferrerDetail; password: string }>(key, '/referrers', { method: 'POST', body: JSON.stringify(body) }),
+  updateReferrer: (id: string, body: Partial<ReferrerRates & ReferrerBank & { name: string; mobile_number: string | null; is_active: boolean; notes: string | null }>) =>
+    request<ReferrerDetail>(key, `/referrers/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  resetReferrerPassword: (id: string) => request<{ password: string }>(key, `/referrers/${id}/reset-password`, { method: 'POST' }),
+  assignReferrerClinic: (id: string, tenantId: string) =>
+    request<ReferrerDetail>(key, `/referrers/${id}/clinics`, { method: 'POST', body: JSON.stringify({ tenant_id: tenantId }) }),
+  unassignReferrerClinic: (id: string, tenantId: string) => request<ReferrerDetail>(key, `/referrers/${id}/clinics/${tenantId}`, { method: 'DELETE' }),
+  setReferrerClinicRates: (id: string, tenantId: string, body: { one_time_inr?: number | null; monthly_inr?: number | null }) =>
+    request<ReferrerDetail>(key, `/referrers/${id}/clinics/${tenantId}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  recordReferrerPayout: (id: string, body: { amount_inr: number; method: PayoutMethod; reference?: string }) =>
+    request<ReferrerDetail>(key, `/referrers/${id}/payouts`, { method: 'POST', body: JSON.stringify(body) }),
+  voidReferralEarning: (earningId: string, reason?: string) =>
+    request<ReferrerDetail>(key, `/referral-earnings/${earningId}/void`, { method: 'POST', body: JSON.stringify({ reason }) }),
+  accrueReferrals: () => request<{ created: number }>(key, '/referrers/accrue', { method: 'POST' }),
+  // …and the referrer's own page
+  myEarnings: () => request<ReferrerDetail>(key, '/me/earnings'),
+  updateMyBank: (body: Partial<ReferrerBank>) => request<ReferrerDetail>(key, '/me/bank', { method: 'PATCH', body: JSON.stringify(body) }),
 });
 
 export type AdminApi = ReturnType<typeof adminApi>;
@@ -229,6 +257,81 @@ async function authRequest<T>(path: string, body?: unknown): Promise<T> {
 export interface PlatformAdminMe {
   email: string;
   name: string;
+  /** Decision 27: 'referrer' = referral partner — only their own clinics, setup only. */
+  role: 'super' | 'referrer';
+}
+
+// ---------- Referral partners (Decision 27) ----------
+export type PayoutFrequency = 'weekly' | 'monthly';
+export type PayoutMethod = 'bank' | 'upi' | 'cash';
+
+export interface ReferrerBank {
+  account_holder: string | null;
+  account_number: string | null;
+  ifsc: string | null;
+  bank_name: string | null;
+  upi_id: string | null;
+  updated_at?: string | null;
+  updated_by?: string | null;
+}
+
+export interface ReferrerRates {
+  one_time_inr: number;
+  monthly_inr: number;
+  payout_frequency: PayoutFrequency;
+  /** monthly: day 1–28; weekly: 1 = Monday … 7 = Sunday */
+  payout_day: number;
+}
+
+export interface ReferrerSummary extends ReferrerRates {
+  id: string;
+  name: string;
+  email: string;
+  mobile_number: string | null;
+  is_active: boolean;
+  last_login_at: string | null;
+  clinics: number;
+  earned_inr: number;
+  paid_inr: number;
+  balance_inr: number;
+  next_payout: string;
+}
+
+export interface ReferralEarningRow {
+  id: string;
+  tenant_id: string;
+  clinic_name: string;
+  kind: 'one_time' | 'monthly';
+  period: string;
+  amount_inr: number;
+  voided_at: string | null;
+  void_reason: string | null;
+  created_at: string;
+}
+
+export interface ReferralPayoutRow {
+  id: string;
+  amount_inr: number;
+  method: PayoutMethod;
+  reference: string | null;
+  recorded_by: string;
+  paid_at: string;
+}
+
+export interface ReferrerDetail extends Omit<ReferrerSummary, 'clinics'> {
+  notes?: string | null;
+  bank: ReferrerBank;
+  clinics: {
+    id: string;
+    name: string;
+    subdomain: string;
+    subscription: SubscriptionStatus;
+    one_time_inr: number | null;
+    monthly_inr: number | null;
+    created_at: string;
+  }[];
+  earnings: ReferralEarningRow[];
+  payouts: ReferralPayoutRow[];
 }
 
 export const platformAuth = {

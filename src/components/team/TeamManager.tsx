@@ -20,7 +20,8 @@ export interface TeamApi {
   doctors: () => Promise<AdminDoctor[]>;
   createDoctor: (body: DoctorBody) => Promise<AdminDoctor>;
   updateDoctor: (id: string, body: DoctorBody) => Promise<unknown>;
-  deleteDoctor: (id: string) => Promise<unknown>;
+  /** Omitted = no removing doctors here (referral partners, Decision 27). */
+  deleteDoctor?: (id: string) => Promise<unknown>;
   schedule: (doctorId: string) => HoursApi;
   users: () => Promise<StaffLogin[]>;
   /** A setup link is generated and returned once, here. */
@@ -37,7 +38,8 @@ export interface TeamApi {
   resetPassword: (id: string) => Promise<StaffLinkResult>;
   /** A fresh setup link for a login that hasn't been set up yet (no change to the account). */
   setupLink: (id: string) => Promise<StaffLinkResult>;
-  deleteUser: (id: string) => Promise<unknown>;
+  /** Omitted = no deleting or deactivating logins here (referral partners, Decision 27). */
+  deleteUser?: (id: string) => Promise<unknown>;
   /** Platform admin only: create owner logins and make a doctor the clinic admin. */
   canGrantOwner: boolean;
   /** Clinic admin: their own login can't be changed here. */
@@ -124,18 +126,20 @@ export function DoctorsTab({ api }: { api: TeamApi }) {
               >
                 <Icon name="edit" className="text-[18px]" />
               </button>
-              <button
-                onClick={async (e) => {
-                  e.stopPropagation();
-                  if (!window.confirm(`Remove ${d.name} and their schedule? Past visits are kept.`)) return;
-                  await api.deleteDoctor(d.id);
-                  await load();
-                }}
-                aria-label={`Remove ${d.name}`}
-                className="w-9 h-9 rounded-lg hover:bg-error-container hover:text-error flex items-center justify-center text-on-surface-variant"
-              >
-                <Icon name="delete" className="text-[18px]" />
-              </button>
+              {api.deleteDoctor && (
+                <button
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    if (!window.confirm(`Remove ${d.name} and their schedule? Past visits are kept.`)) return;
+                    await api.deleteDoctor!(d.id);
+                    await load();
+                  }}
+                  aria-label={`Remove ${d.name}`}
+                  className="w-9 h-9 rounded-lg hover:bg-error-container hover:text-error flex items-center justify-center text-on-surface-variant"
+                >
+                  <Icon name="delete" className="text-[18px]" />
+                </button>
+              )}
             </div>
           ),
         )}
@@ -431,21 +435,25 @@ export function LoginsTab({ api, clinicCode }: { api: TeamApi; clinicCode: strin
             >
               Reset password
             </button>
-            <button
-              onClick={() => act(() => api.updateUser(l.id, { is_active: !l.is_active }), l.is_active ? `@${l.username} can no longer log in.` : `@${l.username} can log in again.`)}
-              className="h-9 px-3 rounded-lg bg-surface-container-low font-label-md text-label-md text-on-surface-variant"
-            >
-              {l.is_active ? 'Deactivate' : 'Reactivate'}
-            </button>
-            <button
-              onClick={() => {
-                if (window.confirm(`Delete the login @${l.username}? This can't be undone.`)) act(() => api.deleteUser(l.id), `Deleted @${l.username}.`);
-              }}
-              aria-label={`Delete login ${l.username}`}
-              className="w-9 h-9 rounded-lg hover:bg-error-container hover:text-error flex items-center justify-center text-on-surface-variant"
-            >
-              <Icon name="delete" className="text-[18px]" />
-            </button>
+            {api.deleteUser && (
+              <>
+                <button
+                  onClick={() => act(() => api.updateUser(l.id, { is_active: !l.is_active }), l.is_active ? `@${l.username} can no longer log in.` : `@${l.username} can log in again.`)}
+                  className="h-9 px-3 rounded-lg bg-surface-container-low font-label-md text-label-md text-on-surface-variant"
+                >
+                  {l.is_active ? 'Deactivate' : 'Reactivate'}
+                </button>
+                <button
+                  onClick={() => {
+                    if (window.confirm(`Delete the login @${l.username}? This can't be undone.`)) act(() => api.deleteUser!(l.id), `Deleted @${l.username}.`);
+                  }}
+                  aria-label={`Delete login ${l.username}`}
+                  className="w-9 h-9 rounded-lg hover:bg-error-container hover:text-error flex items-center justify-center text-on-surface-variant"
+                >
+                  <Icon name="delete" className="text-[18px]" />
+                </button>
+              </>
+            )}
             </>)}
           </div>
         ))}

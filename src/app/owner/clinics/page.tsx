@@ -117,6 +117,7 @@ function Clinics({ api }: { api: AdminApi }) {
 
       <section className="bg-surface-container-lowest rounded-2xl shadow-sm overflow-hidden">
         {list === null && !error && <p className="p-5 font-body-md text-body-md text-on-surface-variant">Loading…</p>}
+        {list?.length === 0 && <p className="p-5 font-body-md text-body-md text-on-surface-variant">No clinics yet — add the first one above.</p>}
         {list?.map((t) => (
           <Link key={t.id} href={`/owner/clinics/${t.id}`} className="flex items-center gap-4 px-5 py-4 border-b border-surface-container last:border-0 hover:bg-surface-container-low">
             <div className="w-10 h-10 rounded-xl bg-primary-fixed/50 text-primary flex items-center justify-center shrink-0">
