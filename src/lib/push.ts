@@ -1,7 +1,6 @@
 // "Alert me when it's my turn" — Firebase Cloud Messaging web push for a patient's token.
 // Config is the Firebase web app config (public by design). The VAPID key comes from Firebase
-// console → Project settings → Cloud Messaging → Web Push certificates; until it's set the
-// feature stays hidden. iPhone: web push only works once the page is added to the Home Screen
+// console → Project settings → Cloud Messaging → Web Push certificates (public key, safe in code). iPhone: web push only works once the page is added to the Home Screen
 // (iOS 16.4+), so we show that hint instead of a button that can't work.
 
 const firebaseConfig = {
@@ -12,7 +11,9 @@ const firebaseConfig = {
   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID ?? '736406084814',
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID ?? '1:736406084814:web:738db228503de9207bc49f',
 };
-const VAPID_KEY = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY ?? '';
+const VAPID_KEY =
+  process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY ??
+  'BMnnUIW4fBCpBryRL6pm4u5Wj4F34dhckt50FcpS4pHgUrl1jjTnpGaZu6FtGYP4gmSHO_90Ww1lbsdRQq97SNI';
 
 export type PushSupport = 'ok' | 'not_configured' | 'ios_needs_home_screen' | 'unsupported' | 'denied';
 
