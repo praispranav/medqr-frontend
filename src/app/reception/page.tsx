@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { api, ApiError, type DoctorToday, type PaymentEvent, type PaymentQrView, type QueueRow, type ShiftView, type Tenant, type TokenStatus, type Vitals } from '@/lib/api';
+import { api, ApiError, type DoctorToday, type PaymentEvent, type PaymentQrView, type QueueRow, type QueueSettings, type ShiftView, type Tenant, type TokenStatus, type Vitals } from '@/lib/api';
 import { PaymentLog } from '@/components/payments/PaymentLog';
 import { UpiQrCard } from '@/components/payments/UpiQrCard';
 import { Icon } from '@/components/patient/ui';
@@ -10,6 +10,7 @@ import { useLiveQueue } from '@/components/staff/useLiveQueue';
 import { QrScanner } from '@/components/staff/QrScanner';
 import { inr, minutesSince, PaidBadge, StatusPill, VitalsChips } from '@/components/staff/bits';
 import { clinicToday } from '@/lib/clinicTime';
+import { doctorSettings } from '@/lib/doctorSettings';
 
 // Screen #4 — Reception Verifier. Ported from
 // stitch_medqr_clinic_suite_ui_design/reception_verifier_portal/code.html (desktop) with the
@@ -20,7 +21,7 @@ import { clinicToday } from '@/lib/clinicTime';
 // Wiring:
 // - Verify -> POST /queue/tokens/:id/check-in (Booked -> Waiting / Arrived early, Decision 7)
 // - Vitals strip -> POST /patients/visits/:visitId/vitals, every field optional (Decision 5)
-// - Payment tag driven by tenant.queue_settings.payment_mode (Decision 8); never blocks (Decision 9)
+// - Payment tag driven by the row's doctor's payment_mode (Decisions 8, 28); never blocks (Decision 9)
 // - Print Token Slip only when tenant.queue_settings.print_slip_on_checkin (Decision 2)
 // - "Call next" per doctor when advance_mode is 'reception' or 'both'
 
@@ -32,9 +33,10 @@ type PayConfig = { gateway: 'razorpay' | 'mock'; online_available: boolean };
 /** Decision 26: tokens that can still be taken out of the queue (not yet with the doctor). */
 const REMOVABLE = new Set<TokenStatus>(['booked', 'waiting_in_clinic', 'checked_in_early']);
 
-function owes(r: QueueRow, tenant: Tenant) {
+/** qs = the row's doctor's own settings (Decision 28). */
+function owes(r: QueueRow, qs: QueueSettings) {
   if (!r.visit || r.visit.is_paid || r.status === 'no_show' || r.status === 'cancelled' || Number(r.visit.consultation_fee_inr ?? 0) <= 0) return false;
-  return tenant.queue_settings.payment_mode !== 'pay_after_consultation' || r.status === 'done';
+  return qs.payment_mode !== 'pay_after_consultation' || r.status === 'done';
 }
 
 function matches(row: QueueRow, q: string) {
@@ -56,6 +58,8 @@ export default function ReceptionPage() {
 }
 
 function ReceptionDesk({ tenant, doctors }: { tenant: Tenant; doctors: DoctorToday[] }) {
+  // Decision 28: fee, payment mode and who-calls can differ per doctor.
+  const qsFor = (doctorId: string) => doctorSettings(tenant, doctors.find((d) => d.id === doctorId));
   const { rows, refresh, connected, calledTokenId, setCalledTokenId } = useLiveQueue(
     tenant.id,
     doctors.map((d) => d.id),
@@ -93,7 +97,7 @@ function ReceptionDesk({ tenant, doctors }: { tenant: Tenant; doctors: DoctorTod
 
   const visible = useMemo(() => {
     const list = (rows ?? []).filter(
-      (r) => (doctorFilter === 'all' || r.doctor.id === doctorFilter) && (!unpaidOnly || owes(r, tenant)),
+      (r) => (doctorFilter === 'all' || r.doctor.id === doctorFilter) && (!unpaidOnly || owes(r, qsFor(r.doctor.id))),
     );
     const order: Record<TokenStatus, number> = { in_consultation: 0, waiting_in_clinic: 1, checked_in_early: 2, booked: 3, no_show: 4, done: 5, expired: 6, cancelled: 7 };
     return [...list].sort((a, b) => order[a.status] - order[b.status] || a.token_number - b.token_number);
@@ -110,7 +114,7 @@ function ReceptionDesk({ tenant, doctors }: { tenant: Tenant; doctors: DoctorTod
       waiting: 0,
       inCabin: r.filter((x) => x.status === 'in_consultation').length,
       notArrived: r.filter((x) => x.status === 'booked').length,
-      unpaid: r.filter((x) => owes(x, tenant)).length,
+      unpaid: r.filter((x) => owes(x, qsFor(x.doctor.id))).length,
       inCabinTokens,
     };
   }, [rows, tenant]);
@@ -150,7 +154,10 @@ function ReceptionDesk({ tenant, doctors }: { tenant: Tenant; doctors: DoctorTod
   // Jump straight to this token — same action the doctor's own "Call now" uses (Decision 19), so
   // reception can call a specific patient on the doctor's behalf without going through Call Next.
   // Queue Rules → "Who calls the next patient" (Decision 25): reception calls in 'reception' / 'both'.
-  const receptionCalls = tenant.queue_settings.advance_mode === 'reception' || tenant.queue_settings.advance_mode === 'both';
+  const callsFor = (doctorId: string) => {
+    const mode = qsFor(doctorId).advance_mode;
+    return mode === 'reception' || mode === 'both';
+  };
   const callToken = async (tokenId: string) => {
     setCallBusy(tokenId);
     setCallError(null);
@@ -266,13 +273,13 @@ function ReceptionDesk({ tenant, doctors }: { tenant: Tenant; doctors: DoctorTod
             <TokenPanel
               key={selected.id}
               row={selected}
-              tenant={tenant}
+              tenant={{ ...tenant, queue_settings: qsFor(selected.doctor.id) }}
               payConfig={payConfig}
               flash={flash?.tokenId === selected.id ? flash.kind : null}
               onVerify={() => verify(selected)}
-              onCall={receptionCalls ? () => callToken(selected.id) : undefined}
+              onCall={callsFor(selected.doctor.id) ? () => callToken(selected.id) : undefined}
               onVerifyAndCall={
-                receptionCalls
+                callsFor(selected.doctor.id)
                   ? async () => {
                       await verify(selected);
                       await callToken(selected.id);
@@ -367,7 +374,7 @@ function ReceptionDesk({ tenant, doctors }: { tenant: Tenant; doctors: DoctorTod
 
           <DoctorShifts
             shifts={doctorFilter === 'all' ? shifts : shifts.filter((v) => v.doctor_id === doctorFilter)}
-            canCall={receptionCalls}
+            canCall={callsFor}
             onChanged={async () => {
               loadShifts();
               await refresh();
@@ -417,9 +424,9 @@ function ReceptionDesk({ tenant, doctors }: { tenant: Tenant; doctors: DoctorTod
                       {r.visit?.chief_complaint || `joined ${minutesSince(r.joined_at)}m ago`}
                     </span>
                     <span className="flex items-center gap-2 flex-wrap">
-                      <PaidBadge row={r} showDue={owes(r, tenant)} />
+                      <PaidBadge row={r} showDue={owes(r, qsFor(r.doctor.id))} />
                       <span className="flex-1" />
-                      {receptionCalls && showCall && r.status !== 'done' && r.status !== 'no_show' && (
+                      {callsFor(r.doctor.id) && showCall && r.status !== 'done' && r.status !== 'no_show' && (
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -858,11 +865,12 @@ function PaymentBlock({
 function DoctorShifts({
   shifts,
   onChanged,
-  canCall = false,
+  canCall = () => false,
 }: {
   shifts: (ShiftView & { doctor_name: string })[];
   onChanged: () => Promise<void>;
-  canCall?: boolean;
+  /** Decision 25/28: whether reception calls for this doctor (their own "who calls" setting). */
+  canCall?: (doctorId: string) => boolean;
 }) {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -904,7 +912,7 @@ function DoctorShifts({
           <span className="flex-1 min-w-0 font-label-md text-label-md truncate">
             {v.doctor_name} <span className="text-on-surface-variant font-normal">· {note?.id === v.doctor_id ? note.text : text(v)}</span>
           </span>
-          {canCall && v.state === 'live' && (
+          {canCall(v.doctor_id) && v.state === 'live' && (
             <button
               disabled={busyId === v.doctor_id}
               onClick={() =>

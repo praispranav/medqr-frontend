@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { api as publicApi, type CatalogAddOn, type DoctorToday, type Tenant } from '@/lib/api';
+import { api as publicApi, type CatalogAddOn, type DoctorToday, type QueueSettings, type Tenant } from '@/lib/api';
 import { QueueRules, type QueueRulesHandle } from '@/components/clinic/QueueRules';
 import { QueueSetupChat } from '@/components/clinic/QueueSetupChat';
 import { ClinicDetails } from '@/components/clinic/ClinicDetails';
@@ -35,7 +35,7 @@ function ClinicDetail({ api, referrer }: { api: AdminApi; referrer: boolean }) {
   const [tab, setTab] = useState<'doctors' | 'setup' | 'clinic' | 'logins' | 'modules'>('doctors');
   const [error, setError] = useState<string | null>(null);
   const queueRulesRef = useRef<QueueRulesHandle>(null);
-  const team = useMemo(() => adminTeamApi(api, id, referrer), [api, id, referrer]);
+  const team = useMemo(() => adminTeamApi(api, id, referrer, tenant?.queue_settings), [api, id, referrer, tenant?.queue_settings]);
 
   useEffect(() => {
     api.tenant(id).then(setTenant).catch((e: Error) => setError(e.message));
@@ -196,7 +196,7 @@ function DoctorSetupTab({ api, tenant }: { api: AdminApi; tenant: Tenant }) {
   );
 }
 
-function adminTeamApi(api: AdminApi, tenantId: string, referrer: boolean): TeamApi {
+function adminTeamApi(api: AdminApi, tenantId: string, referrer: boolean, clinic?: QueueSettings): TeamApi {
   return {
     doctors: () => api.doctors(tenantId),
     createDoctor: (b) => api.createDoctor(tenantId, b),
@@ -216,6 +216,8 @@ function adminTeamApi(api: AdminApi, tenantId: string, referrer: boolean): TeamA
     setupLink: (id) => api.setupLink(id),
     deleteUser: referrer ? undefined : (id) => api.deleteUser(id),
     canGrantOwner: !referrer, // clinic admins are granted by MedQR only
+    // Decision 28: super admin and the clinic's referrer set each doctor's own fee / payment / pacing.
+    doctorSettings: clinic ? { clinic, save: (doctorId, patch) => api.updateDoctorSettings(doctorId, patch) } : undefined,
     directoryFields: true,
   };
 }

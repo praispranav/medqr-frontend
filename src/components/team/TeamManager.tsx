@@ -4,9 +4,10 @@ import { useCallback, useEffect, useState } from 'react';
 import type { AdminDoctor, StaffLogin } from '@/lib/adminApi';
 import { HoursEditor, type HoursApi } from '@/components/schedule/HoursEditor';
 import { Icon } from '@/components/patient/ui';
-import type { StaffLinkResult } from '@/lib/api';
+import type { QueueSettings, StaffLinkResult } from '@/lib/api';
 import { ShareLinkCard, WhatsAppIcon, whatsappHref, type ShareTarget } from '@/components/team/ShareLinkCard';
 import { inr } from '@/components/staff/bits';
+import { DoctorSettingsCard } from '@/components/doctor/DoctorSettingsCard';
 
 // Doctors (+ their planned hours) and staff logins for one clinic. Shared by the platform admin
 // (/owner/clinics/[id], via x-admin-key — not to be confused with the clinic-admin "owner" staff
@@ -46,6 +47,8 @@ export interface TeamApi {
   currentUserId?: string;
   /** Decision 14: show "each extra doctor adds ₹499/month" when adding past the included count. */
   pricing?: { included_doctors: number; extra_doctor_price_inr: number };
+  /** Decision 28: per-doctor settings card (super admin, referrer, clinic admin). Omitted = hidden. */
+  doctorSettings?: { clinic: QueueSettings; save: (doctorId: string, patch: Record<string, unknown>) => Promise<unknown> };
   /** Platform admin only — the medqr.in/doctors public directory listing fields (bio, "list me"). */
   directoryFields?: boolean;
 }
@@ -173,11 +176,21 @@ export function DoctorsTab({ api }: { api: TeamApi }) {
       </section>
 
       {selected ? (
-        <HoursEditor
-          key={selected.id}
-          title={selected.name}
-          api={api.schedule(selected.id)}
-        />
+        <div className="flex flex-col gap-6 min-w-0">
+          {api.doctorSettings && (
+            <DoctorSettingsCard
+              key={`settings-${selected.id}`}
+              doctorName={selected.name}
+              clinic={api.doctorSettings.clinic}
+              override={selected.settings_override}
+              onSave={async (patch) => {
+                await api.doctorSettings!.save(selected.id, patch);
+                await load();
+              }}
+            />
+          )}
+          <HoursEditor key={selected.id} title={selected.name} api={api.schedule(selected.id)} />
+        </div>
       ) : (
         <section className="bg-surface-container-low rounded-2xl p-8 text-center font-body-md text-body-md text-on-surface-variant">
           Add a doctor to set their consulting hours.

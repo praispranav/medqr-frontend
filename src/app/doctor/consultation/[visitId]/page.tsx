@@ -9,6 +9,7 @@ import { UpiQrCard } from '@/components/payments/UpiQrCard';
 import { Icon } from '@/components/patient/ui';
 import { StaffShell } from '@/components/staff/StaffShell';
 import { inr, VitalsChips } from '@/components/staff/bits';
+import { doctorSettings } from '@/lib/doctorSettings';
 
 // Screen #6 — Doctor Patient Timeline & Consultation (simplified per Decision 4). Ported from
 // stitch_medqr_clinic_suite_ui_design/doctor_patient_timeline_consultation_simplified/code.html.
@@ -300,6 +301,7 @@ function Consultation({ tenant, doctor }: { tenant: Tenant; doctor: DoctorToday 
           </section>
 
           <PaymentSection
+            doctor={doctor}
             visit={visit}
             tenant={tenant}
             onReload={async () => setVisit((await api.getVisit(visit.id)).visit)}
@@ -356,9 +358,10 @@ function Consultation({ tenant, doctor }: { tenant: Tenant; doctor: DoctorToday 
  * the full payment log. In pay-after-consultation clinics the doctor also sets the fee and can take the
  * payment here (cash, UPI at counter, or a fresh UPI QR the patient scans).
  */
-function PaymentSection({ visit, tenant, onReload }: { visit: Visit; tenant: Tenant; onReload: () => Promise<void> }) {
-  const collectHere = tenant.queue_settings.payment_mode === 'pay_after_consultation';
-  const fee = Number(visit.consultation_fee_inr ?? tenant.queue_settings.default_consultation_fee_inr);
+function PaymentSection({ visit, tenant, doctor, onReload }: { visit: Visit; tenant: Tenant; doctor: DoctorToday; onReload: () => Promise<void> }) {
+  const qs = doctorSettings(tenant, doctor); // Decision 28
+  const collectHere = qs.payment_mode === 'pay_after_consultation';
+  const fee = Number(visit.consultation_fee_inr ?? qs.default_consultation_fee_inr);
   const [feeInput, setFeeInput] = useState(String(fee));
   const [qr, setQr] = useState<PaymentQrView | null>(null);
   const [online, setOnline] = useState(false);

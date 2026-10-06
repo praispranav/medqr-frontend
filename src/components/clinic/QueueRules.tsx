@@ -201,7 +201,7 @@ export const QueueRules = forwardRef<QueueRulesHandle, {
               onChange={() => set('advance_mode', 'manual')}
               title="Doctor — I tap “Complete & call next”"
               badge="Recommended"
-              body="Full control from the Queue Command Center. Patients' phones update the moment you call."
+              body="Full control from the doctor's My Queue screen. Patients' phones update the moment you call."
             />
             <Radio
               checked={s.advance_mode === 'reception'}

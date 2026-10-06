@@ -8,6 +8,7 @@ import { HoursEditor } from '@/components/schedule/HoursEditor';
 import { ShiftAlertSettings } from '@/components/doctor/ShiftAlertSettings';
 import { ShiftBar } from '@/components/staff/ShiftBar';
 import { HoursReminderBanner } from '@/components/staff/HoursReminderBanner';
+import { doctorSettings } from '@/lib/doctorSettings';
 
 // Doctor portal — "My Hours": the PLANNED consulting hours (day by day) that patients see as
 // "From 5:00 PM" etc. (Decision 6). Actual shift and breaks are the one-tap ShiftBar — the same
@@ -74,7 +75,7 @@ function MyHours({
             <DoctorStatusRow status={shift.today_status} detail={shift.today_status_detail} />
           </div>
           <p className="font-body-sm text-body-sm text-on-surface-variant">
-            {tenant.queue_settings.shift_start_mode === 'auto'
+            {doctorSettings(tenant, doctor).shift_start_mode === 'auto'
               ? 'Your shift goes live automatically during the hours below'
               : 'Your shift goes live when you tap Start shift'}
             {canChangeRules ? ' (change this in Queue Rules).' : ' (your clinic admin sets this).'}

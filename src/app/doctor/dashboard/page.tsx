@@ -10,6 +10,7 @@ import { StaffShell } from '@/components/staff/StaffShell';
 import { useLiveQueue } from '@/components/staff/useLiveQueue';
 import { minutesSince, PaidBadge, STATUS_LABEL, StatusPill, VitalsChips } from '@/components/staff/bits';
 import { clinicToday } from '@/lib/clinicTime';
+import { doctorSettings } from '@/lib/doctorSettings';
 
 // Screen #5 — Doctor Queue Command Center. Ported from
 // stitch_medqr_clinic_suite_ui_design/doctor_queue_command_center/code.html.
@@ -71,7 +72,8 @@ function CommandCenter({ tenant, doctor }: { tenant: Tenant; doctor: DoctorToday
     return list.filter((r) => String(r.token_number) === q || r.patient?.name.toLowerCase().includes(q));
   };
 
-  const avg = tenant.queue_settings.avg_consult_mins;
+  const qs = doctorSettings(tenant, doctor); // Decision 28: this doctor's own settings
+  const avg = qs.avg_consult_mins;
   const estFinish = new Date(now + (callable.length + (current ? 1 : 0)) * avg * 60000).toLocaleTimeString('en-IN', {
     hour: 'numeric',
     minute: '2-digit',
@@ -112,7 +114,7 @@ function CommandCenter({ tenant, doctor }: { tenant: Tenant; doctor: DoctorToday
     if (confirm(`Remove token #${r.token_number} ${r.patient?.name ?? ''} from the queue?${paid}`)) run(() => api.removeToken(r.id));
   };
   // Queue Rules → "Who calls the next patient": reception-only hides every call button here.
-  const doctorCalls = tenant.queue_settings.advance_mode !== 'reception';
+  const doctorCalls = qs.advance_mode !== 'reception';
 
   // Design: "Press Enter" completes and calls the next patient (ignored while typing in a field).
   useEffect(() => {
@@ -173,12 +175,12 @@ function CommandCenter({ tenant, doctor }: { tenant: Tenant; doctor: DoctorToday
                       </span>
                     )}
                     <PaidBadge row={current} showDue />
-                    {tenant.queue_settings.payment_mode === 'pay_after_consultation' && current.visit && !current.visit.is_paid && (
+                    {qs.payment_mode === 'pay_after_consultation' && current.visit && !current.visit.is_paid && (
                       <div className="flex items-center gap-2 ml-auto">
-                        <button disabled={busy} onClick={() => run(() => api.markPaid(current.visit!.id, 'cash', Number(current.visit!.consultation_fee_inr ?? tenant.queue_settings.default_consultation_fee_inr)))} className="px-3 py-1.5 rounded-lg bg-primary text-on-primary font-label-sm text-label-sm disabled:opacity-60">
+                        <button disabled={busy} onClick={() => run(() => api.markPaid(current.visit!.id, 'cash', Number(current.visit!.consultation_fee_inr ?? qs.default_consultation_fee_inr)))} className="px-3 py-1.5 rounded-lg bg-primary text-on-primary font-label-sm text-label-sm disabled:opacity-60">
                           {busy ? 'Processing...' : 'Paid · Cash'}
                         </button>
-                        <button disabled={busy} onClick={() => run(() => api.markPaid(current.visit!.id, 'upi_counter', Number(current.visit!.consultation_fee_inr ?? tenant.queue_settings.default_consultation_fee_inr)))} className="px-3 py-1.5 rounded-lg bg-surface-container-low text-primary font-label-sm text-label-sm disabled:opacity-60">
+                        <button disabled={busy} onClick={() => run(() => api.markPaid(current.visit!.id, 'upi_counter', Number(current.visit!.consultation_fee_inr ?? qs.default_consultation_fee_inr)))} className="px-3 py-1.5 rounded-lg bg-surface-container-low text-primary font-label-sm text-label-sm disabled:opacity-60">
                           {busy ? 'Processing...' : 'Paid · UPI'}
                         </button>
                       </div>

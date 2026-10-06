@@ -87,6 +87,8 @@ export interface AdminDoctor {
   bio: string | null;
   is_publicly_listed: boolean;
   public_slug: string | null;
+  /** Decision 28: this doctor's own settings (overrides the clinic's Queue Rules). */
+  settings_override?: Partial<QueueSettings> | null;
 }
 
 export type AdminSession = DoctorSession;
@@ -169,6 +171,9 @@ export const adminApi = (key: string) => ({
   doctors: (tenantId: string) => request<AdminDoctor[]>(key, `/tenants/${tenantId}/doctors`),
   createDoctor: (tenantId: string, body: DoctorBody) =>
     request<AdminDoctor>(key, `/tenants/${tenantId}/doctors`, { method: 'POST', body: JSON.stringify(body) }),
+  /** Decision 28: a doctor's own fee / payment / pacing (null for a key = clinic default). */
+  updateDoctorSettings: (id: string, patch: Record<string, unknown>) =>
+    request<AdminDoctor>(key, `/doctors/${id}/settings`, { method: 'PATCH', body: JSON.stringify(patch) }),
   updateDoctor: (id: string, body: DoctorBody) =>
     request<AdminDoctor>(key, `/doctors/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
   deleteDoctor: (id: string) => request(key, `/doctors/${id}`, { method: 'DELETE' }),

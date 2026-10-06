@@ -162,6 +162,8 @@ export interface DoctorToday {
   is_publicly_listed?: boolean;
   intake_schema?: any;
   public_slug?: string | null;
+  /** Decision 28: this doctor's own fee / payment / pacing — use doctorSettings() to read. */
+  settings_override?: Partial<QueueSettings> | null;
   /** Decision 24: WhatsApp shift alerts to the doctor. */
   shift_alert_before?: boolean;
   shift_alert_minutes?: number;
@@ -752,6 +754,9 @@ export const api = {
     createDoctor: (body: ManagedDoctorBody) => request<ManagedDoctor>('/manage/doctors', { method: 'POST', body: JSON.stringify(body) }),
     updateDoctor: (id: string, body: ManagedDoctorBody) => request<ManagedDoctor>(`/manage/doctors/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
     deleteDoctor: (id: string) => request(`/manage/doctors/${id}`, { method: 'DELETE' }),
+    /** Decision 28: this doctor's own fee / payment / pacing (null = clinic default). */
+    doctorSettings: (id: string, patch: Record<string, unknown>) =>
+      request<ManagedDoctor>(`/manage/doctors/${id}/settings`, { method: 'PATCH', body: JSON.stringify(patch) }),
     users: () => request<ManagedLogin[]>('/manage/users'),
     createUser: (body: { role: 'reception' | 'doctor'; name: string; username: string; mobile_number: string; doctor_id: string | null }) =>
       request<ManagedLogin & StaffLinkResult>('/manage/users', { method: 'POST', body: JSON.stringify(body) }),
@@ -803,6 +808,8 @@ export interface ManagedDoctor {
   bio: string | null;
   is_publicly_listed: boolean;
   public_slug: string | null;
+  /** Decision 28: this doctor's own settings (overrides the clinic's Queue Rules). */
+  settings_override?: Partial<QueueSettings> | null;
 }
 export type ManagedDoctorBody = Partial<Pick<ManagedDoctor, 'name' | 'qualification' | 'specialty' | 'cabin_label'>>;
 export interface ManagedLogin {

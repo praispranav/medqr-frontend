@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { api } from '@/lib/api';
+import { api, type QueueSettings } from '@/lib/api';
 import { StaffShell } from '@/components/staff/StaffShell';
 import { DoctorsTab, LoginsTab, type TeamApi } from '@/components/team/TeamManager';
 
@@ -11,12 +11,22 @@ import { DoctorsTab, LoginsTab, type TeamApi } from '@/components/team/TeamManag
 export default function ManageTeamPage() {
   return (
     <StaffShell variant="manage" active="/manage/team">
-      {({ tenant, me, refreshTenant }) => <Team clinicCode={tenant.subdomain} currentUserId={me.user.id} onDoctorsChanged={refreshTenant} />}
+      {({ tenant, me, refreshTenant }) => <Team clinicCode={tenant.subdomain} clinic={tenant.queue_settings} currentUserId={me.user.id} onDoctorsChanged={refreshTenant} />}
     </StaffShell>
   );
 }
 
-function Team({ clinicCode, currentUserId, onDoctorsChanged }: { clinicCode: string; currentUserId: string; onDoctorsChanged: () => Promise<void> }) {
+function Team({
+  clinicCode,
+  clinic,
+  currentUserId,
+  onDoctorsChanged,
+}: {
+  clinicCode: string;
+  clinic: QueueSettings;
+  currentUserId: string;
+  onDoctorsChanged: () => Promise<void>;
+}) {
   const [tab, setTab] = useState<'doctors' | 'logins'>('doctors');
   const [pricing, setPricing] = useState<TeamApi['pricing']>();
   useEffect(() => {
@@ -28,6 +38,14 @@ function Team({ clinicCode, currentUserId, onDoctorsChanged }: { clinicCode: str
   const team = useMemo<TeamApi>(
     () => ({
       doctors: () => api.manage.doctors(),
+      // Decision 28: the clinic admin sets each doctor's own fee / payment / pacing.
+      doctorSettings: {
+        clinic,
+        save: async (doctorId, patch) => {
+          await api.manage.doctorSettings(doctorId, patch);
+          await onDoctorsChanged(); // reception / dashboards read the doctors list
+        },
+      },
       createDoctor: async (b) => {
         const d = await api.manage.createDoctor(b);
         await onDoctorsChanged();
@@ -56,7 +74,7 @@ function Team({ clinicCode, currentUserId, onDoctorsChanged }: { clinicCode: str
       currentUserId,
       pricing,
     }),
-    [currentUserId, onDoctorsChanged, pricing],
+    [currentUserId, onDoctorsChanged, pricing, clinic],
   );
 
   return (
