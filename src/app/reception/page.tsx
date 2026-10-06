@@ -170,7 +170,7 @@ function ReceptionDesk({ tenant, doctors }: { tenant: Tenant; doctors: DoctorTod
 
   return (
     <>
-      <div className="print:hidden grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_420px] gap-5 max-w-[1400px]">
+      <div className="print:hidden grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_460px] gap-5 max-w-[1400px]">
         {/* ---------- Left: verify + selected token ---------- */}
         <div className="flex flex-col gap-5 min-w-0">
           <section className="bg-surface-container-lowest rounded-2xl p-5 shadow-sm">
@@ -271,6 +271,14 @@ function ReceptionDesk({ tenant, doctors }: { tenant: Tenant; doctors: DoctorTod
               flash={flash?.tokenId === selected.id ? flash.kind : null}
               onVerify={() => verify(selected)}
               onCall={receptionCalls ? () => callToken(selected.id) : undefined}
+              onVerifyAndCall={
+                receptionCalls
+                  ? async () => {
+                      await verify(selected);
+                      await callToken(selected.id);
+                    }
+                  : undefined
+              }
               calling={callBusy === selected.id}
               callError={callError?.tokenId === selected.id ? callError.message : null}
               onChanged={refresh}
@@ -341,10 +349,8 @@ function ReceptionDesk({ tenant, doctors }: { tenant: Tenant; doctors: DoctorTod
             </button>
           </div>
 
-          <DoctorShifts shifts={shifts} onChanged={async () => { loadShifts(); await refresh(); }} />
-
           {multiDoctor && (
-            <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
+            <div className="flex gap-1.5 overflow-x-auto no-scrollbar shrink-0">
               {[{ id: 'all', name: 'All doctors' }, ...doctors].map((d) => (
                 <button
                   key={d.id}
@@ -359,15 +365,17 @@ function ReceptionDesk({ tenant, doctors }: { tenant: Tenant; doctors: DoctorTod
             </div>
           )}
 
-          {receptionCalls && (
-            <ReceptionCallNext
-              doctors={doctorFilter === 'all' ? doctors : doctors.filter((d) => d.id === doctorFilter)}
-              shifts={shifts}
-              onDone={refresh}
-            />
-          )}
+          <DoctorShifts
+            shifts={doctorFilter === 'all' ? shifts : shifts.filter((v) => v.doctor_id === doctorFilter)}
+            canCall={receptionCalls}
+            onChanged={async () => {
+              loadShifts();
+              await refresh();
+            }}
+          />
 
-          <div className="flex flex-col gap-2 overflow-y-auto -mx-1 px-1">
+          {/* The only part of this column that scrolls — everything above keeps its size. */}
+          <div className="flex flex-col gap-2 overflow-y-auto -mx-1 px-1 min-h-[220px] flex-1">
             {rows === null && <p className="font-body-md text-body-md text-on-surface-variant">Loading…</p>}
             {rows?.length === 0 && (
               <p className="font-body-md text-body-md text-on-surface-variant py-6 text-center">
@@ -389,7 +397,7 @@ function ReceptionDesk({ tenant, doctors }: { tenant: Tenant; doctors: DoctorTod
                     setFlash(null);
                   }}
                   onKeyDown={(e) => e.key === 'Enter' && setSelectedId(r.id)}
-                  className={`flex items-center gap-3 p-3 rounded-xl text-left transition-colors cursor-pointer ${
+                  className={`flex items-start gap-3 p-3 rounded-xl text-left transition-colors cursor-pointer ${
                     r.id === selectedId
                       ? 'bg-primary-fixed/30 ring-2 ring-primary'
                       : r.status === 'done' || r.status === 'no_show' || r.status === 'cancelled'
@@ -397,33 +405,37 @@ function ReceptionDesk({ tenant, doctors }: { tenant: Tenant; doctors: DoctorTod
                         : 'bg-surface-container-low hover:bg-surface-container'
                   }`}
                 >
-                  <span className="font-headline-md text-headline-md text-primary w-14 shrink-0">#{r.token_number}</span>
-                  <span className="flex-1 min-w-0">
-                    <span className="block font-label-lg text-label-lg text-on-surface truncate">{r.patient?.name ?? 'Patient'}</span>
+                  <span className="font-headline-md text-headline-md text-primary w-12 shrink-0 leading-tight">#{r.token_number}</span>
+                  {/* Two lines so the name is never squeezed: name + status, then doctor/reason + fee + Call. */}
+                  <span className="flex-1 min-w-0 flex flex-col gap-1.5">
+                    <span className="flex items-start justify-between gap-2">
+                      <span className="font-label-lg text-label-lg text-on-surface break-words min-w-0">{r.patient?.name ?? 'Patient'}</span>
+                      <StatusPill status={r.status} />
+                    </span>
                     <span className="block font-body-sm text-body-sm text-on-surface-variant truncate">
                       {multiDoctor ? `${r.doctor.name} · ` : ''}
                       {r.visit?.chief_complaint || `joined ${minutesSince(r.joined_at)}m ago`}
                     </span>
-                  </span>
-                  {receptionCalls && showCall && r.status !== 'done' && r.status !== 'no_show' && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (notVerifiedYet && !canCallDirectly && !confirm("This patient hasn't been confirmed as arrived — call anyway?")) return;
-                        callToken(r.id);
-                      }}
-                      disabled={callBusy === r.id}
-                      aria-label={`Call token ${r.token_number} now`}
-                      title="Call now"
-                      className="h-9 px-3 rounded-full bg-primary text-on-primary font-label-md text-label-md flex items-center gap-1 shrink-0 disabled:opacity-50"
-                    >
-                      <Icon name={callBusy === r.id ? 'progress_activity' : 'campaign'} className={`text-[18px] ${callBusy === r.id ? 'animate-spin' : ''}`} />
-                      Call
-                    </button>
-                  )}
-                  <span className="flex flex-col items-end gap-1 shrink-0">
-                    <StatusPill status={r.status} />
-                    <PaidBadge row={r} showDue={owes(r, tenant)} />
+                    <span className="flex items-center gap-2 flex-wrap">
+                      <PaidBadge row={r} showDue={owes(r, tenant)} />
+                      <span className="flex-1" />
+                      {receptionCalls && showCall && r.status !== 'done' && r.status !== 'no_show' && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (notVerifiedYet && !canCallDirectly && !confirm("This patient hasn't been confirmed as arrived — call anyway?")) return;
+                            callToken(r.id);
+                          }}
+                          disabled={callBusy === r.id}
+                          aria-label={`Call token ${r.token_number} now`}
+                          title="Call now"
+                          className="h-9 px-4 rounded-full bg-primary text-on-primary font-label-md text-label-md flex items-center gap-1.5 shrink-0 disabled:opacity-50"
+                        >
+                          <Icon name={callBusy === r.id ? 'progress_activity' : 'campaign'} className={`text-[18px] ${callBusy === r.id ? 'animate-spin' : ''}`} />
+                          Call
+                        </button>
+                      )}
+                    </span>
                   </span>
                 </div>
               );
@@ -472,6 +484,7 @@ function TokenPanel({
   flash,
   onVerify,
   onCall,
+  onVerifyAndCall,
   calling,
   callError,
   onChanged,
@@ -484,6 +497,8 @@ function TokenPanel({
   onVerify: () => Promise<void>;
   /** Present when reception may call patients in (Queue Rules 'reception' / 'both'). */
   onCall?: () => Promise<void>;
+  /** Not verified yet + reception may call: verify the arrival and call them in, one tap. */
+  onVerifyAndCall?: () => Promise<void>;
   calling: boolean;
   callError: string | null;
   onChanged: () => Promise<void>;
@@ -545,18 +560,33 @@ function TokenPanel({
           </button>
         </div>
 
-        {!verified && (
-          <button
-            disabled={busy}
-            onClick={async () => {
-              setBusy(true);
-              await onVerify().finally(() => setBusy(false));
-            }}
-            className="h-14 bg-primary text-on-primary rounded-xl font-label-lg text-label-lg flex items-center justify-center gap-2 disabled:opacity-60"
-          >
-            <Icon name="how_to_reg" className="text-[22px]" />
-            {row.status === 'no_show' ? 'Patient is back — verify again' : 'Verify arrival'}
-          </button>
+        {!verified && row.status !== 'cancelled' && row.status !== 'expired' && (
+          <div className={`grid gap-3 ${onVerifyAndCall && row.status === 'booked' ? 'sm:grid-cols-2' : ''}`}>
+            <button
+              disabled={busy || calling}
+              onClick={async () => {
+                setBusy(true);
+                await onVerify().finally(() => setBusy(false));
+              }}
+              className="h-14 bg-primary text-on-primary rounded-xl font-label-lg text-label-lg flex items-center justify-center gap-2 disabled:opacity-60"
+            >
+              <Icon name="how_to_reg" className="text-[22px]" />
+              {row.status === 'no_show' ? 'Patient is back — verify again' : 'Verify arrival'}
+            </button>
+            {onVerifyAndCall && row.status === 'booked' && (
+              <button
+                disabled={busy || calling}
+                onClick={async () => {
+                  setBusy(true);
+                  await onVerifyAndCall().finally(() => setBusy(false));
+                }}
+                className="h-14 bg-primary-container text-on-primary rounded-xl font-label-lg text-label-lg flex items-center justify-center gap-2 disabled:opacity-60"
+              >
+                <Icon name={calling ? 'progress_activity' : 'campaign'} className={`text-[22px] ${calling ? 'animate-spin' : ''}`} />
+                Verify &amp; call now
+              </button>
+            )}
+          </div>
         )}
 
         {onCall && (row.status === 'waiting_in_clinic' || row.status === 'checked_in_early') && (
@@ -821,9 +851,22 @@ function PaymentBlock({
  * Each doctor's live shift. In "Start shift" clinics reception can start it for the doctor
  * ("Doctor has arrived") — logged with reception's name. Breaks stay the doctor's own action.
  */
-function DoctorShifts({ shifts, onChanged }: { shifts: (ShiftView & { doctor_name: string })[]; onChanged: () => Promise<void> }) {
+/**
+ * One row per doctor: shift state + its actions. Decision 25: when reception may call, a doctor
+ * who is on shift gets "Call next" right on their row (no separate block listing the doctors again).
+ */
+function DoctorShifts({
+  shifts,
+  onChanged,
+  canCall = false,
+}: {
+  shifts: (ShiftView & { doctor_name: string })[];
+  onChanged: () => Promise<void>;
+  canCall?: boolean;
+}) {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [note, setNote] = useState<{ id: string; text: string } | null>(null);
   if (shifts.length === 0) return null;
 
   const act = async (doctorId: string, fn: () => Promise<unknown>, failMsg: string) => {
@@ -854,13 +897,32 @@ function DoctorShifts({ shifts, onChanged }: { shifts: (ShiftView & { doctor_nam
               : 'Not started';
 
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className="flex flex-col gap-1.5 shrink-0">
       {shifts.map((v) => (
         <div key={v.doctor_id} className="flex items-center gap-2 bg-surface-container-low rounded-xl px-3 py-2">
           <span className={`w-2 h-2 rounded-full shrink-0 ${tone(v.state)}`} />
           <span className="flex-1 min-w-0 font-label-md text-label-md truncate">
-            {v.doctor_name} <span className="text-on-surface-variant font-normal">· {text(v)}</span>
+            {v.doctor_name} <span className="text-on-surface-variant font-normal">· {note?.id === v.doctor_id ? note.text : text(v)}</span>
           </span>
+          {canCall && v.state === 'live' && (
+            <button
+              disabled={busyId === v.doctor_id}
+              onClick={() =>
+                act(
+                  v.doctor_id,
+                  async () => {
+                    setNote(null);
+                    const next = await api.callNext(v.doctor_id);
+                    if (!next) setNote({ id: v.doctor_id, text: 'nobody waiting / break started' });
+                  },
+                  "Couldn't call the next patient.",
+                )
+              }
+              className="h-8 px-3 rounded-lg bg-primary text-on-primary font-label-sm text-label-sm shrink-0 flex items-center gap-1 disabled:opacity-60"
+            >
+              <Icon name="campaign" className="text-[16px]" /> Call next
+            </button>
+          )}
           {v.mode === 'manual' && v.state === 'not_started' && (
             <>
               {v.can_delay && (
@@ -884,55 +946,6 @@ function DoctorShifts({ shifts, onChanged }: { shifts: (ShiftView & { doctor_nam
         </div>
       ))}
       {error && <p className="font-body-sm text-body-sm text-error">{error}</p>}
-    </div>
-  );
-}
-
-function ReceptionCallNext({
-  doctors,
-  shifts,
-  onDone,
-}: {
-  doctors: DoctorToday[];
-  shifts: ShiftView[];
-  onDone: () => Promise<void>;
-}) {
-  const [busyId, setBusyId] = useState<string | null>(null);
-  const [note, setNote] = useState<{ id: string; text: string } | null>(null);
-  return (
-    <div className="flex flex-col gap-2 bg-primary-fixed/20 rounded-xl p-3">
-      <p className="font-label-sm text-label-sm text-on-surface-variant uppercase">Reception controls cabin advance</p>
-      {doctors.map((d) => {
-        const live = shifts.find((s) => s.doctor_id === d.id)?.state === 'live';
-        return (
-          <div key={d.id} className="flex items-center justify-between gap-2">
-            <span className="font-label-md text-label-md truncate">
-              {d.name}
-              {!live && <span className="text-on-surface-variant font-normal"> · not on shift</span>}
-              {note?.id === d.id && <span className="text-on-surface-variant font-normal"> · {note.text}</span>}
-            </span>
-            <button
-              disabled={busyId === d.id || !live}
-              onClick={async () => {
-                setBusyId(d.id);
-                setNote(null);
-                try {
-                  const next = await api.callNext(d.id);
-                  if (!next) setNote({ id: d.id, text: 'nobody waiting / break started' });
-                } catch (e) {
-                  setNote({ id: d.id, text: e instanceof ApiError ? e.message : 'could not call' });
-                } finally {
-                  setBusyId(null);
-                }
-                await onDone();
-              }}
-              className="h-9 px-3 rounded-lg bg-primary text-on-primary font-label-md text-label-md shrink-0 disabled:opacity-40"
-            >
-              Call next
-            </button>
-          </div>
-        );
-      })}
     </div>
   );
 }
