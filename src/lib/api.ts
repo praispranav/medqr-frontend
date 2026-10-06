@@ -406,7 +406,12 @@ export interface QueueRow {
   called_at: string | null;
   doctor: { id: string; name: string; cabin_label: string | null };
   patient: { id: string; name: string; age: number | null; gender: string | null; mobile_number: string } | null;
-  visit: Pick<Visit, 'id' | 'chief_complaint' | 'intake_answers' | 'vitals' | 'is_paid' | 'consultation_fee_inr' | 'payment_method' | 'payment_choice'> | null;
+  visit:
+    | (Pick<Visit, 'id' | 'chief_complaint' | 'intake_answers' | 'vitals' | 'is_paid' | 'consultation_fee_inr' | 'payment_method' | 'payment_choice'> & {
+        /** Decision 29: +N collect ₹N more / −N refund ₹N after changing doctor post-payment. */
+        fee_adjustment_inr?: number;
+      })
+    | null;
 }
 
 export interface CatalogAddOn {
@@ -645,6 +650,15 @@ export const api = {
   staffQr: (visitId: string) => request<PaymentQrView>(`/payments/visits/${visitId}/qr`, { method: 'POST' }),
   markPaid: (visitId: string, method: 'cash' | 'upi_counter', amount_inr?: number) =>
     request<Visit>(`/payments/visits/${visitId}/mark-paid`, { method: 'POST', body: JSON.stringify({ method, amount_inr }) }),
+  /** Decision 29: collect the extra / record the refund after a paid patient changed doctor. */
+  settleDifference: (visitId: string, method: 'cash' | 'upi_counter') =>
+    request<{ ok: true }>(`/payments/visits/${visitId}/settle-difference`, { method: 'POST', body: JSON.stringify({ method }) }),
+  /** Decision 29: move a patient to another doctor (reception). */
+  moveToken: (tokenId: string, doctorId: string) =>
+    request<{ token_number: number }>(`/queue/tokens/${tokenId}/move`, { method: 'POST', body: JSON.stringify({ doctor_id: doctorId }) }),
+  /** Decision 29: fix the patient's details for this visit (reception / doctor). */
+  updateVisitPatient: (visitId: string, body: { name?: string; age?: number | null; gender?: string | null; mobile_number?: string }) =>
+    request(`/patients/visits/${visitId}/patient`, { method: 'PATCH', body: JSON.stringify(body) }),
   unmarkPaid: (visitId: string, reason: string) =>
     request<Visit>(`/payments/visits/${visitId}/unmark-paid`, { method: 'POST', body: JSON.stringify({ reason }) }),
   setFee: (visitId: string, amount_inr: number) =>

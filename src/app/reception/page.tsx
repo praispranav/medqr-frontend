@@ -274,6 +274,9 @@ function ReceptionDesk({ tenant, doctors }: { tenant: Tenant; doctors: DoctorTod
               key={selected.id}
               row={selected}
               tenant={{ ...tenant, queue_settings: qsFor(selected.doctor.id) }}
+              moveTargets={doctors
+                .filter((d) => d.id !== selected.doctor.id && d.today_status !== 'off_today')
+                .map((d) => ({ id: d.id, name: d.name, fee: Number(qsFor(d.id).default_consultation_fee_inr ?? 0) }))}
               payConfig={payConfig}
               flash={flash?.tokenId === selected.id ? flash.kind : null}
               onVerify={() => verify(selected)}
@@ -492,6 +495,7 @@ function TokenPanel({
   onVerify,
   onCall,
   onVerifyAndCall,
+  moveTargets,
   calling,
   callError,
   onChanged,
@@ -506,6 +510,8 @@ function TokenPanel({
   onCall?: () => Promise<void>;
   /** Not verified yet + reception may call: verify the arrival and call them in, one tap. */
   onVerifyAndCall?: () => Promise<void>;
+  /** Decision 29: other doctors consulting today, with their fee. */
+  moveTargets: { id: string; name: string; fee: number }[];
   calling: boolean;
   callError: string | null;
   onChanged: () => Promise<void>;
@@ -621,6 +627,9 @@ function TokenPanel({
             Print token slip
           </button>
         )}
+
+        {row.visit && <EditPatientDetails row={row} onSaved={onChanged} />}
+        {REMOVABLE.has(row.status) && moveTargets.length > 0 && <MovePatient row={row} targets={moveTargets} onMoved={onChanged} />}
 
         {/* Decision 26: patient doesn't want to consult any more → take them out of the queue. */}
         {REMOVABLE.has(row.status) && (
@@ -787,8 +796,35 @@ function PaymentBlock({
   const methodLabel = { cash: 'Cash', upi_counter: 'UPI at counter', upi_online: 'Online (UPI QR)' } as const;
   const choiceLabel = visit.payment_choice === 'online' ? 'Patient chose to pay online' : visit.payment_choice === 'cash' ? 'Patient will pay cash at counter' : "Patient hasn't chosen yet";
 
+  const adjustment = Number(visit.fee_adjustment_inr ?? 0);
+
   return (
     <div className="rounded-xl bg-surface-container-low overflow-hidden">
+      {visit.is_paid && adjustment !== 0 && (
+        // Decision 29: changed doctor after paying — settle the difference here.
+        <div className="px-4 py-3 bg-secondary-fixed/60 flex flex-col gap-2">
+          <p className="font-label-lg text-label-lg text-on-secondary-fixed">
+            {adjustment > 0 ? `Collect ${inr(adjustment)} more` : `Refund ${inr(-adjustment)} to the patient`}
+          </p>
+          <p className="font-body-sm text-body-sm text-on-secondary-fixed-variant">They paid {inr(visit.consultation_fee_inr)} and changed to a doctor with a different fee.</p>
+          <div className="flex gap-2 flex-wrap">
+            {adjustment > 0 ? (
+              <>
+                <button disabled={busy} onClick={() => run(() => api.settleDifference(visit.id, 'cash'))} className="h-10 px-4 rounded-lg bg-primary text-on-primary font-label-md text-label-md disabled:opacity-60">
+                  Collected · Cash
+                </button>
+                <button disabled={busy} onClick={() => run(() => api.settleDifference(visit.id, 'upi_counter'))} className="h-10 px-4 rounded-lg bg-surface-container-lowest text-primary font-label-md text-label-md disabled:opacity-60">
+                  Collected · UPI
+                </button>
+              </>
+            ) : (
+              <button disabled={busy} onClick={() => run(() => api.settleDifference(visit.id, 'cash'))} className="h-10 px-4 rounded-lg bg-primary text-on-primary font-label-md text-label-md disabled:opacity-60">
+                Refunded {inr(-adjustment)}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
       {visit.is_paid ? (
         <div className="flex items-center gap-2 px-4 py-3 bg-tertiary-fixed/30">
           <Icon name="check_circle" fill className="text-tertiary text-[20px]" />
@@ -954,6 +990,151 @@ function DoctorShifts({
         </div>
       ))}
       {error && <p className="font-body-sm text-body-sm text-error">{error}</p>}
+    </div>
+  );
+}
+
+/** Decision 29: fix typos in the patient's details. Small link that opens a 4-field form. */
+function EditPatientDetails({ row, onSaved }: { row: QueueRow; onSaved: () => Promise<void> }) {
+  const p = row.patient;
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState(p?.name ?? '');
+  const [age, setAge] = useState(p?.age != null ? String(p.age) : '');
+  const [gender, setGender] = useState(p?.gender ?? '');
+  const [mobile, setMobile] = useState(p?.mobile_number ?? '');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  if (!p || !row.visit) return null;
+  if (!open)
+    return (
+      <button onClick={() => setOpen(true)} className="h-10 self-start px-3 -ml-3 rounded-lg text-primary font-label-md text-label-md flex items-center gap-1.5 hover:bg-surface-container-low">
+        <Icon name="edit" className="text-[18px]" /> Edit patient details
+      </button>
+    );
+  const input = 'h-11 rounded-xl bg-surface-container-lowest px-3 font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-primary/30';
+  return (
+    <div className="rounded-xl bg-surface-container-low p-4 flex flex-col gap-3">
+      <p className="font-label-lg text-label-lg">Edit patient details</p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <label className="flex flex-col gap-1 sm:col-span-2">
+          <span className="font-label-md text-label-md">Name</span>
+          <input value={name} onChange={(e) => setName(e.target.value)} className={input} />
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className="font-label-md text-label-md">Age</span>
+          <input inputMode="numeric" value={age} onChange={(e) => setAge(e.target.value.replace(/\D/g, '').slice(0, 3))} className={input} />
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className="font-label-md text-label-md">Gender</span>
+          <select value={gender} onChange={(e) => setGender(e.target.value)} className={input}>
+            <option value="">—</option>
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+            <option value="other">Other</option>
+          </select>
+        </label>
+        <label className="flex flex-col gap-1 sm:col-span-2">
+          <span className="font-label-md text-label-md">Mobile</span>
+          <input inputMode="tel" value={mobile} onChange={(e) => setMobile(e.target.value.replace(/\D/g, '').slice(-10))} className={input} />
+        </label>
+      </div>
+      {error && <p className="font-body-sm text-body-sm text-error">{error}</p>}
+      <div className="flex gap-2">
+        <button
+          disabled={busy || !name.trim()}
+          onClick={async () => {
+            setBusy(true);
+            setError(null);
+            try {
+              await api.updateVisitPatient(row.visit!.id, { name: name.trim(), age: age ? Number(age) : null, gender: gender || null, mobile_number: mobile });
+              await onSaved();
+              setOpen(false);
+            } catch (e) {
+              setError(e instanceof ApiError ? e.message : 'Could not save — try again.');
+            } finally {
+              setBusy(false);
+            }
+          }}
+          className="h-11 px-5 rounded-xl bg-primary text-on-primary font-label-lg text-label-lg disabled:opacity-60"
+        >
+          {busy ? 'Saving…' : 'Save'}
+        </button>
+        <button onClick={() => setOpen(false)} className="h-11 px-4 rounded-xl font-label-lg text-label-lg text-on-surface-variant">
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Decision 29: the patient wants a different doctor. They keep their token page and visit, get the
+ * next number in the other doctor's queue today, and the fee follows the new doctor.
+ */
+function MovePatient({ row, targets, onMoved }: { row: QueueRow; targets: { id: string; name: string; fee: number }[]; onMoved: () => Promise<void> }) {
+  const [open, setOpen] = useState(false);
+  const [to, setTo] = useState(targets[0]?.id ?? '');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const target = targets.find((t) => t.id === to);
+  const paid = !!row.visit?.is_paid;
+  const current = Number(row.visit?.consultation_fee_inr ?? 0);
+  const diff = target ? target.fee - current : 0;
+  const feeNote = !target
+    ? ''
+    : paid
+      ? diff > 0
+        ? `They paid ${inr(current)} — collect ${inr(diff)} more after moving.`
+        : diff < 0
+          ? `They paid ${inr(current)} — refund ${inr(-diff)} after moving.`
+          : 'Same fee — nothing to collect or refund.'
+      : diff !== 0
+        ? `Fee changes ${inr(current)} → ${inr(target.fee)}.`
+        : 'Same fee.';
+  if (!open)
+    return (
+      <button onClick={() => setOpen(true)} className="h-10 self-start px-3 -ml-3 rounded-lg text-primary font-label-md text-label-md flex items-center gap-1.5 hover:bg-surface-container-low">
+        <Icon name="swap_horiz" className="text-[18px]" /> Move to another doctor
+      </button>
+    );
+  return (
+    <div className="rounded-xl bg-surface-container-low p-4 flex flex-col gap-3">
+      <p className="font-label-lg text-label-lg">Move #{row.token_number} {row.patient?.name ?? ''} to</p>
+      <select value={to} onChange={(e) => setTo(e.target.value)} className="h-11 rounded-xl bg-surface-container-lowest px-3 font-body-md text-body-md">
+        {targets.map((t) => (
+          <option key={t.id} value={t.id}>
+            {t.name} · {inr(t.fee)}
+          </option>
+        ))}
+      </select>
+      <p className="font-body-sm text-body-sm text-on-surface-variant">
+        They get the next token number in that doctor&apos;s queue; their phone updates by itself. {feeNote}
+      </p>
+      {error && <p className="font-body-sm text-body-sm text-error">{error}</p>}
+      <div className="flex gap-2">
+        <button
+          disabled={busy || !to}
+          onClick={async () => {
+            setBusy(true);
+            setError(null);
+            try {
+              await api.moveToken(row.id, to);
+              await onMoved();
+              setOpen(false);
+            } catch (e) {
+              setError(e instanceof ApiError ? e.message : 'Could not move — try again.');
+            } finally {
+              setBusy(false);
+            }
+          }}
+          className="h-11 px-5 rounded-xl bg-primary text-on-primary font-label-lg text-label-lg disabled:opacity-60"
+        >
+          {busy ? 'Moving…' : 'Move patient'}
+        </button>
+        <button onClick={() => setOpen(false)} className="h-11 px-4 rounded-xl font-label-lg text-label-lg text-on-surface-variant">
+          Cancel
+        </button>
+      </div>
     </div>
   );
 }
