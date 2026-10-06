@@ -10,10 +10,11 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 })(window,document,'script','dataLayer','${GTM_ID}');`;
 
 export const metadata: Metadata = {
-  title: 'MedQR — Digital Clinic Queue',
-  description: 'QR-based digital tokens and smart prescriptions for Indian clinics.',
-  appleWebApp: { capable: true, title: 'MedQR', statusBarStyle: 'default' }, // Home Screen app opens full-screen
-  icons: { apple: '/icons/180' }, // iPhone Home Screen icon
+  title: 'MedQR | Smart Clinic Queue Management & Digital OPD Tokens',
+  description: 'Transform your clinic with MedQR. Offer patients digital tokens, live WhatsApp queue updates, and seamless check-ins. No app required.',
+  keywords: 'clinic queue management system, digital OPD tokens, patient check-in software, doctor appointment system, smart clinic software',
+  appleWebApp: { capable: true, title: 'MedQR', statusBarStyle: 'default' },
+  icons: { apple: '/icons/180' },
 };
 
 export const viewport: Viewport = {
@@ -26,6 +27,30 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <head>
+        {/* JSON-LD Schema for SaaS Product */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "MedQR",
+  "applicationCategory": "HealthApplication",
+  "operatingSystem": "Web",
+  "description": "Smart clinic queue management system enabling digital OPD tokens, live queue tracking, and automated patient alerts.",
+  "offers": {
+    "@type": "Offer",
+    "price": "999",
+    "priceCurrency": "INR"
+  },
+  "aggregateRating": {
+    "@type": "AggregateRating",
+    "ratingValue": "4.9",
+    "ratingCount": "120"
+  }
+})
+          }}
+        />
         {/* Google Tag Manager */}
         <script dangerouslySetInnerHTML={{ __html: GTM_SNIPPET }} />
         {/* End Google Tag Manager */}

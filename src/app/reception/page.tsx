@@ -399,7 +399,7 @@ function ReceptionDesk({ tenant, doctors }: { tenant: Tenant; doctors: DoctorTod
                   onKeyDown={(e) => e.key === 'Enter' && setSelectedId(r.id)}
                   className={`flex items-start gap-3 p-3 rounded-xl text-left transition-colors cursor-pointer ${
                     r.id === selectedId
-                      ? 'bg-primary-fixed/30 ring-2 ring-primary'
+                      ? 'bg-primary-fixed/30 ring-2 ring-inset ring-primary'
                       : r.status === 'done' || r.status === 'no_show' || r.status === 'cancelled'
                         ? 'bg-surface-container-low opacity-60'
                         : 'bg-surface-container-low hover:bg-surface-container'
