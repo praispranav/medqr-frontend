@@ -1,4 +1,4 @@
-import { ApiError, type ArrivalQr, type DoctorSession, type Entitlements, type HoursSlot, type HoursWeek, type QrCodeView, type QueueSettings, type StaffLinkResult, type Tenant, type TokenStatus } from '@/lib/api';
+import { ApiError, type ArrivalQr, type DoctorSession, type Entitlements, type HoursSlot, type HoursWeek, type QrCodeView, type QueueSettings, type QueueSetupMessage, type QueueSetupTurn, type StaffLinkResult, type Tenant, type TokenStatus } from '@/lib/api';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:4000';
 /** Old key-in-the-browser storage — cleared on sign-in; the admin panel now uses an email + password login. */
@@ -54,6 +54,16 @@ export interface ModuleRequest {
   module_key: string;
   requested_by: string | null;
   status: 'pending' | 'approved' | 'denied';
+  created_at: string;
+}
+
+/** An ask from the Queue Setup AI chat for something not yet configurable (doctor, or a referrer relaying them). */
+export interface SettingRequest {
+  id: string;
+  tenant_id: string;
+  description: string;
+  requested_by: string | null;
+  status: 'pending' | 'done' | 'dismissed';
   created_at: string;
 }
 
@@ -178,6 +188,12 @@ export const adminApi = (key: string) => ({
   hoursWeek: (doctorId: string, from: string) => request<HoursWeek>(key, `/doctors/${doctorId}/sessions/week?from=${from}`),
   setHoursDay: (doctorId: string, date: string, slots: HoursSlot[]) =>
     request(key, `/doctors/${doctorId}/sessions/day`, { method: 'POST', body: JSON.stringify({ date, slots }) }),
+  /** Guided Queue Rules setup (Decision 27 referrer onboarding) — only ever proposes a patch, never saves it. */
+  queueSetupChat: (tenantId: string, messages: QueueSetupMessage[]) =>
+    request<QueueSetupTurn>(key, `/tenants/${tenantId}/queue-setup/ai`, { method: 'POST', body: JSON.stringify({ messages }) }),
+  /** Logs an ask from the chat for something that isn't an actual setting yet, for the platform admin to review at owner/setting-requests. */
+  requestSetting: (tenantId: string, description: string) =>
+    request(key, `/tenants/${tenantId}/queue-setup/request`, { method: 'POST', body: JSON.stringify({ description }) }),
   arrivalQr: (tenantId: string) => request<ArrivalQr>(key, `/tenants/${tenantId}/arrival-qr`),
   regenerateArrivalQr: (tenantId: string) => request<ArrivalQr>(key, `/tenants/${tenantId}/arrival-qr/regenerate`, { method: 'POST' }),
   setDaysOff: (doctorId: string, from: string, to: string) =>
@@ -213,6 +229,10 @@ export const adminApi = (key: string) => ({
   moduleRequests: () => request<ModuleRequest[]>(key, '/module-requests'),
   setModuleRequestStatus: (id: string, status: 'pending' | 'approved' | 'denied') =>
     request<ModuleRequest>(key, `/module-requests/${id}`, { method: 'PATCH', body: JSON.stringify({ status }) }),
+  /** Super-only — asks from the Queue Setup AI chat for something not yet configurable. */
+  settingRequests: () => request<SettingRequest[]>(key, '/setting-requests'),
+  setSettingRequestStatus: (id: string, status: 'pending' | 'done' | 'dismissed') =>
+    request<SettingRequest>(key, `/setting-requests/${id}`, { method: 'PATCH', body: JSON.stringify({ status }) }),
 
   // Referral partners (Decision 27) — super admin
   referrers: () => request<ReferrerSummary[]>(key, '/referrers'),

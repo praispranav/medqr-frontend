@@ -1,9 +1,15 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { forwardRef, useImperativeHandle, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { api, ApiError, type PaymentMode, type QueueSettings, type Tenant } from '@/lib/api';
+import { api, ApiError, type PaymentMode, type QueueSettings, type QueueSetupMessage, type QueueSetupTurn, type Tenant } from '@/lib/api';
 import { Icon } from '@/components/patient/ui';
+import { QueueSetupChat } from './QueueSetupChat';
+
+export interface QueueRulesHandle {
+  /** Merge a patch (e.g. from an inline AI chat rendered above this component) into the unsaved form state. */
+  applyPatch: (patch: Partial<QueueSettings>) => void;
+}
 
 // Screen #9 — Booking Mode & Queue Rules. Ported from
 // stitch_medqr_clinic_suite_ui_design/booking_mode_queue_rules/code.html.
@@ -37,20 +43,40 @@ const PAYMENT_OPTIONS: { value: PaymentMode; title: string; body: string; badge?
   },
 ];
 
-export function QueueRules({
-  tenant,
-  onSaved,
-  save: saveFn = (patch) => api.updateQueueSettings(tenant.id, patch),
-}: {
+export const QueueRules = forwardRef<QueueRulesHandle, {
   tenant: Tenant;
   onSaved: () => Promise<void>;
   /** Platform admin passes its own (x-admin-key) save; clinic screens use the staff session. */
   save?: (patch: Partial<QueueSettings>) => Promise<unknown>;
-}) {
+  /** Platform admin/referrer pass their own session; clinic screens use the staff session. */
+  chat?: (messages: QueueSetupMessage[]) => Promise<QueueSetupTurn>;
+  /** Logs an ask from the chat for something not yet configurable. Platform admin passes its own session; clinic screens use the staff session. */
+  requestSetting?: (description: string) => Promise<unknown>;
+  /** Hide the inline "Set up with AI" button — e.g. a referrer page instead shows an always-visible inline chat above this component. */
+  hideSetupButton?: boolean;
+}>(function QueueRules(
+  {
+    tenant,
+    onSaved,
+    save: saveFn = (patch) => api.updateQueueSettings(tenant.id, patch),
+    chat: chatFn = (messages) => api.queueSetupChat(tenant.id, messages),
+    requestSetting: requestSettingFn = (description) => api.requestSetting(tenant.id, description),
+    hideSetupButton = false,
+  },
+  ref,
+) {
   const original = tenant.queue_settings;
   const [s, setS] = useState<QueueSettings>(original);
   const [state, setState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [setupOpen, setSetupOpen] = useState(false);
   const clinicName = tenant.display_name ?? tenant.subdomain;
+
+  useImperativeHandle(ref, () => ({
+    applyPatch: (patch) => {
+      setS((x) => ({ ...x, ...patch }));
+      setState('idle');
+    },
+  }));
 
   const patch = useMemo(() => {
     const out: Partial<QueueSettings> = {};
@@ -82,13 +108,34 @@ export function QueueRules({
 
   return (
     <div className="max-w-5xl flex flex-col gap-6 pb-28">
-      <div>
-        <span className="px-2.5 py-1 rounded-full bg-primary-fixed/50 text-on-primary-fixed-variant font-label-sm text-label-sm uppercase">
-          OPD engine
-        </span>
-        <h1 className="font-headline-lg text-headline-lg text-on-surface mt-2">Queue rules &amp; booking modes</h1>
-        <p className="font-body-md text-body-md text-on-surface-variant">How tokens are issued and advanced at {clinicName}.</p>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <span className="px-2.5 py-1 rounded-full bg-primary-fixed/50 text-on-primary-fixed-variant font-label-sm text-label-sm uppercase">
+            OPD engine
+          </span>
+          <h1 className="font-headline-lg text-headline-lg text-on-surface mt-2">Queue rules &amp; booking modes</h1>
+          <p className="font-body-md text-body-md text-on-surface-variant">How tokens are issued and advanced at {clinicName}.</p>
+        </div>
+        {!hideSetupButton && (
+          <button
+            onClick={() => setSetupOpen(true)}
+            className="h-11 px-4 rounded-xl bg-primary-container text-on-primary-container font-label-md text-label-md flex items-center gap-2 shrink-0"
+          >
+            <Icon name="auto_awesome" className="text-[18px]" /> Set up with AI
+          </button>
+        )}
       </div>
+      {setupOpen && (
+        <QueueSetupChat
+          chat={chatFn}
+          onRequestSetting={requestSettingFn}
+          onClose={() => setSetupOpen(false)}
+          onApply={(patch) => {
+            setS((x) => ({ ...x, ...patch }));
+            setState('idle');
+          }}
+        />
+      )}
 
       {/* Booking mode */}
       <Section title="Booking mode" subtitle="How patients get their place in line.">
@@ -388,7 +435,7 @@ export function QueueRules({
       </div>
     </div>
   );
-}
+});
 
 function Section({ title, subtitle, children }: { title: string; subtitle: string; children: React.ReactNode }) {
   return (

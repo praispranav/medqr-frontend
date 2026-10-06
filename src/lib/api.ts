@@ -99,6 +99,18 @@ export interface QueueSettings {
   late_arrival_insert_after?: number;
 }
 
+export interface QueueSetupMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+export interface QueueSetupTurn {
+  reply: string;
+  done: boolean;
+  proposed: Partial<QueueSettings> | null;
+  unsupported: string | null;
+}
+
 export interface Entitlements {
   base_plan_active: boolean;
   custom_forms: boolean;
@@ -648,6 +660,12 @@ export const api = {
   simulateWalletRecharge: (id: string) => request(`/payments/dev/wallet-recharge/${id}/simulate-paid`, { method: 'POST' }),
   updateQueueSettings: (tenantId: string, patch: Partial<QueueSettings>) =>
     request<Tenant>(`/tenants/${tenantId}/queue-settings`, { method: 'PATCH', body: JSON.stringify(patch) }),
+  /** Guided Queue Rules setup — first-time setup (skippable) and later changes from the Queue Command Center. Only ever proposes a patch, never saves it. */
+  queueSetupChat: (tenantId: string, messages: QueueSetupMessage[]) =>
+    request<QueueSetupTurn>(`/tenants/${tenantId}/queue-setup/ai`, { method: 'POST', body: JSON.stringify({ messages }) }),
+  /** Logs an ask from the chat for something that isn't an actual setting yet, for the platform admin to review. */
+  requestSetting: (tenantId: string, description: string) =>
+    request(`/tenants/${tenantId}/queue-setup/request`, { method: 'POST', body: JSON.stringify({ description }) }),
   // Public doctor/clinic directory (medqr.in/doctors) — clinic-wide fields: doctor/owner self-service (Decision 14).
   updateTenantPublicProfile: (
     tenantId: string,

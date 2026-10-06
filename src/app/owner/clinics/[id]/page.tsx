@@ -2,9 +2,10 @@
 
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { api as publicApi, type CatalogAddOn, type DoctorToday, type Tenant } from '@/lib/api';
-import { QueueRules } from '@/components/clinic/QueueRules';
+import { QueueRules, type QueueRulesHandle } from '@/components/clinic/QueueRules';
+import { QueueSetupChat } from '@/components/clinic/QueueSetupChat';
 import { ClinicDetails } from '@/components/clinic/ClinicDetails';
 import { PatientNotifications } from '@/components/doctor/PatientNotifications';
 import { IntakeFormEditor } from '@/components/doctor/IntakeFormEditor';
@@ -33,6 +34,7 @@ function ClinicDetail({ api, referrer }: { api: AdminApi; referrer: boolean }) {
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [tab, setTab] = useState<'doctors' | 'setup' | 'clinic' | 'logins' | 'modules'>('doctors');
   const [error, setError] = useState<string | null>(null);
+  const queueRulesRef = useRef<QueueRulesHandle>(null);
   const team = useMemo(() => adminTeamApi(api, id, referrer), [api, id, referrer]);
 
   useEffect(() => {
@@ -100,6 +102,22 @@ function ClinicDetail({ api, referrer }: { api: AdminApi; referrer: boolean }) {
       {tab === 'setup' && <DoctorSetupTab api={api} tenant={tenant} />}
       {tab === 'clinic' && (
         <div className="flex flex-col gap-6 pb-24">
+          {referrer && (
+            <div>
+              <p className="font-label-lg text-label-lg flex items-center gap-2 mb-2">
+                <Icon name="auto_awesome" className="text-primary text-[20px]" /> Set up Queue Rules with the doctor
+              </p>
+              <p className="font-body-sm text-body-sm text-on-surface-variant mb-3">
+                Ask the doctor how their clinic runs and apply the answers to the form below — review and save, nothing is applied automatically.
+              </p>
+              <QueueSetupChat
+                variant="inline"
+                chat={(messages) => api.queueSetupChat(tenant.id, messages)}
+                onRequestSetting={(description) => api.requestSetting(tenant.id, description)}
+                onApply={(patch) => queueRulesRef.current?.applyPatch(patch)}
+              />
+            </div>
+          )}
           <ClinicDetails
             key={`details-${tenant.address}-${tenant.city}-${tenant.public_phone}-${tenant.is_publicly_listed}`}
             tenant={tenant}
@@ -109,10 +127,14 @@ function ClinicDetail({ api, referrer }: { api: AdminApi; referrer: boolean }) {
           />
           <ArrivalQrCard load={() => api.arrivalQr(tenant.id)} regenerate={() => api.regenerateArrivalQr(tenant.id)} rulesHint="Queue Rules below" />
           <QueueRules
+            ref={queueRulesRef}
             key={`rules-${JSON.stringify(tenant.queue_settings)}`}
             tenant={tenant}
             onSaved={async () => setTenant(await api.tenant(tenant.id))}
             save={(patch) => api.updateTenant(tenant.id, { queue_settings: patch })}
+            chat={(messages) => api.queueSetupChat(tenant.id, messages)}
+            requestSetting={(description) => api.requestSetting(tenant.id, description)}
+            hideSetupButton={referrer}
           />
         </div>
       )}
