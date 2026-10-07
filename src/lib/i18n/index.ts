@@ -6,7 +6,7 @@ import { en, type TranslationKey } from './en';
  * and every patient screen uses t(). Until then the 🌐 switcher and the clinic "Patient language"
  * setting stay hidden — an option that changes nothing is worse than no option.
  */
-export const PATIENT_LANGUAGES_READY = false;
+export const PATIENT_LANGUAGES_READY = true;
 
 export type LangCode = 'en' | 'hi' | 'mr' | 'te' | 'ml' | 'ta' | 'kn' | 'bn' | 'gu';
 
