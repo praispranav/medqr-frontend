@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { Suspense, useEffect, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { api, ApiError, patientDevice, type DoctorToday, type Patient, type Tenant } from '@/lib/api';
+import { api, ApiError, patientDevice, type DoctorToday, type NextSession, type Patient, type Tenant } from '@/lib/api';
 import { DoctorAvatar, FullPageMessage, Icon, initials, LoadingPage, nextSessionLabel } from '@/components/patient/ui';
 import { CustomIntakeForm } from '@/components/patient/CustomIntakeForm';
 
@@ -52,7 +52,7 @@ function IntakeForm() {
   const [doctor, setDoctor] = useState<DoctorToday | null>(null);
   const [loadError, setLoadError] = useState(false);
   // A doctor's own QR opens this page directly (no doctor selection) — so check today's status here (Decision 6).
-  const [offToday, setOffToday] = useState<{ name: string; detail: string } | null>(null);
+  const [offToday, setOffToday] = useState<{ name: string; detail: string; next: NextSession | null } | null>(null);
 
   // Identity — returning profiles (1-tap) or a new person
   const [profiles, setProfiles] = useState<Patient[]>([]);
@@ -101,7 +101,11 @@ function IntakeForm() {
           if (!d) return setLoadError(true);
           // A doctor's own QR lands here directly, so check today's status (Decision 6).
           if (d.today_status === 'off_today') {
-            return setOffToday({ name: d.name, detail: d.next_session ? `Next consulting: ${nextSessionLabel(d.next_session)}` : d.today_status_detail });
+            return setOffToday({
+              name: d.name,
+              detail: d.next_session ? `Next consulting: ${nextSessionLabel(d.next_session)}` : d.today_status_detail,
+              next: d.next_session ?? null,
+            });
           }
         }
         setTenant(t);
@@ -159,11 +163,29 @@ function IntakeForm() {
     );
   if (offToday)
     return (
-      <FullPageMessage
-        icon="event_busy"
-        title={`${offToday.name} is not consulting today`}
-        body={`${offToday.detail}. Tokens can be taken on the day the doctor is consulting.`}
-      />
+      // Never a dead end: Home always, and "Book for <next session>" when it's inside the doctor's booking window.
+      <main className="min-h-screen flex flex-col items-center justify-center text-center px-6 gap-3 bg-surface">
+        <div className="w-14 h-14 rounded-full bg-surface-container-low text-primary flex items-center justify-center">
+          <Icon name="event_busy" className="text-[28px]" />
+        </div>
+        <h1 className="font-headline-md text-headline-md text-on-surface">{offToday.name} is not consulting today</h1>
+        <p className="font-body-md text-body-md text-on-surface-variant max-w-xs">
+          {offToday.detail}.{offToday.next?.bookable ? '' : ' Tokens can be taken on the day the doctor is consulting.'}
+        </p>
+        <div className="w-full max-w-xs flex flex-col gap-2 mt-3">
+          {offToday.next?.bookable && (
+            <Link
+              href={`/patient/${subdomain}/intake?doctorId=${doctorId}&date=${offToday.next.date}`}
+              className="h-12 bg-primary text-on-primary rounded-xl font-label-lg text-label-lg flex items-center justify-center gap-2"
+            >
+              <Icon name="event_available" className="text-[20px]" /> Book for {nextSessionLabel(offToday.next)}
+            </Link>
+          )}
+          <Link href={doctorsPage} className="h-12 bg-surface-container-high text-on-surface rounded-xl font-label-lg text-label-lg flex items-center justify-center gap-2">
+            <Icon name="home" className="text-[20px]" /> Choose another doctor
+          </Link>
+        </div>
+      </main>
     );
   if (!tenant || !doctor || phoneState === 'checking') return <LoadingPage />;
   if (phoneState === 'needed') {

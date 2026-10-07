@@ -31,8 +31,10 @@ export default function QrEntryPage() {
           router.replace(`/patient/${r.clinic.subdomain}`); // whole-clinic QR → pick the doctor
           return;
         }
-        if (r.status === 'assigned' && r.clinic && r.doctor && r.doctor.today_status !== 'off_today') {
-          router.replace(`/patient/${r.clinic.subdomain}/intake?doctorId=${r.doctor.id}`); // doctor QR → no selection
+        if (r.status === 'assigned' && r.clinic && r.doctor) {
+          // Doctor QR → no selection. The intake page handles "not consulting today" itself
+          // (Home + book their next session), so an off-today doctor is never a dead end.
+          router.replace(`/patient/${r.clinic.subdomain}/intake?doctorId=${r.doctor.id}`);
           return;
         }
         setQr(r);
