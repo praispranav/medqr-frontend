@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { api, ApiError, type PaymentMode, type QueueSettings, type QueueSetupMessage, type QueueSetupTurn, type Tenant } from '@/lib/api';
 import { Icon } from '@/components/patient/ui';
 import { QueueSetupChat } from './QueueSetupChat';
+import { PATIENT_LANGUAGES_READY } from '@/lib/i18n';
 
 export interface QueueRulesHandle {
   /** Merge a patch (e.g. from an inline AI chat rendered above this component) into the unsaved form state. */
@@ -269,6 +270,7 @@ export const QueueRules = forwardRef<QueueRulesHandle, {
         </label>
       </Section>
 
+{PATIENT_LANGUAGES_READY && (
       <Section title="Patient language" subtitle="The default language for patient screens.">
         <div className="max-w-xs">
           <select
@@ -288,6 +290,7 @@ export const QueueRules = forwardRef<QueueRulesHandle, {
           </select>
         </div>
       </Section>
+      )}
 
       {/* Decision 17 */}
       <Section title="Advance booking" subtitle="Let patients join your queue for a future day, not just today.">

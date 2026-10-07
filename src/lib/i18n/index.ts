@@ -1,6 +1,13 @@
 import { useEffect, useState, useCallback } from 'react';
 import { en, type TranslationKey } from './en';
 
+/**
+ * Decision 34: flip to true once the language files (hi.ts, mr.ts, …) actually contain translations
+ * and every patient screen uses t(). Until then the 🌐 switcher and the clinic "Patient language"
+ * setting stay hidden — an option that changes nothing is worse than no option.
+ */
+export const PATIENT_LANGUAGES_READY = false;
+
 export type LangCode = 'en' | 'hi' | 'mr' | 'te' | 'ml' | 'ta' | 'kn' | 'bn' | 'gu';
 
 const dicts: Partial<Record<LangCode, Partial<Record<TranslationKey, string>>>> = {

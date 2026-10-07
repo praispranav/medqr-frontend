@@ -1,5 +1,8 @@
+'use client';
+
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { createPortal } from 'react-dom';
 import { api, type PatientSearchResult, type Tenant, type Visit } from '@/lib/api';
 import { Icon } from '@/components/patient/ui';
 import { fileUrl } from '@/lib/api';
@@ -15,7 +18,13 @@ export function PatientSearchAction({ onWalkIn }: { onWalkIn?: (p: { name: strin
       >
         <Icon name="search" className="text-[20px]" />
       </button>
-      {open && <PatientSearchOverlay onClose={() => setOpen(false)} onWalkIn={(p) => { setOpen(false); onWalkIn?.(p); }} showWalkIn={!!onWalkIn} />}
+      {/* Portal to <body>: the staff header uses backdrop-blur, which would trap a `fixed` overlay
+          inside the 64px header instead of covering the screen. */}
+      {open &&
+        createPortal(
+          <PatientSearchOverlay onClose={() => setOpen(false)} onWalkIn={(p) => { setOpen(false); onWalkIn?.(p); }} showWalkIn={!!onWalkIn} />,
+          document.body,
+        )}
     </>
   );
 }
@@ -147,9 +156,12 @@ function PatientDetailView({ patient, onBack, onWalkIn }: { patient: PatientSear
                     </span>
                   )}
                 </div>
-                <p className={`font-body-sm text-body-sm text-on-surface-variant whitespace-pre-wrap ${open ? '' : 'line-clamp-2'}`}>
-                  {h.note || 'No note written'}
-                </p>
+                {/* The server only sends the clinical note to doctors (Decision 30) — reception sees none. */}
+                {'note' in h && (
+                  <p className={`font-body-sm text-body-sm text-on-surface-variant whitespace-pre-wrap ${open ? '' : 'line-clamp-2'}`}>
+                    {h.note || 'No note written'}
+                  </p>
+                )}
                 {open && h.attachments.length > 0 && (
                   <div className="flex gap-2 flex-wrap mt-1">
                     {h.attachments.map((a) => (

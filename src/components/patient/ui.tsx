@@ -1,7 +1,7 @@
 'use client';
 import Link from "next/link";
 import { useState } from 'react';
-import { useT, LANG_NAMES, type LangCode } from '@/lib/i18n';
+import { useT, LANG_NAMES, PATIENT_LANGUAGES_READY, type LangCode } from '@/lib/i18n';
 
 import type { DoctorToday, DoctorTodayStatus, NextSession } from '@/lib/api';
 
@@ -132,6 +132,7 @@ export function PatientHeader({ eyebrow, title, onBack, homeUrl }: { eyebrow: st
           </div>
         </div>
         <div className="flex items-center">
+{PATIENT_LANGUAGES_READY && (
           <button
             onClick={() => setLangOpen(true)}
             className="relative z-10 w-12 h-12 rounded-xl flex items-center justify-center text-on-surface-variant hover:text-on-surface active:bg-surface-container transition-colors shrink-0 touch-manipulation"
@@ -139,6 +140,7 @@ export function PatientHeader({ eyebrow, title, onBack, homeUrl }: { eyebrow: st
           >
             <Icon name="language" className="text-[24px]" />
           </button>
+          )}
           {homeUrl && (
             <Link
               href={homeUrl}
