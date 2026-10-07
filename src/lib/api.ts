@@ -97,6 +97,8 @@ export interface QueueSettings {
   arrival_scan_required?: boolean;
   late_arrival_priority?: 'keep_position' | 'insert_after_n' | 'back_of_queue';
   late_arrival_insert_after?: number;
+  ready_count?: number;
+  patient_language?: 'en' | 'hi' | 'mr' | 'te' | 'ml' | 'ta' | 'kn' | 'bn' | 'gu';
 }
 
 export interface QueueSetupMessage {
@@ -182,6 +184,17 @@ export interface Patient {
   age: number | null;
   gender: string | null;
   allergies?: string[];
+}
+
+export interface PatientSearchResult {
+  id: string;
+  name: string;
+  age: number | null;
+  gender: string | null;
+  mobile_number: string;
+  visit_count: number;
+  last_visit_date: string;
+  last_doctor_name: string | null;
 }
 
 export type PaymentMethod = 'cash' | 'upi_counter' | 'upi_online';
@@ -298,12 +311,14 @@ export interface TokenStatusView {
   /** Firebase push is configured on the server / turned on for this token's phone. */
   push_available: boolean;
   push_enabled: boolean;
+  get_ready: boolean;
+  patient_language: 'en' | 'hi' | 'mr' | 'te' | 'ml' | 'ta' | 'kn' | 'bn' | 'gu';
 }
 
 /** Decision 17 — one bookable future day: the doctors who actually have a scheduled session on it. */
 export interface AdvanceBookingDay {
   date: string;
-  doctors: Pick<DoctorToday, 'id' | 'name' | 'qualification' | 'specialty' | 'cabin_label' | 'photo_url'>[];
+  doctors: (Pick<DoctorToday, 'id' | 'name' | 'qualification' | 'specialty' | 'cabin_label' | 'photo_url'> & { tokens_left?: number; is_full?: boolean })[];
 }
 
 export type ShiftState = 'not_started' | 'live' | 'on_break' | 'ended';
@@ -412,6 +427,7 @@ export interface QueueRow {
         fee_adjustment_inr?: number;
       })
     | null;
+  get_ready: boolean;
 }
 
 export interface CatalogAddOn {
@@ -627,6 +643,8 @@ export const api = {
   getToken: (tokenId: string) => request<TokenStatusView>(`/queue/tokens/${tokenId}`),
   checkIn: (tokenId: string) => request(`/queue/tokens/${tokenId}/check-in`, { method: 'POST' }),
   callNext: (doctorId: string) => request<{ id: string } | null>(`/queue/doctors/${doctorId}/call-next`, { method: 'POST' }),
+  completeCurrentVisit: (doctorId: string) => request<{ id: string } | null>(`/queue/doctors/${doctorId}/complete-current`, { method: 'POST' }),
+  alertReady: (doctorId: string) => request<{ alerted: number }>(`/queue/doctors/${doctorId}/alert-ready`, { method: 'POST' }),
   callToken: (tokenId: string) => request(`/queue/tokens/${tokenId}/call`, { method: 'POST' }),
   markNoShow: (tokenId: string) => request(`/queue/tokens/${tokenId}/no-show`, { method: 'POST' }),
   /** Decision 26: take a patient out of the queue before their visit (reception / that doctor). */
@@ -636,6 +654,8 @@ export const api = {
   getVisit: (visitId: string) => request<{ visit: Visit; patient: Patient | null }>(`/patients/visits/${visitId}`),
   getPatientHistory: (patientId: string, tenantId: string) =>
     request<Visit[]>(`/patients/${patientId}/history?tenantId=${tenantId}`),
+  patientSearch: (q: string) =>
+    request<PatientSearchResult[]>(`/patients/search?q=${encodeURIComponent(q)}`),
   saveVitals: (visitId: string, vitals: Vitals) =>
     request<Visit>(`/patients/visits/${visitId}/vitals`, { method: 'POST', body: JSON.stringify(vitals) }),
   saveNote: (visitId: string, note: string | null) =>

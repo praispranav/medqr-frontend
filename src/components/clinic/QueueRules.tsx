@@ -216,6 +216,18 @@ export const QueueRules = forwardRef<QueueRulesHandle, {
               body="Whoever is free calls the next patient: the doctor from their screen, or reception with “Call next”."
             />
             <Radio checked={false} disabled onChange={() => {}} title="Auto-advance on a timer" body="Not available yet." />
+            
+            <div className="mt-4 border-t border-surface-container pt-4">
+              <NumberField
+                label="Get next N ready"
+                suffix="patients"
+                value={s.ready_count ?? 3}
+                min={0}
+                max={10}
+                onChange={(v) => set('ready_count', v)}
+                hint="Send a web push alert to the next N waiting patients when a token is called. 0 = off."
+              />
+            </div>
           </div>
         </Section>
 
@@ -255,6 +267,26 @@ export const QueueRules = forwardRef<QueueRulesHandle, {
           </div>
           <Toggle checked={!!s.require_whatsapp_otp} onChange={(v) => set('require_whatsapp_otp', v)} />
         </label>
+      </Section>
+
+      <Section title="Patient language" subtitle="The default language for patient screens.">
+        <div className="max-w-xs">
+          <select
+            value={s.patient_language ?? 'en'}
+            onChange={(e) => set('patient_language', e.target.value as any)}
+            className="w-full h-12 rounded-xl bg-surface-container-low px-4 font-body-lg text-body-lg focus:outline-none focus:ring-2 focus:ring-primary/30"
+          >
+            <option value="en">English</option>
+            <option value="hi">हिन्दी (Hindi)</option>
+            <option value="mr">मराठी (Marathi)</option>
+            <option value="te">తెలుగు (Telugu)</option>
+            <option value="ml">മലയാളം (Malayalam)</option>
+            <option value="ta">தமிழ் (Tamil)</option>
+            <option value="kn">ಕನ್ನಡ (Kannada)</option>
+            <option value="bn">বাংলা (Bengali)</option>
+            <option value="gu">ગુજરાતી (Gujarati)</option>
+          </select>
+        </div>
       </Section>
 
       {/* Decision 17 */}

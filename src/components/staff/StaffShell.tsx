@@ -85,12 +85,14 @@ export function StaffShell({
   variant,
   active,
   managersOnly = false,
+  headerAction,
   children,
 }: {
   variant: Variant;
   active: string;
   /** Billing / Queue Rules: solo doctor or clinic admin only (Decision 14). */
   managersOnly?: boolean;
+  headerAction?: ReactNode;
   children: (ctx: StaffContext) => ReactNode;
 }) {
   const router = useRouter();
@@ -305,6 +307,7 @@ export function StaffShell({
               </p>
             </div>
             <Clock />
+            {headerAction}
             <Link
               href="/change-password"
               aria-label="Change password"

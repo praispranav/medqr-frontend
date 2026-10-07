@@ -11,6 +11,7 @@ import { QrScanner } from '@/components/staff/QrScanner';
 import { inr, minutesSince, PaidBadge, StatusPill, VitalsChips } from '@/components/staff/bits';
 import { clinicToday } from '@/lib/clinicTime';
 import { doctorSettings } from '@/lib/doctorSettings';
+import { PatientSearchAction } from '@/components/staff/PatientSearch';
 
 // Screen #4 — Reception Verifier. Ported from
 // stitch_medqr_clinic_suite_ui_design/reception_verifier_portal/code.html (desktop) with the
@@ -50,14 +51,20 @@ function matches(row: QueueRow, q: string) {
 }
 
 export default function ReceptionPage() {
+  const [walkInPreFill, setWalkInPreFill] = useState<{name: string; mobile: string} | null>(null);
+
   return (
-    <StaffShell variant="reception" active="/reception">
-      {({ tenant, doctors }) => <ReceptionDesk tenant={tenant} doctors={doctors} />}
+    <StaffShell 
+      variant="reception" 
+      active="/reception"
+      headerAction={<PatientSearchAction onWalkIn={(p) => setWalkInPreFill(p)} />}
+    >
+      {({ tenant, doctors }) => <ReceptionDesk tenant={tenant} doctors={doctors} walkInPreFill={walkInPreFill} setWalkInPreFill={setWalkInPreFill} />}
     </StaffShell>
   );
 }
 
-function ReceptionDesk({ tenant, doctors }: { tenant: Tenant; doctors: DoctorToday[] }) {
+function ReceptionDesk({ tenant, doctors, walkInPreFill, setWalkInPreFill }: { tenant: Tenant; doctors: DoctorToday[]; walkInPreFill: {name: string; mobile: string} | null; setWalkInPreFill: (p: {name: string; mobile: string} | null) => void }) {
   // Decision 28: fee, payment mode and who-calls can differ per doctor.
   const qsFor = (doctorId: string) => doctorSettings(tenant, doctors.find((d) => d.id === doctorId));
   const { rows, refresh, connected, calledTokenId, setCalledTokenId } = useLiveQueue(
@@ -86,6 +93,12 @@ function ReceptionDesk({ tenant, doctors }: { tenant: Tenant; doctors: DoctorTod
     const id = setInterval(loadShifts, 60_000);
     return () => clearInterval(id);
   }, [loadShifts]);
+
+  useEffect(() => {
+    if (walkInPreFill) {
+      setWalkInOpen(true);
+    }
+  }, [walkInPreFill]);
 
   useEffect(() => {
     api.paymentConfig().then(setPayConfig).catch(() => setPayConfig({ gateway: 'mock', online_available: false }));
@@ -377,7 +390,9 @@ function ReceptionDesk({ tenant, doctors }: { tenant: Tenant; doctors: DoctorTod
 
           <DoctorShifts
             shifts={doctorFilter === 'all' ? shifts : shifts.filter((v) => v.doctor_id === doctorFilter)}
+            rows={rows}
             canCall={callsFor}
+            canAlertReady={(doctorId) => (qsFor(doctorId).ready_count ?? 0) > 0}
             onChanged={async () => {
               loadShifts();
               await refresh();
@@ -470,9 +485,15 @@ function ReceptionDesk({ tenant, doctors }: { tenant: Tenant; doctors: DoctorTod
         <WalkInDialog
           tenant={tenant}
           doctors={doctors}
-          onClose={() => setWalkInOpen(false)}
+          initialName={walkInPreFill?.name}
+          initialMobile={walkInPreFill?.mobile}
+          onClose={() => {
+            setWalkInOpen(false);
+            setWalkInPreFill(null);
+          }}
           onCreated={async (tokenId) => {
             setWalkInOpen(false);
+            setWalkInPreFill(null);
             await refresh();
             setSelectedId(tokenId);
             setFlash({ tokenId, kind: 'verified' });
@@ -900,13 +921,16 @@ function PaymentBlock({
  */
 function DoctorShifts({
   shifts,
+  rows = [],
   onChanged,
   canCall = () => false,
+  canAlertReady,
 }: {
   shifts: (ShiftView & { doctor_name: string })[];
+  rows?: QueueRow[] | null;
   onChanged: () => Promise<void>;
-  /** Decision 25/28: whether reception calls for this doctor (their own "who calls" setting). */
   canCall?: (doctorId: string) => boolean;
+  canAlertReady?: (doctorId: string) => boolean;
 }) {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -942,12 +966,29 @@ function DoctorShifts({
 
   return (
     <div className="flex flex-col gap-1.5 shrink-0">
-      {shifts.map((v) => (
-        <div key={v.doctor_id} className="flex items-center gap-2 bg-surface-container-low rounded-xl px-3 py-2">
+      {shifts.map((v) => {
+        const current = (rows ?? []).find((r) => r.doctor.id === v.doctor_id && r.status === 'in_consultation');
+        return (
+        <div key={v.doctor_id} className="flex items-center gap-2 bg-surface-container-low rounded-xl px-3 py-2 flex-wrap">
           <span className={`w-2 h-2 rounded-full shrink-0 ${tone(v.state)}`} />
           <span className="flex-1 min-w-0 font-label-md text-label-md truncate">
             {v.doctor_name} <span className="text-on-surface-variant font-normal">· {note?.id === v.doctor_id ? note.text : text(v)}</span>
           </span>
+          {current && (
+            <button
+              disabled={busyId === v.doctor_id}
+              onClick={() =>
+                act(
+                  v.doctor_id,
+                  () => api.completeCurrentVisit(v.doctor_id),
+                  "Couldn't complete the visit.",
+                )
+              }
+              className="h-8 px-3 rounded-lg bg-surface-container-high text-primary font-label-sm text-label-sm shrink-0 flex items-center gap-1 disabled:opacity-60"
+            >
+              Complete #{current.token_number}
+            </button>
+          )}
           {canCall(v.doctor_id) && v.state === 'live' && (
             <button
               disabled={busyId === v.doctor_id}
@@ -965,6 +1006,38 @@ function DoctorShifts({
               className="h-8 px-3 rounded-lg bg-primary text-on-primary font-label-sm text-label-sm shrink-0 flex items-center gap-1 disabled:opacity-60"
             >
               <Icon name="campaign" className="text-[16px]" /> Call next
+            </button>
+          )}
+          {canAlertReady?.(v.doctor_id) && v.state === 'live' && (
+            <button
+              disabled={busyId === v.doctor_id}
+              onClick={() =>
+                act(
+                  v.doctor_id,
+                  async () => {
+                    setNote(null);
+                    const res = await api.alertReady(v.doctor_id);
+                    setNote({ id: v.doctor_id, text: `Alerted ${res.alerted} patient(s)` });
+                  },
+                  "Couldn't alert patients.",
+                )
+              }
+              className="h-8 px-3 rounded-lg bg-tertiary-container text-on-tertiary-container font-label-sm text-label-sm shrink-0 flex items-center gap-1 disabled:opacity-60"
+            >
+              <Icon name="notifications_active" className="text-[16px]" /> Get ready
+            </button>
+          )}
+          {(v.state === 'live' || v.state === 'on_break') && (
+            <button
+              disabled={busyId === v.doctor_id}
+              onClick={() => {
+                if (confirm(`End Dr ${v.doctor_name}'s shift? Waiting patients stay in the queue.`)) {
+                  act(v.doctor_id, () => api.endShift(v.doctor_id), "Couldn't end the shift.");
+                }
+              }}
+              className="h-8 px-3 rounded-lg bg-error-container text-on-error-container font-label-sm text-label-sm shrink-0 flex items-center gap-1 disabled:opacity-60"
+            >
+              End shift
             </button>
           )}
           {v.mode === 'manual' && v.state === 'not_started' && (
@@ -988,7 +1061,8 @@ function DoctorShifts({
             </>
           )}
         </div>
-      ))}
+        );
+      })}
       {error && <p className="font-body-sm text-body-sm text-error">{error}</p>}
     </div>
   );
@@ -1144,16 +1218,20 @@ function WalkInDialog({
   doctors,
   onClose,
   onCreated,
+  initialName,
+  initialMobile,
 }: {
   tenant: Tenant;
   doctors: DoctorToday[];
   onClose: () => void;
   onCreated: (tokenId: string) => void;
+  initialName?: string;
+  initialMobile?: string;
 }) {
   const selectable = doctors.filter((d) => d.today_status !== 'off_today'); // Decision 6
   const [doctorId, setDoctorId] = useState(selectable[0]?.id ?? '');
-  const [name, setName] = useState('');
-  const [mobile, setMobile] = useState('');
+  const [name, setName] = useState(initialName ?? '');
+  const [mobile, setMobile] = useState(initialMobile ?? '');
   const [age, setAge] = useState('');
   const [complaint, setComplaint] = useState('');
   const [error, setError] = useState<string | null>(null);

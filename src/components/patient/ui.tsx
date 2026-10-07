@@ -1,5 +1,7 @@
 'use client';
 import Link from "next/link";
+import { useState } from 'react';
+import { useT, LANG_NAMES, type LangCode } from '@/lib/i18n';
 
 import type { DoctorToday, DoctorTodayStatus, NextSession } from '@/lib/api';
 
@@ -105,6 +107,9 @@ export function DoctorStatusRow({ status, detail, next }: { status: DoctorTodayS
 
 /** Fixed app bar shared by the patient screens (Screens #1A, #3). */
 export function PatientHeader({ eyebrow, title, onBack, homeUrl }: { eyebrow: string; title: string; onBack?: () => void; homeUrl?: string }) {
+  const [langOpen, setLangOpen] = useState(false);
+  const { lang, setLang } = useT();
+
   return (
     <header className="fixed top-0 w-full z-50 pt-safe bg-surface/85 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)]">
       <div className="h-16 px-margin flex items-center justify-between gap-space-sm max-w-[480px] mx-auto w-full">
@@ -126,16 +131,45 @@ export function PatientHeader({ eyebrow, title, onBack, homeUrl }: { eyebrow: st
             <span className="font-headline-sm text-headline-sm text-on-surface truncate">{title}</span>
           </div>
         </div>
-        {homeUrl && (
-          <Link
-            href={homeUrl}
-            className="relative z-10 w-12 h-12 -mr-2 rounded-xl flex items-center justify-center text-on-surface-variant hover:text-on-surface active:bg-surface-container transition-colors shrink-0 touch-manipulation"
-            aria-label="Home"
+        <div className="flex items-center">
+          <button
+            onClick={() => setLangOpen(true)}
+            className="relative z-10 w-12 h-12 rounded-xl flex items-center justify-center text-on-surface-variant hover:text-on-surface active:bg-surface-container transition-colors shrink-0 touch-manipulation"
+            aria-label="Change language"
           >
-            <Icon name="home" className="text-[24px]" />
-          </Link>
-        )}
+            <Icon name="language" className="text-[24px]" />
+          </button>
+          {homeUrl && (
+            <Link
+              href={homeUrl}
+              className="relative z-10 w-12 h-12 -mr-2 rounded-xl flex items-center justify-center text-on-surface-variant hover:text-on-surface active:bg-surface-container transition-colors shrink-0 touch-manipulation"
+              aria-label="Home"
+            >
+              <Icon name="home" className="text-[24px]" />
+            </Link>
+          )}
+        </div>
       </div>
+      {langOpen && (
+        <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/50" onClick={() => setLangOpen(false)}>
+          <div className="w-full max-w-[480px] bg-surface rounded-t-3xl p-6 pb-safe flex flex-col gap-4" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-headline-sm text-headline-sm text-on-surface mb-2">Change language</h3>
+            <div className="grid grid-cols-2 gap-3">
+              {(Object.entries(LANG_NAMES) as [LangCode, string][]).map(([code, name]) => (
+                <button
+                  key={code}
+                  onClick={() => { setLang(code); setLangOpen(false); }}
+                  className={`h-12 rounded-xl font-label-md text-label-md border flex items-center justify-center ${
+                    lang === code ? 'border-primary bg-primary-fixed/30 text-primary' : 'border-surface-container text-on-surface-variant bg-surface'
+                  }`}
+                >
+                  {name}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </header>
   );
 }

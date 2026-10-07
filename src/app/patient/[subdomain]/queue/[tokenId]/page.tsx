@@ -10,6 +10,7 @@ import { QrScanner } from '@/components/staff/QrScanner';
 import { PushAlertCard } from '@/components/patient/PushAlertCard';
 import { AddToHomeScreen } from '@/components/patient/AddToHomeScreen';
 import { FullPageMessage, Icon, LoadingPage, PatientHeader } from '@/components/patient/ui';
+import { useT } from '@/lib/i18n';
 
 // Screen #3 — Live Queue / Token Tracking. Ported from
 // stitch_medqr_clinic_suite_ui_design/patient_live_queue_tracking/code.html.
@@ -39,6 +40,8 @@ export default function LiveQueuePage() {
   const [notFound, setNotFound] = useState(false);
   const [now, setNow] = useState(() => new Date());
   
+  const { t } = useT(view?.patient_language);
+
   const [storedTokens, setStoredTokens] = useState<{id: string, number: number, patient_name: string, status: string, clinic_subdomain: string}[]>([]);
 
   useEffect(() => {
@@ -339,6 +342,14 @@ export default function LiveQueuePage() {
               <Icon name="info" className="text-error text-[22px] flex-shrink-0" />
               <p className="font-body-sm text-body-sm leading-tight flex-1">
                 {doctor.name} has finished for today. Please speak to {view.front_desk ? 'the reception desk' : 'the clinic staff'}.
+              </p>
+            </div>
+          )}
+          {view.get_ready && !preSession && !onBreak && !shiftEnded && (
+            <div className="w-full bg-tertiary-fixed/40 text-on-tertiary-fixed-variant p-space-sm px-space-md rounded-xl flex items-center gap-space-sm shadow-sm border border-tertiary/20">
+              <Icon name="notifications_active" className="text-tertiary flex-shrink-0 text-[22px] animate-pulse" />
+              <p className="font-body-sm text-body-sm leading-tight flex-1">
+                <strong className="font-label-sm uppercase tracking-wider text-tertiary">Get ready:</strong> Please come near {doctor.cabin_label ?? doctor.name} — you&apos;ll be called soon.
               </p>
             </div>
           )}

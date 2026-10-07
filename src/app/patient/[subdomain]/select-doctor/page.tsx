@@ -13,6 +13,7 @@ import {
   LoadingPage,
   PatientHeader,
 } from '@/components/patient/ui';
+import { useT } from '@/lib/i18n';
 import { addDays, clinicToday } from '@/lib/clinicTime';
 import { getQueueSocket } from '@/lib/socket';
 
@@ -51,6 +52,9 @@ export default function SelectDoctorPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [activeTokens, setActiveTokens] = useState<any[]>([]);
+
+  const { t } = useT(tenant?.queue_settings?.patient_language);
+
   useEffect(() => {
     const sync = async () => {
       try {
@@ -263,7 +267,7 @@ export default function SelectDoctorPage() {
             <div className="flex flex-col gap-1">
               <span className="font-label-md text-label-md text-primary font-bold uppercase tracking-wider">OPD Express Check-in</span>
               <h2 className="font-headline-md text-headline-md text-on-surface font-extrabold tracking-tight">
-                {isFutureView ? `Book with ${d.name}` : `You're checking in with ${d.name}`}
+                {isFutureView ? t('booking_for', { name: d.name }) : t('checking_in_with', { name: d.name })}
               </h2>
               <p className="font-body-md text-body-md text-on-surface-variant">
                 {isFutureView ? `Confirm to get your token for ${formatDate(selectedDate!)}.` : 'Confirm the doctor to get your queue token.'}

@@ -6,6 +6,7 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { api, ApiError, patientDevice, type DoctorToday, type NextSession, type Patient, type Tenant } from '@/lib/api';
 import { DoctorAvatar, FullPageMessage, Icon, initials, LoadingPage, nextSessionLabel } from '@/components/patient/ui';
 import { CustomIntakeForm } from '@/components/patient/CustomIntakeForm';
+import { clinicToday } from '@/lib/clinicTime';
 
 // Screen #1 (returning 1-tap / new patient) + Screen #2 (intake details), on one page. Ported from
 // stitch_medqr_clinic_suite_ui_design/patient_qr_landing_check_in/code.html and
@@ -80,21 +81,25 @@ function IntakeForm() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
+  const [advanceDays, setAdvanceDays] = useState<any[]>([]);
+
   useEffect(() => {
     (async () => {
       try {
         const t = await api.getTenantBySubdomain(subdomain);
         if (!t) return setLoadError(true);
 
+        const advance = await api.getAdvanceBooking(t.id).catch(() => ({ days: [] }));
+        setAdvanceDays(advance.days);
+
         let d: DoctorToday | undefined;
         if (bookingDate) {
           // Decision 17 — a future booking: today's off/on-break status is irrelevant, only whether
           // the doctor actually has a session on that date (re-checked server-side at join too).
-          const advance = await api.getAdvanceBooking(t.id);
-          const day = advance.days.find((x) => x.date === bookingDate);
-          const match = day?.doctors.find((x) => x.id === doctorId);
+          const day = advance.days.find((x: any) => x.date === bookingDate);
+          const match = day?.doctors.find((x: any) => x.id === doctorId);
           if (!match) return setLoadError(true);
-          d = { ...match, today_status: 'available', today_status_detail: '' };
+          d = { ...match, today_status: 'available', today_status_detail: '' } as DoctorToday;
         } else {
           const doctors = await api.getDoctorsToday(t.id);
           d = doctors.find((x) => x.id === doctorId);
@@ -327,12 +332,61 @@ function IntakeForm() {
             </div>
           </div>
 
-          {bookingDate && (
-            <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-secondary-fixed/40 text-on-secondary-fixed-variant font-label-sm text-label-sm">
-              <Icon name="event_available" className="text-[14px]" />
-              Booking for {formatBookingDate(bookingDate, { weekday: 'short', day: 'numeric', month: 'short' })} — not today
-            </div>
-          )}
+          {(() => {
+            const doctorDays = advanceDays
+              .map((day) => ({
+                date: day.date as string,
+                doctor: day.doctors.find((d: any) => d.id === doctorId),
+              }))
+              .filter((x) => x.doctor);
+              
+            if (doctorDays.length === 0) return null;
+
+            const todayStr = clinicToday();
+            
+            return (
+              <div className="flex items-center gap-2 overflow-x-auto no-scrollbar mt-3 pb-1 -mx-margin px-margin">
+                {doctorDays.map((d) => {
+                  const isToday = d.date === todayStr;
+                  // Hide today chip if doctor is off today (handled if they aren't in doctorDays, but just in case)
+                  if (isToday && doctor.today_status === 'off_today') return null;
+
+                  const isSelected = bookingDate ? bookingDate === d.date : isToday;
+                  const disabled = d.doctor.is_full;
+                  const label = isToday ? 'Today' : formatBookingDate(d.date, { weekday: 'short', day: 'numeric', month: 'short' });
+                  const subLabel = d.doctor.is_full ? 'Full' : `${d.doctor.tokens_left} left`;
+
+                  return (
+                    <button
+                      key={d.date}
+                      disabled={disabled && !isSelected}
+                      onClick={() => {
+                        const url = new URL(window.location.href);
+                        if (isToday) {
+                          url.searchParams.delete('date');
+                        } else {
+                          url.searchParams.set('date', d.date);
+                        }
+                        router.replace(url.pathname + url.search);
+                      }}
+                      className={`shrink-0 flex flex-col items-center justify-center px-4 py-2 rounded-xl transition-all ${
+                        isSelected
+                          ? 'bg-primary text-on-primary shadow-sm ring-2 ring-primary ring-offset-1 ring-offset-surface'
+                          : disabled
+                          ? 'bg-surface-container-low text-on-surface-variant opacity-60 cursor-not-allowed'
+                          : 'bg-surface-container-lowest text-on-surface-variant shadow-sm hover:shadow'
+                      }`}
+                    >
+                      <span className="font-label-md text-label-md font-bold">{label}</span>
+                      <span className={`font-label-sm text-[11px] ${isSelected ? 'text-on-primary/80' : 'text-on-surface-variant/80'}`}>
+                        {subLabel}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            );
+          })()}
 
           <h1 className="text-headline-sm font-headline-sm text-on-surface tracking-tight font-bold mt-3">
             {mode === 'returning' && selectedProfile ? `Welcome back! 👋` : 'Just a few quick details'}

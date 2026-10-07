@@ -62,6 +62,7 @@ const MORE: Field[] = [
       ['notify_and_hold', 'Notify and hold their place'],
     ],
   },
+  { key: 'ready_count', label: 'Get next N ready (0 = off)', kind: 'number', min: 0, max: 10 },
 ];
 
 /** What an unset clinic value means (same fallbacks the server uses). */

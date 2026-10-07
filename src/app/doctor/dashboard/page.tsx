@@ -11,6 +11,7 @@ import { useLiveQueue } from '@/components/staff/useLiveQueue';
 import { minutesSince, PaidBadge, STATUS_LABEL, StatusPill, VitalsChips } from '@/components/staff/bits';
 import { clinicToday } from '@/lib/clinicTime';
 import { doctorSettings } from '@/lib/doctorSettings';
+import { PatientSearchAction } from '@/components/staff/PatientSearch';
 
 // Screen #5 — Doctor Queue Command Center. Ported from
 // stitch_medqr_clinic_suite_ui_design/doctor_queue_command_center/code.html.
@@ -22,7 +23,11 @@ import { doctorSettings } from '@/lib/doctorSettings';
 
 export default function DoctorDashboardPage() {
   return (
-    <StaffShell variant="doctor" active="/doctor/dashboard">
+    <StaffShell 
+      variant="doctor" 
+      active="/doctor/dashboard"
+      headerAction={<PatientSearchAction />}
+    >
       {({ tenant, doctor }) => <CommandCenter tenant={tenant} doctor={doctor!} />}
     </StaffShell>
   );
@@ -37,6 +42,7 @@ function CommandCenter({ tenant, doctor }: { tenant: Tenant; doctor: DoctorToday
   const [now, setNow] = useState(() => Date.now());
   const [shift, setShift] = useState<ShiftView | null>(null);
   const [callError, setCallError] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   // Shift state rides on the same live events as the queue (any change broadcasts queue:changed).
   useEffect(() => {
@@ -237,6 +243,15 @@ function CommandCenter({ tenant, doctor }: { tenant: Tenant; doctor: DoctorToday
                 ) : (
                   <ReceptionCallsNote />
                 )}
+                {(next || !doctorCalls) && !breakDue && (
+                  <button
+                    disabled={busy}
+                    onClick={() => run(() => api.completeCurrentVisit(doctor.id))}
+                    className="w-full sm:w-auto shrink-0 h-14 px-5 rounded-xl bg-surface-container text-primary font-label-lg text-label-lg flex items-center justify-center gap-2 hover:bg-surface-container-high"
+                  >
+                    Complete visit ✓
+                  </button>
+                )}
               </div>
               <button
                 disabled={busy}
@@ -297,6 +312,18 @@ function CommandCenter({ tenant, doctor }: { tenant: Tenant; doctor: DoctorToday
         <div className="flex items-center justify-between gap-2">
           <h2 className="font-headline-sm text-headline-sm text-on-surface">Live patient queue</h2>
           <div className="flex items-center gap-2">
+            {(qs.ready_count ?? 0) > 0 && live && (
+              <button
+                disabled={busy}
+                onClick={() => run(async () => {
+                  const res = await api.alertReady(doctor.id);
+                  alert(`Alerted ${res.alerted} patient(s)`);
+                })}
+                className="h-8 px-3 rounded-lg bg-tertiary-container text-on-tertiary-container font-label-sm text-label-sm flex items-center gap-1.5 hover:bg-tertiary-container/80 disabled:opacity-60"
+              >
+                <Icon name="notifications_active" className="text-[16px]" /> Get ready
+              </button>
+            )}
             <button
               onClick={() => downloadTodayPatientsCsv(rows ?? [], doctor.name)}
               disabled={!rows?.length}
@@ -324,7 +351,7 @@ function CommandCenter({ tenant, doctor }: { tenant: Tenant; doctor: DoctorToday
         <div className="flex flex-col gap-2 overflow-y-auto -mx-1 px-1">
           {rows === null && <p className="font-body-md text-body-md text-on-surface-variant">Loading…</p>}
           {filter(callable).map((r, i) => (
-            <QueueItem key={r.id} row={r} now={now}>
+            <QueueItem key={r.id} row={r} now={now} doctor={doctor} expanded={expandedId === r.id} onToggle={() => setExpandedId(expandedId === r.id ? null : r.id)}>
               <div className="flex items-center gap-1">
               {i === 0 && !query ? (
                 <span className="px-2 py-0.5 rounded-full bg-secondary-fixed text-on-secondary-fixed font-label-sm text-label-sm">Next up</span>
@@ -373,7 +400,7 @@ function CommandCenter({ tenant, doctor }: { tenant: Tenant; doctor: DoctorToday
             <p className="font-label-sm text-label-sm text-on-surface-variant uppercase mt-3">Finished today</p>
           )}
           {filter(finished).map((r) => (
-            <QueueItem key={r.id} row={r} now={now} muted>
+            <QueueItem key={r.id} row={r} now={now} muted doctor={doctor} expanded={expandedId === r.id} onToggle={() => setExpandedId(expandedId === r.id ? null : r.id)}>
               {r.visit && r.status === 'done' ? (
                 <Link href={`/doctor/consultation/${r.visit.id}`} className="font-label-md text-label-md text-primary">
                   Notes
@@ -456,21 +483,78 @@ function downloadTodayPatientsCsv(rows: QueueRow[], doctorName: string) {
   URL.revokeObjectURL(url);
 }
 
-function QueueItem({ row, now, muted = false, children }: { row: QueueRow; now: number; muted?: boolean; children: React.ReactNode }) {
+function QueueItem({ row, now, muted = false, doctor, expanded = false, onToggle, children }: { row: QueueRow; now: number; muted?: boolean; doctor?: DoctorToday; expanded?: boolean; onToggle?: () => void; children: React.ReactNode }) {
   const waited = minutesSince(row.joined_at, now);
   return (
-    <div className={`flex items-center gap-3 p-3 rounded-xl ${muted ? 'bg-surface-container-low opacity-70' : 'bg-surface-container-low'}`}>
-      <span className="font-headline-md text-headline-md text-primary w-14 shrink-0">#{row.token_number}</span>
-      <div className="flex-1 min-w-0">
-        <p className="font-label-lg text-label-lg text-on-surface truncate">
-          {row.patient?.name ?? 'Patient'}
-          {row.patient?.age ? <span className="text-on-surface-variant font-normal"> · {row.patient.age}y</span> : null}
-        </p>
-        <p className="font-body-sm text-body-sm text-on-surface-variant truncate">
-          {[waited !== null ? `joined ${waited}m ago` : null, row.visit?.chief_complaint].filter(Boolean).join(' · ')}
-        </p>
+    <div className={`flex flex-col p-3 rounded-xl overflow-hidden transition-colors ${muted ? 'bg-surface-container-low opacity-70' : 'bg-surface-container-low hover:bg-surface-container cursor-pointer'}`} onClick={(e) => {
+      if ((e.target as HTMLElement).closest('button, a')) return;
+      if (!muted) onToggle?.();
+    }}>
+      <div className="flex items-center gap-3">
+        <span className="font-headline-md text-headline-md text-primary w-14 shrink-0">#{row.token_number}</span>
+        <div className="flex-1 min-w-0">
+          <p className="font-label-lg text-label-lg text-on-surface truncate">
+            {row.patient?.name ?? 'Patient'}
+            {row.patient?.age ? <span className="text-on-surface-variant font-normal"> · {row.patient.age}y</span> : null}
+          </p>
+          <p className="font-body-sm text-body-sm text-on-surface-variant truncate">
+            {[waited !== null ? `joined ${waited}m ago` : null, row.visit?.chief_complaint].filter(Boolean).join(' · ')}
+          </p>
+        </div>
+        <div className="shrink-0" onClick={e => e.stopPropagation()}>
+          {children}
+        </div>
       </div>
-      {children}
+      
+      <div className={`grid transition-all duration-300 ${expanded ? 'grid-rows-[1fr] opacity-100 mt-3' : 'grid-rows-[0fr] opacity-0 mt-0'}`}>
+        <div className="overflow-hidden flex flex-col gap-3 text-on-surface-variant">
+          <div className="h-px bg-surface-container-high w-full" />
+          
+          <div className="flex flex-col gap-1.5 px-1">
+            <p className="font-body-md text-body-md text-on-surface">
+              {[row.patient?.age ? `${row.patient.age} yrs` : null, row.patient?.gender, row.patient ? `+91 ${row.patient.mobile_number}` : null].filter(Boolean).join(' · ')}
+            </p>
+            {row.visit?.chief_complaint && (
+              <p className="font-body-sm text-body-sm mt-1">
+                <span className="text-on-surface-variant">Reason: </span>
+                <span className="text-on-surface font-medium">{row.visit.chief_complaint}</span>
+              </p>
+            )}
+            
+            {row.visit?.intake_answers && Object.keys(row.visit.intake_answers).length > 0 && (
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-1">
+                {Object.entries(row.visit.intake_answers).map(([key, val]) => {
+                  const schema = doctor?.intake_schema?.find((s: any) => s.id === key);
+                  const label = schema?.label || key;
+                  const valueStr = typeof val === 'boolean' ? (val ? 'Yes' : 'No') : Array.isArray(val) ? val.join(', ') : val;
+                  return (
+                    <p key={key} className="font-body-sm text-body-sm">
+                      <span className="text-on-surface-variant">{label}: </span>
+                      <span className="text-on-surface font-medium">{String(valueStr)}</span>
+                    </p>
+                  );
+                })}
+              </div>
+            )}
+            
+            {row.visit?.vitals && Object.keys(row.visit.vitals).length > 0 && (
+               <div className="mt-2 flex">
+                 <VitalsChips vitals={row.visit.vitals} />
+               </div>
+            )}
+            
+            <div className="flex items-center justify-between gap-3 mt-3 pt-2">
+              <PaidBadge row={row} />
+              
+              {row.visit && (
+                <Link href={`/doctor/consultation/${row.visit.id}`} className="font-label-md text-label-md text-primary flex items-center gap-1 hover:underline px-2 py-1 -mr-2">
+                  Open full file <Icon name="arrow_forward" className="text-[16px]" />
+                </Link>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
