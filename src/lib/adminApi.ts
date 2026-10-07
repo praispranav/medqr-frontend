@@ -160,6 +160,8 @@ export const adminApi = (key: string) => ({
     id: string,
     body: {
       intake_schema?: unknown;
+      /** Decision 35: this doctor's patient-screen language ('' / null = clinic default). */
+      patient_language?: string | null;
       notify_token_confirmed?: boolean;
       notify_you_are_next?: boolean;
       notify_your_turn?: boolean;

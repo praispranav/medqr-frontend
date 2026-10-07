@@ -191,6 +191,8 @@ function DoctorSetupTab({ api, tenant }: { api: AdminApi; tenant: Tenant }) {
         title={`Intake Form — ${doctor.name}`}
         onSaved={load}
         save={(schema) => api.updateDoctorProfile(doctor.id, { intake_schema: schema })}
+        saveLanguage={(lang) => api.updateDoctorProfile(doctor.id, { patient_language: lang })}
+        clinicLanguage={tenant.queue_settings.patient_language}
       />
     </div>
   );

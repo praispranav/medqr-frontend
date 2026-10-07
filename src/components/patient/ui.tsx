@@ -1,5 +1,6 @@
 'use client';
 import Link from "next/link";
+import { createPortal } from 'react-dom';
 import { useState } from 'react';
 import { useT, LANG_NAMES, PATIENT_LANGUAGES_READY, type LangCode } from '@/lib/i18n';
 
@@ -54,8 +55,8 @@ export function DoctorAvatar({
 
 /** The per-doctor status strip from Screen #1A — one look per today-only state (Decision 6). */
 /** "Mon 6 Oct, 5:00 PM" for an off-today doctor's next session (Decision 6, amended: information only). */
-export function nextSessionLabel(n: NextSession) {
-  const day = new Date(`${n.date}T00:00:00`).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
+export function nextSessionLabel(n: NextSession, locale = 'en-IN') {
+  const day = new Date(`${n.date}T00:00:00`).toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'short' });
   const [h, m] = n.starts_at.split(':').map(Number);
   return `${day}, ${h % 12 === 0 ? 12 : h % 12}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
 }
@@ -107,9 +108,6 @@ export function DoctorStatusRow({ status, detail, next }: { status: DoctorTodayS
 
 /** Fixed app bar shared by the patient screens (Screens #1A, #3). */
 export function PatientHeader({ eyebrow, title, onBack, homeUrl }: { eyebrow: string; title: string; onBack?: () => void; homeUrl?: string }) {
-  const [langOpen, setLangOpen] = useState(false);
-  const { lang, setLang } = useT();
-
   return (
     <header className="fixed top-0 w-full z-50 pt-safe bg-surface/85 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)]">
       <div className="h-16 px-margin flex items-center justify-between gap-space-sm max-w-[480px] mx-auto w-full">
@@ -132,15 +130,7 @@ export function PatientHeader({ eyebrow, title, onBack, homeUrl }: { eyebrow: st
           </div>
         </div>
         <div className="flex items-center">
-{PATIENT_LANGUAGES_READY && (
-          <button
-            onClick={() => setLangOpen(true)}
-            className="relative z-10 w-12 h-12 rounded-xl flex items-center justify-center text-on-surface-variant hover:text-on-surface active:bg-surface-container transition-colors shrink-0 touch-manipulation"
-            aria-label="Change language"
-          >
-            <Icon name="language" className="text-[24px]" />
-          </button>
-          )}
+<LanguageButton />
           {homeUrl && (
             <Link
               href={homeUrl}
@@ -152,27 +142,55 @@ export function PatientHeader({ eyebrow, title, onBack, homeUrl }: { eyebrow: st
           )}
         </div>
       </div>
-      {langOpen && (
-        <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/50" onClick={() => setLangOpen(false)}>
-          <div className="w-full max-w-[480px] bg-surface rounded-t-3xl p-6 pb-safe flex flex-col gap-4" onClick={(e) => e.stopPropagation()}>
-            <h3 className="font-headline-sm text-headline-sm text-on-surface mb-2">Change language</h3>
-            <div className="grid grid-cols-2 gap-3">
-              {(Object.entries(LANG_NAMES) as [LangCode, string][]).map(([code, name]) => (
-                <button
-                  key={code}
-                  onClick={() => { setLang(code); setLangOpen(false); }}
-                  className={`h-12 rounded-xl font-label-md text-label-md border flex items-center justify-center ${
-                    lang === code ? 'border-primary bg-primary-fixed/30 text-primary' : 'border-surface-container text-on-surface-variant bg-surface'
-                  }`}
-                >
-                  {name}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
     </header>
+  );
+}
+
+/**
+ * Decision 34/35: 🌐 for patients. The sheet is portalled to <body> — patient headers use
+ * backdrop-blur, which would otherwise trap a `fixed` sheet inside the header. Hidden until
+ * PATIENT_LANGUAGES_READY.
+ */
+export function LanguageButton({ className = '' }: { className?: string }) {
+  const [open, setOpen] = useState(false);
+  const { lang, setLang, t } = useT();
+  if (!PATIENT_LANGUAGES_READY) return null;
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className={`relative z-10 w-12 h-12 rounded-xl flex items-center justify-center text-on-surface-variant hover:text-on-surface active:bg-surface-container transition-colors shrink-0 touch-manipulation ${className}`}
+        aria-label={t('change_language')}
+      >
+        <Icon name="language" className="text-[24px]" />
+      </button>
+      {open &&
+        createPortal(
+          <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/50" onClick={() => setOpen(false)}>
+            <div className="w-full max-w-[480px] bg-surface rounded-t-3xl p-6 pb-safe flex flex-col gap-4" onClick={(e) => e.stopPropagation()}>
+              <h3 className="font-headline-sm text-headline-sm text-on-surface mb-2">{t('change_language')}</h3>
+              <div className="grid grid-cols-2 gap-3">
+                {(Object.entries(LANG_NAMES) as [LangCode, string][]).map(([code, name]) => (
+                  <button
+                    key={code}
+                    onClick={() => {
+                      setLang(code);
+                      setOpen(false);
+                    }}
+                    className={`h-12 rounded-xl font-label-md text-label-md border flex items-center justify-center ${
+                      lang === code ? 'border-primary bg-primary-fixed/30 text-primary' : 'border-surface-container text-on-surface-variant bg-surface'
+                    }`}
+                  >
+                    {name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
+    </>
   );
 }
 

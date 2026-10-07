@@ -4,7 +4,9 @@ import Link from 'next/link';
 import { Suspense, useEffect, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { api, ApiError, patientDevice, type DoctorToday, type NextSession, type Patient, type Tenant } from '@/lib/api';
-import { DoctorAvatar, FullPageMessage, Icon, initials, LoadingPage, nextSessionLabel } from '@/components/patient/ui';
+import { DoctorAvatar, FullPageMessage, Icon, initials, LanguageButton, LoadingPage, nextSessionLabel } from '@/components/patient/ui';
+import { dateLocale, localizeStatusDetail, useT } from '@/lib/i18n';
+import { doctorSettings } from '@/lib/doctorSettings';
 import { CustomIntakeForm } from '@/components/patient/CustomIntakeForm';
 import { clinicToday } from '@/lib/clinicTime';
 
@@ -19,15 +21,15 @@ import { clinicToday } from '@/lib/clinicTime';
 // encryption/prototype banners. Patient uploads are tagged uploaded_by 'patient' (Decision 4).
 
 const SYMPTOMS = [
-  { label: 'Fever', emoji: '🌡️' },
-  { label: 'Follow-up', emoji: '📋' },
-  { label: 'Cough & Cold', emoji: '🤧' },
-  { label: 'Stomach Ache', emoji: '💊' },
-];
+  { key: 'in_sym_fever', emoji: '🌡️' },
+  { key: 'in_sym_followup', emoji: '📋' },
+  { key: 'in_sym_cold', emoji: '🤧' },
+  { key: 'in_sym_stomach', emoji: '💊' },
+] as const;
 
-// Decision 17 — human-readable label for a bookingDate (YYYY-MM-DD) query param.
-const formatBookingDate = (iso: string, opts: Intl.DateTimeFormatOptions) =>
-  new Date(`${iso}T00:00:00`).toLocaleDateString('en-IN', opts);
+// Decision 17 — human-readable label for a bookingDate (YYYY-MM-DD) query param, in the patient's language.
+const formatBookingDate = (iso: string, opts: Intl.DateTimeFormatOptions, locale = 'en-IN') =>
+  new Date(`${iso}T00:00:00`).toLocaleDateString(locale, opts);
 
 export default function IntakePage() {
   return (
@@ -54,6 +56,10 @@ function IntakeForm() {
   const [loadError, setLoadError] = useState(false);
   // A doctor's own QR opens this page directly (no doctor selection) — so check today's status here (Decision 6).
   const [offToday, setOffToday] = useState<{ name: string; detail: string; next: NextSession | null } | null>(null);
+  // Decision 35: the page opens in the language this doctor chose (else the clinic's); the patient's own 🌐 choice wins.
+  const [doctorLang, setDoctorLang] = useState<string | undefined>(undefined);
+  const { t, lang } = useT(doctorLang);
+  const locale = dateLocale(lang);
 
   // Identity — returning profiles (1-tap) or a new person
   const [profiles, setProfiles] = useState<Patient[]>([]);
@@ -86,10 +92,10 @@ function IntakeForm() {
   useEffect(() => {
     (async () => {
       try {
-        const t = await api.getTenantBySubdomain(subdomain);
-        if (!t) return setLoadError(true);
+        const clinic = await api.getTenantBySubdomain(subdomain);
+        if (!clinic) return setLoadError(true);
 
-        const advance = await api.getAdvanceBooking(t.id).catch(() => ({ days: [] }));
+        const advance = await api.getAdvanceBooking(clinic.id).catch(() => ({ days: [] }));
         setAdvanceDays(advance.days);
 
         let d: DoctorToday | undefined;
@@ -100,23 +106,25 @@ function IntakeForm() {
           const match = day?.doctors.find((x: any) => x.id === doctorId);
           if (!match) return setLoadError(true);
           d = { ...match, today_status: 'available', today_status_detail: '' } as DoctorToday;
+          setDoctorLang(doctorSettings(clinic, d).patient_language);
         } else {
-          const doctors = await api.getDoctorsToday(t.id);
+          const doctors = await api.getDoctorsToday(clinic.id);
           d = doctors.find((x) => x.id === doctorId);
           if (!d) return setLoadError(true);
+          setDoctorLang(doctorSettings(clinic, d).patient_language);
           // A doctor's own QR lands here directly, so check today's status (Decision 6).
           if (d.today_status === 'off_today') {
             return setOffToday({
               name: d.name,
-              detail: d.next_session ? `Next consulting: ${nextSessionLabel(d.next_session)}` : d.today_status_detail,
+              detail: d.today_status_detail, // translated at render (localizeStatusDetail)
               next: d.next_session ?? null,
             });
           }
         }
-        setTenant(t);
+        setTenant(clinic);
         setDoctor(d);
 
-        const rules = await api.checkInRules(t.id).catch(() => ({ require_whatsapp_otp: false }));
+        const rules = await api.checkInRules(clinic.id).catch(() => ({ require_whatsapp_otp: false }));
         setOtpRequired(rules.require_whatsapp_otp);
         await loadDeviceProfiles(rules.require_whatsapp_otp);
       } catch {
@@ -169,13 +177,15 @@ function IntakeForm() {
   if (offToday)
     return (
       // Never a dead end: Home always, and "Book for <next session>" when it's inside the doctor's booking window.
-      <main className="min-h-screen flex flex-col items-center justify-center text-center px-6 gap-3 bg-surface">
+      <main className="min-h-screen flex flex-col items-center justify-center text-center px-6 gap-3 bg-surface relative">
+        <LanguageButton className="absolute top-3 right-3" />
         <div className="w-14 h-14 rounded-full bg-surface-container-low text-primary flex items-center justify-center">
           <Icon name="event_busy" className="text-[28px]" />
         </div>
-        <h1 className="font-headline-md text-headline-md text-on-surface">{offToday.name} is not consulting today</h1>
+        <h1 className="font-headline-md text-headline-md text-on-surface">{t('in_off_title', { name: offToday.name })}</h1>
         <p className="font-body-md text-body-md text-on-surface-variant max-w-xs">
-          {offToday.detail}.{offToday.next?.bookable ? '' : ' Tokens can be taken on the day the doctor is consulting.'}
+          {offToday.next ? t('in_off_next', { when: nextSessionLabel(offToday.next, locale) }) : localizeStatusDetail(offToday.detail, t)}
+          {offToday.next?.bookable ? '' : ` ${t('in_off_body')}`}
         </p>
         <div className="w-full max-w-xs flex flex-col gap-2 mt-3">
           {offToday.next?.bookable && (
@@ -183,11 +193,11 @@ function IntakeForm() {
               href={`/patient/${subdomain}/intake?doctorId=${doctorId}&date=${offToday.next.date}`}
               className="h-12 bg-primary text-on-primary rounded-xl font-label-lg text-label-lg flex items-center justify-center gap-2"
             >
-              <Icon name="event_available" className="text-[20px]" /> Book for {nextSessionLabel(offToday.next)}
+              <Icon name="event_available" className="text-[20px]" /> {t('in_book_for', { when: nextSessionLabel(offToday.next, locale) })}
             </Link>
           )}
           <Link href={doctorsPage} className="h-12 bg-surface-container-high text-on-surface rounded-xl font-label-lg text-label-lg flex items-center justify-center gap-2">
-            <Icon name="home" className="text-[20px]" /> Choose another doctor
+            <Icon name="home" className="text-[20px]" /> {t('in_choose_other')}
           </Link>
         </div>
       </main>
@@ -286,7 +296,7 @@ function IntakeForm() {
       setSubmitError(
         err instanceof ApiError && err.status === 409
           ? err.message
-          : "Couldn't get your token. Check your connection and try again.",
+          : t('in_token_error'),
       );
     }
   };
@@ -302,7 +312,7 @@ function IntakeForm() {
               className="min-h-[44px] min-w-[44px] flex items-center gap-1.5 text-primary px-2 -ml-2 rounded-xl text-label-md font-label-md active:bg-primary-fixed/30 touch-manipulation"
             >
               <Icon name="arrow_back" className="text-[20px]" />
-              <span>Back</span>
+              <span>{t('in_back')}</span>
             </button>
             <Link href={doctorsPage} aria-label="Home" className="min-h-[44px] min-w-[44px] flex items-center justify-center text-primary rounded-xl active:bg-primary-fixed/30 touch-manipulation"><Icon name="home" className="text-[22px]" /></Link>
             <div className="flex items-center gap-2 px-3 py-1 bg-surface-container-low rounded-full min-w-0">
@@ -310,8 +320,9 @@ function IntakeForm() {
               <span className="text-label-sm font-label-sm text-on-surface font-semibold tracking-wide truncate">{clinicName}</span>
             </div>
             <span className="text-label-sm font-label-sm bg-primary-fixed text-on-primary-fixed px-2.5 py-0.5 rounded-full font-bold flex-shrink-0">
-              Step 2 of 2
+              {t('in_step')}
             </span>
+            <LanguageButton className="!w-10 !h-10 -mr-2" />
           </div>
           <div className="w-full bg-surface-container-high h-1.5 rounded-full overflow-hidden">
             <div className="bg-gradient-to-r from-primary to-primary-container h-full w-full rounded-full" />
@@ -326,7 +337,7 @@ function IntakeForm() {
             <div className="min-w-0 flex-1">
               <p className="font-label-lg text-label-lg font-bold text-on-surface truncate">{doctor.name}</p>
               <p className="font-body-sm text-body-sm text-primary font-semibold truncate">
-                {[doctor.qualification, doctor.specialty].filter(Boolean).join(' · ') || 'Consulting today'}
+                {[doctor.qualification, doctor.specialty].filter(Boolean).join(' · ') || t('in_consulting_today')}
                 {doctor.cabin_label ? ` · ${doctor.cabin_label}` : ''}
               </p>
             </div>
@@ -353,8 +364,8 @@ function IntakeForm() {
 
                   const isSelected = bookingDate ? bookingDate === d.date : isToday;
                   const disabled = d.doctor.is_full;
-                  const label = isToday ? 'Today' : formatBookingDate(d.date, { weekday: 'short', day: 'numeric', month: 'short' });
-                  const subLabel = d.doctor.is_full ? 'Full' : `${d.doctor.tokens_left} left`;
+                  const label = isToday ? t('in_today') : formatBookingDate(d.date, { weekday: 'short', day: 'numeric', month: 'short' }, locale);
+                  const subLabel = d.doctor.is_full ? t('in_full') : t('in_left', { n: d.doctor.tokens_left });
 
                   return (
                     <button
@@ -389,7 +400,7 @@ function IntakeForm() {
           })()}
 
           <h1 className="text-headline-sm font-headline-sm text-on-surface tracking-tight font-bold mt-3">
-            {mode === 'returning' && selectedProfile ? `Welcome back! 👋` : 'Just a few quick details'}
+            {mode === 'returning' && selectedProfile ? t('in_welcome_back') : t('in_quick_details')}
           </h1>
 
           {(errors.name || errors.mobile) && (
@@ -397,10 +408,8 @@ function IntakeForm() {
               <div className="flex items-start gap-2.5">
                 <Icon name="warning" className="text-[20px] text-error shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-label-md font-label-md font-bold text-error">Please complete required fields</p>
-                  <p className="text-body-sm font-body-sm mt-0.5">
-                    We need the patient&apos;s name and a 10-digit mobile number to send token updates.
-                  </p>
+                  <p className="text-label-md font-label-md font-bold text-error">{t('in_complete_required')}</p>
+                  <p className="text-body-sm font-body-sm mt-0.5">{t('in_need_name_mobile')}</p>
                 </div>
               </div>
             </div>
@@ -418,8 +427,8 @@ function IntakeForm() {
             // ---- Returning patient: 1-tap profile pick (Screen #1, "Returning") ----
             <div className="bg-surface-container-lowest rounded-2xl p-4 shadow-sm">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="font-label-lg text-label-lg text-on-surface">Who is seeing the doctor?</h3>
-                <span className="font-label-sm text-label-sm text-outline">Tap profile</span>
+                <h3 className="font-label-lg text-label-lg text-on-surface">{t('in_who_seeing')}</h3>
+                <span className="font-label-sm text-label-sm text-outline">{t('in_tap_profile')}</span>
               </div>
               <div className="space-y-2.5">
                 {profiles.map((p) => {
@@ -442,13 +451,13 @@ function IntakeForm() {
                             <span className="font-label-lg text-label-lg text-on-surface truncate">{p.name}</span>
                             {p.relation === 'self' && (
                               <span className="px-2 py-0.5 rounded-full bg-primary-container text-on-primary font-label-sm text-label-sm">
-                                Self
+                                {t('in_self')}
                               </span>
                             )}
                           </div>
                           {(p.age || p.gender) && (
                             <p className="font-body-sm text-body-sm text-on-surface-variant">
-                              {[p.age ? `${p.age} yrs` : null, p.gender].filter(Boolean).join(' • ')}
+                              {[p.age ? t('in_yrs', { n: p.age }) : null, p.gender].filter(Boolean).join(' • ')}
                             </p>
                           )}
                         </div>
@@ -467,12 +476,12 @@ function IntakeForm() {
                   className="w-full py-2.5 px-3 rounded-xl bg-surface-container-low text-primary hover:bg-surface-container flex items-center justify-center gap-2 font-label-md text-label-md transition-colors"
                 >
                   <Icon name="add_circle" className="text-[18px]" />
-                  <span>Add family member</span>
+                  <span>{t('in_add_family')}</span>
                 </button>
               </div>
               <div className="mt-4 pt-3 border-t border-surface-container text-center">
                 <button type="button" onClick={() => startNewPerson(false)} className="text-primary hover:underline font-label-md text-label-md">
-                  Not you? Use another number
+                  {t('in_not_you_other')}
                 </button>
               </div>
             </div>
@@ -484,7 +493,7 @@ function IntakeForm() {
                   <div className="flex items-center gap-2">
                     <Icon name="person" className="text-primary text-[20px]" />
                     <label className="text-label-lg font-label-lg text-on-surface font-semibold" htmlFor="patient-name">
-                      Patient full name
+                      {t('in_full_name')}
                     </label>
                     <span className="text-label-sm font-label-sm text-error font-bold">*</span>
                   </div>
@@ -497,7 +506,7 @@ function IntakeForm() {
                     setName(e.target.value);
                     setErrors((x) => ({ ...x, name: false }));
                   }}
-                  placeholder="e.g. Priya Sharma"
+                  placeholder={t('in_name_eg')}
                   className="w-full h-14 bg-surface-container-low rounded-xl px-4 text-headline-sm font-headline-sm text-on-surface placeholder:text-outline-variant font-semibold focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
                 />
               </div>
@@ -506,11 +515,11 @@ function IntakeForm() {
                 <div className="p-4 rounded-2xl shadow-sm bg-surface-container-lowest flex items-center gap-3">
                   <Icon name="verified" className="text-tertiary text-[22px]" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-label-sm font-label-sm text-on-surface-variant">Mobile · verified on WhatsApp</p>
+                    <p className="text-label-sm font-label-sm text-on-surface-variant">{t('in_mobile_verified')}</p>
                     <p className="font-headline-sm text-headline-sm text-on-surface">+91 {mobile}</p>
                   </div>
                   <button type="button" onClick={() => startNewPerson(false)} className="text-primary font-label-md text-label-md">
-                    Change
+                    {t('in_change')}
                   </button>
                 </div>
               ) : (
@@ -518,7 +527,7 @@ function IntakeForm() {
                   <div className="flex items-center gap-2 mb-2">
                     <Icon name="phone_android" className="text-primary text-[20px]" />
                     <label className="text-label-lg font-label-lg text-on-surface font-semibold" htmlFor="mobile">
-                      Mobile number
+                      {t('in_mobile')}
                     </label>
                     <span className="text-label-sm font-label-sm text-error font-bold">*</span>
                   </div>
@@ -543,7 +552,7 @@ function IntakeForm() {
                   </div>
                   {errors.mobile && (
                     <p className="text-error text-body-sm font-body-sm mt-2 flex items-center gap-1">
-                      <Icon name="error" className="text-[16px]" /> Enter a 10-digit mobile number.
+                      <Icon name="error" className="text-[16px]" /> {t('in_mobile_invalid')}
                     </p>
                   )}
                   <label className="mt-3 flex items-center gap-2 cursor-pointer">
@@ -553,7 +562,7 @@ function IntakeForm() {
                       onChange={(e) => setWhatsappUpdates(e.target.checked)}
                       className="h-5 w-5 rounded accent-primary-container"
                     />
-                    <span className="font-body-sm text-body-sm text-on-surface-variant">Send my token updates on WhatsApp</span>
+                    <span className="font-body-sm text-body-sm text-on-surface-variant">{t('in_wa_updates')}</span>
                   </label>
                 </div>
               )}
@@ -561,7 +570,7 @@ function IntakeForm() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="bg-surface-container-lowest p-4 rounded-2xl shadow-sm">
                   <label className="block text-label-lg font-label-lg text-on-surface font-semibold mb-2" htmlFor="age">
-                    Age
+                    {t('in_age')}
                   </label>
                   <div className="flex items-center justify-between bg-surface-container-low p-1.5 rounded-xl">
                     <button
@@ -595,7 +604,7 @@ function IntakeForm() {
                 </div>
                 <div className="bg-surface-container-lowest p-4 rounded-2xl shadow-sm">
                   <label className="block text-label-lg font-label-lg text-on-surface font-semibold mb-2" htmlFor="gender">
-                    Gender
+                    {t('in_gender')}
                   </label>
                   <select
                     id="gender"
@@ -604,9 +613,10 @@ function IntakeForm() {
                     className="w-full h-12 bg-surface-container-low rounded-xl px-3 font-body-md text-body-md text-on-surface focus:outline-none"
                   >
                     <option value="">—</option>
-                    <option>Female</option>
-                    <option>Male</option>
-                    <option>Other</option>
+                    {/* Values stay English (stored on the patient); only the label is translated. */}
+                    <option value="Female">{t('in_female')}</option>
+                    <option value="Male">{t('in_male')}</option>
+                    <option value="Other">{t('in_other')}</option>
                   </select>
                 </div>
               </div>
@@ -621,19 +631,20 @@ function IntakeForm() {
               <div className="flex items-center gap-2">
                 <Icon name="stethoscope" className="text-primary text-[20px]" />
                 <label className="text-label-lg font-label-lg text-on-surface font-semibold" htmlFor="complaint">
-                  Reason for visit
+                  {t('in_reason')}
                 </label>
               </div>
-              <span className="text-label-sm font-label-sm text-on-surface-variant">Optional</span>
+              <span className="text-label-sm font-label-sm text-on-surface-variant">{t('in_optional')}</span>
             </div>
             <div className="flex flex-wrap gap-2 mb-3">
               {SYMPTOMS.map((s) => {
-                const on = complaint.split(',').map((x) => x.trim()).includes(s.label);
+                const label = t(s.key);
+                const on = complaint.split(',').map((x) => x.trim()).includes(label);
                 return (
                   <button
                     type="button"
-                    key={s.label}
-                    onClick={() => toggleSymptom(s.label)}
+                    key={s.key}
+                    onClick={() => toggleSymptom(label)}
                     aria-pressed={on}
                     className={`px-3 py-1.5 rounded-full text-label-sm font-label-sm flex items-center gap-1 active:scale-95 transition-transform ${
                       on
@@ -641,7 +652,7 @@ function IntakeForm() {
                         : 'bg-surface-container text-on-surface font-medium hover:bg-surface-container-high'
                     }`}
                   >
-                    <span>{s.label}</span>
+                    <span>{label}</span>
                     <span className="text-sm">{s.emoji}</span>
                   </button>
                 );
@@ -652,7 +663,7 @@ function IntakeForm() {
               rows={3}
               value={complaint}
               onChange={(e) => setComplaint(e.target.value)}
-              placeholder="What brings you in today?"
+              placeholder={t('in_reason_ph')}
               className="w-full p-3.5 bg-surface-container-low rounded-xl text-body-md font-body-md text-on-surface placeholder:text-outline-variant focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all resize-none"
             />
           </div>
@@ -663,10 +674,10 @@ function IntakeForm() {
               <div className="flex items-center gap-2">
                 <Icon name="scale" className="text-primary text-[20px]" />
                 <label className="text-label-lg font-label-lg text-on-surface font-semibold" htmlFor="weight">
-                  Weight
+                  {t('in_weight')}
                 </label>
               </div>
-              <span className="text-label-sm font-label-sm text-on-surface-variant">Optional</span>
+              <span className="text-label-sm font-label-sm text-on-surface-variant">{t('in_optional')}</span>
             </div>
             <div className="relative flex items-center">
               <input
@@ -674,7 +685,7 @@ function IntakeForm() {
                 inputMode="decimal"
                 value={weight}
                 onChange={(e) => setWeight(e.target.value.replace(/[^\d.]/g, '').slice(0, 5))}
-                placeholder="e.g. 70"
+                placeholder={t('in_weight_eg')}
                 className="w-full h-14 bg-surface-container-low rounded-xl px-4 text-headline-sm font-headline-sm text-on-surface placeholder:text-outline-variant font-semibold focus:outline-none focus:ring-2 focus:ring-primary/30"
               />
               <span className="absolute right-4 text-label-md font-label-md font-bold text-on-surface-variant pointer-events-none">kg</span>
@@ -686,9 +697,9 @@ function IntakeForm() {
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
                 <Icon name="upload_file" className="text-primary text-[20px]" />
-                <span className="text-label-lg font-label-lg text-on-surface font-semibold">Prescriptions &amp; reports</span>
+                <span className="text-label-lg font-label-lg text-on-surface font-semibold">{t('in_rx_reports')}</span>
               </div>
-              <span className="text-label-sm font-label-sm text-on-surface-variant">Optional</span>
+              <span className="text-label-sm font-label-sm text-on-surface-variant">{t('in_optional')}</span>
             </div>
             <label className="bg-surface-container-low p-4 rounded-xl flex flex-col items-center justify-center text-center cursor-pointer hover:bg-surface-container transition-colors">
               <input
@@ -708,7 +719,7 @@ function IntakeForm() {
                       setFiles((xs) => [...xs, { url: up.url, name: up.name }]);
                     }
                   } catch (err) {
-                    setUploadError(err instanceof Error ? err.message : 'Upload failed');
+                    setUploadError(err instanceof Error ? err.message : t('in_upload_failed'));
                   } finally {
                     setUploading(false);
                   }
@@ -718,9 +729,9 @@ function IntakeForm() {
                 <Icon name={uploading ? 'progress_activity' : 'add_a_photo'} className={`text-[24px] ${uploading ? 'animate-spin' : ''}`} />
               </div>
               <p className="text-label-md font-label-md font-bold text-on-surface">
-                {uploading ? 'Uploading…' : 'Attach previous prescription or report'}
+                {uploading ? t('in_uploading') : t('in_attach')}
               </p>
-              <p className="text-body-sm font-body-sm text-on-surface-variant mt-0.5">Take a photo or upload PDF/JPG · Max 15 MB</p>
+              <p className="text-body-sm font-body-sm text-on-surface-variant mt-0.5">{t('in_attach_hint')}</p>
             </label>
             {uploadError && <p className="text-error text-body-sm font-body-sm mt-2">{uploadError}</p>}
             {files.map((f) => (
@@ -749,16 +760,15 @@ function IntakeForm() {
               className="mt-0.5 h-5 w-5 rounded accent-primary-container"
             />
             <div>
-              <p className="font-label-md text-label-md text-on-surface">Remember me on this phone</p>
-              <p className="font-body-sm text-body-sm text-on-surface-variant">1-tap check-in on your next visit.</p>
+              <p className="font-label-md text-label-md text-on-surface">{t('in_remember')}</p>
+              <p className="font-body-sm text-body-sm text-on-surface-variant">{t('in_remember_hint')}</p>
             </div>
           </label>
 
           <div className="bg-error-container/40 p-3 rounded-xl flex items-start gap-2">
             <Icon name="emergency" className="text-error text-[18px] shrink-0 mt-0.5" />
             <p className="font-body-sm text-body-sm text-on-error-container leading-tight">
-              <strong>Medical emergency?</strong> Chest pain, heavy bleeding or trouble breathing — tell the reception desk
-              right away.
+              <strong>{t('in_emergency_title')}</strong> {t('in_emergency_body')}
             </p>
           </div>
 
@@ -779,19 +789,22 @@ function IntakeForm() {
             {submitting ? (
               <>
                 <Icon name="progress_activity" className="animate-spin text-[20px]" />
-                <span>Getting your token…</span>
+                <span>{t('in_getting_token')}</span>
               </>
             ) : (
               <>
                 <span>
-                  {mode === 'returning' && selectedProfile ? `Join queue as ${selectedProfile.name}` : 'Join Queue'}
+                  {mode === 'returning' && selectedProfile ? t('in_join_as', { name: selectedProfile.name }) : t('in_join')}
                 </span>
                 <Icon name="arrow_forward" className="text-[20px]" />
               </>
             )}
           </button>
           <p className="font-label-md text-label-md text-on-surface-variant mt-2 text-center">
-            {doctor.name} · {bookingDate ? `Booking for ${formatBookingDate(bookingDate, { day: 'numeric', month: 'short' })}` : doctor.today_status_detail}
+            {doctor.name} ·{' '}
+            {bookingDate
+              ? t('in_booking_for_date', { date: formatBookingDate(bookingDate, { day: 'numeric', month: 'short' }, locale) })
+              : localizeStatusDetail(doctor.today_status_detail, t)}
           </p>
         </div>
       </footer>
@@ -812,6 +825,7 @@ function VerifyPhone({
   onVerified: (token: string, mobile: string) => Promise<void>;
 }) {
   const { subdomain } = useParams<{ subdomain: string }>();
+  const { t } = useT(); // same language as the form (Decision 35)
   const [mobile, setMobile] = useState('');
   const [code, setCode] = useState('');
   const [sentTo, setSentTo] = useState<string | null>(null);
@@ -838,7 +852,7 @@ function VerifyPhone({
       setCode('');
       setResendIn(30);
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Couldn't send the code. Check your connection.");
+      setError(e instanceof ApiError ? e.message : t('otp_send_failed'));
     } finally {
       setBusy(false);
     }
@@ -852,7 +866,7 @@ function VerifyPhone({
       const r = await api.verifyOtp(sentTo, value);
       await onVerified(r.patient_token, r.mobile_number);
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Couldn't verify. Try again.");
+      setError(e instanceof ApiError ? e.message : t('otp_verify_failed'));
       setBusy(false);
     }
   };
@@ -863,7 +877,7 @@ function VerifyPhone({
         <div className="max-w-[480px] mx-auto flex items-center justify-between gap-2">
           <button type="button" onClick={onBack} className="min-h-[44px] min-w-[44px] flex items-center gap-1.5 text-primary px-2 -ml-2 rounded-xl text-label-md font-label-md active:bg-primary-fixed/30 touch-manipulation">
             <Icon name="arrow_back" className="text-[20px]" />
-            <span>Back</span>
+            <span>{t('in_back')}</span>
           </button>
           <span className="text-label-sm font-label-sm text-on-surface font-semibold truncate">{clinicName}</span>
           <Link href={`/patient/${subdomain}/select-doctor`} aria-label="Home" className="min-h-[44px] min-w-[44px] flex items-center justify-center text-primary rounded-xl active:bg-primary-fixed/30 touch-manipulation">
@@ -875,11 +889,11 @@ function VerifyPhone({
       <main className="flex-1 w-full max-w-[480px] mx-auto px-margin py-6 flex flex-col gap-4">
         <div>
           <span className="px-2.5 py-0.5 rounded-full bg-on-primary-container text-primary font-label-sm text-label-sm">
-            Checking in with {doctorName}
+            {t('otp_checking_in_with', { name: doctorName })}
           </span>
-          <h1 className="font-headline-md text-headline-md text-on-surface mt-2">{sentTo ? 'Enter the code' : 'Your WhatsApp number'}</h1>
+          <h1 className="font-headline-md text-headline-md text-on-surface mt-2">{sentTo ? t('otp_enter_code') : t('otp_your_number')}</h1>
           <p className="font-body-md text-body-md text-on-surface-variant mt-1">
-            {sentTo ? `We sent a 6-digit code on WhatsApp to +91 ${sentTo}.` : "We'll send a code on WhatsApp. Your token updates come there too."}
+            {sentTo ? t('otp_sent_to', { number: sentTo }) : t('otp_will_send')}
           </p>
         </div>
 
@@ -913,7 +927,7 @@ function VerifyPhone({
               className="h-14 bg-primary text-on-primary rounded-xl font-label-lg text-label-lg flex items-center justify-center gap-2 disabled:opacity-40"
             >
               <Icon name="chat" className="text-[20px]" />
-              {busy ? 'Sending…' : 'Send code on WhatsApp'}
+              {busy ? t('otp_sending') : t('otp_send')}
             </button>
           </form>
         ) : (
@@ -942,11 +956,11 @@ function VerifyPhone({
             />
             {devCode && (
               <p className="bg-secondary-fixed/40 rounded-xl p-3 font-body-sm text-body-sm text-on-secondary-fixed-variant">
-                Test mode (WhatsApp not connected yet): your code is <strong>{devCode}</strong>
+                {t('otp_test_mode')} <strong>{devCode}</strong>
               </p>
             )}
             <button disabled={busy || code.length !== 6} className="h-14 bg-primary text-on-primary rounded-xl font-label-lg text-label-lg disabled:opacity-40">
-              {busy ? 'Checking…' : 'Verify'}
+              {busy ? t('otp_checking') : t('otp_verify')}
             </button>
             <div className="flex items-center justify-between font-label-md text-label-md">
               <button
@@ -960,7 +974,7 @@ function VerifyPhone({
                 Change number
               </button>
               <button type="button" disabled={resendIn > 0 || busy} onClick={send} className="text-primary disabled:text-outline">
-                {resendIn > 0 ? `Resend in ${resendIn}s` : 'Resend code'}
+                {resendIn > 0 ? t('otp_resend_in', { s: resendIn }) : t('otp_resend')}
               </button>
             </div>
           </form>

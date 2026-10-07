@@ -710,7 +710,7 @@ export const api = {
   // Per-doctor fields: the doctor's own login, or the clinic admin editing any doctor.
   updateDoctorPublicProfile: (
     doctorId: string,
-    patch: { qualification?: string; specialty?: string; photo_url?: string; bio?: string; is_publicly_listed?: boolean; intake_schema?: any; notify_token_confirmed?: boolean; notify_you_are_next?: boolean; notify_your_turn?: boolean; notify_location_override?: string; shift_alert_before?: boolean; shift_alert_minutes?: number; shift_alert_at_start?: boolean },
+    patch: { qualification?: string; specialty?: string; photo_url?: string; bio?: string; is_publicly_listed?: boolean; intake_schema?: any; notify_token_confirmed?: boolean; notify_you_are_next?: boolean; notify_your_turn?: boolean; notify_location_override?: string; shift_alert_before?: boolean; shift_alert_minutes?: number; shift_alert_at_start?: boolean; patient_language?: string | null },
   ) => request<DoctorToday & { bio: string | null; public_slug: string | null }>(`/doctors/${doctorId}/public-profile`, { method: 'PATCH', body: JSON.stringify(patch) }),
   // Doctor portal "My Hours"
   listSessions: (doctorId: string, date: string) => request<DoctorSession[]>(`/doctors/${doctorId}/sessions?date=${date}`),

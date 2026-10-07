@@ -7,7 +7,9 @@ import { IntakeFormEditor } from '@/components/doctor/IntakeFormEditor';
 export default function DoctorIntakeFormPage() {
   return (
     <StaffShell variant="doctor" active="/doctor/intake-form">
-      {({ doctor, refreshTenant }) => (doctor ? <IntakeFormEditor key={doctor.id} doctor={doctor} onSaved={refreshTenant} /> : null)}
+      {({ doctor, tenant, refreshTenant }) =>
+        doctor ? <IntakeFormEditor key={doctor.id} doctor={doctor} clinicLanguage={tenant.queue_settings.patient_language} onSaved={refreshTenant} /> : null
+      }
     </StaffShell>
   );
 }

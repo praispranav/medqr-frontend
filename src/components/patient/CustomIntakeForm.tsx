@@ -1,4 +1,5 @@
 import { Icon } from './ui';
+import { useT } from '@/lib/i18n';
 import type { IntakeField } from '../staff/IntakeBuilder';
 
 export function CustomIntakeForm({
@@ -10,6 +11,7 @@ export function CustomIntakeForm({
   answers: Record<string, any>;
   onChange: (a: Record<string, any>) => void;
 }) {
+  const { t } = useT(); // Decision 35: fixed words follow the patient's language; the doctor's questions show as typed
   if (!schema || schema.length === 0) return null;
 
   return (
@@ -40,7 +42,7 @@ export function CustomIntakeForm({
               value={answers[field.id] || ''}
               onChange={(e) => onChange({ ...answers, [field.id]: e.target.value })}
             >
-              <option value="">Select an option</option>
+              <option value="">{t('in_select_option')}</option>
               {(field.options || []).map((opt) => (
                 <option key={opt} value={opt}>{opt}</option>
               ))}
@@ -53,12 +55,12 @@ export function CustomIntakeForm({
                 type="button"
                 className={`flex-1 py-2 rounded-xl font-label-md border border-surface-container-high transition-colors ${answers[field.id] === true ? 'bg-primary text-white border-primary' : 'bg-surface-container-lowest text-on-surface'}`}
                 onClick={() => onChange({ ...answers, [field.id]: true })}
-              >Yes</button>
+              >{t('in_yes')}</button>
               <button
                 type="button"
                 className={`flex-1 py-2 rounded-xl font-label-md border border-surface-container-high transition-colors ${answers[field.id] === false ? 'bg-error text-white border-error' : 'bg-surface-container-lowest text-on-surface'}`}
                 onClick={() => onChange({ ...answers, [field.id]: false })}
-              >No</button>
+              >{t('in_no')}</button>
             </div>
           )}
         </div>

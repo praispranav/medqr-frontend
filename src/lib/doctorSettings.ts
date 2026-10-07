@@ -17,6 +17,7 @@ export const DOCTOR_OVERRIDABLE = [
   'no_show_grace_mins',
   'no_show_action',
   'ready_count',
+  'patient_language', // Decision 35
 ] as const;
 
 export type DoctorOverridableKey = (typeof DOCTOR_OVERRIDABLE)[number];
