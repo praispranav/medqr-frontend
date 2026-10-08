@@ -356,7 +356,7 @@ function IntakeForm() {
             const todayStr = clinicToday();
             
             return (
-              <div className="flex items-center gap-2 overflow-x-auto no-scrollbar mt-3 pb-1 -mx-margin px-margin">
+              <div className="flex items-center gap-2 overflow-x-auto no-scrollbar mt-3 py-1.5 -mx-margin px-margin -my-1.5">
                 {doctorDays.map((d) => {
                   const isToday = d.date === todayStr;
                   // Hide today chip if doctor is off today (handled if they aren't in doctorDays, but just in case)
