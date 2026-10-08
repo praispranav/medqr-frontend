@@ -32,7 +32,34 @@ export interface SubscriptionStatusView {
   wallet_auto_recharge_enabled: boolean;
   wallet_auto_recharge_below_inr: number;
   wallet_auto_recharge_amount_inr: number;
+  /** Decision 36: coupon snapshot on this clinic. */
+  coupon_code?: string | null;
+  coupon_percent_off?: number;
+  coupon_free_months?: number;
+  discount_until?: string | null;
+  coupon_applied_by?: string | null;
+  plan_amount_inr?: number | null;
+  /** Autopay needs attention (e.g. Razorpay refused a plan change). */
+  billing_note?: string | null;
 }
+
+/** Decision 36 — a discount code. */
+export interface Coupon {
+  id: string;
+  code: string;
+  percent_off: number;
+  discount_months: number;
+  free_months: number;
+  max_uses: number | null;
+  used_count: number;
+  valid_until: string | null;
+  referrer_id: string | null;
+  is_active: boolean;
+  note: string | null;
+  created_at: string;
+  clinics?: { id: string; name: string; discount_until: string | null }[];
+}
+export type CouponInput = Partial<Pick<Coupon, 'code' | 'percent_off' | 'discount_months' | 'free_months' | 'max_uses' | 'valid_until' | 'referrer_id' | 'note' | 'is_active'>>;
 
 export type TrialLeadStatus = 'new' | 'contacted' | 'converted' | 'dismissed';
 
@@ -129,11 +156,18 @@ export const adminApi = (key: string) => ({
   ping: () => request<{ ok: true }>(key, '/ping'),
   activity: () => request<Activity>(key, '/activity'),
   tenants: () => request<AdminTenant[]>(key, '/tenants'),
-  createTenant: (body: { subdomain: string; display_name: string; trial_days?: number; city?: string; address?: string }) =>
+  createTenant: (body: { subdomain: string; display_name: string; trial_days?: number; city?: string; address?: string; coupon_code?: string }) =>
     request<Tenant>(key, '/tenants', { method: 'POST', body: JSON.stringify(body) }),
   tenant: (id: string) => request<Tenant>(key, `/tenants/${id}`),
   deleteTenant: (id: string) => request(key, `/tenants/${id}`, { method: 'DELETE' }),
   subscription: (id: string) => request<SubscriptionStatusView>(key, `/tenants/${id}/subscription`),
+  // Decision 36 — coupons
+  coupons: () => request<Coupon[]>(key, '/coupons'),
+  createCoupon: (body: CouponInput) => request<Coupon>(key, '/coupons', { method: 'POST', body: JSON.stringify(body) }),
+  updateCoupon: (id: string, body: CouponInput) => request<Coupon>(key, `/coupons/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  myCoupons: () => request<Coupon[]>(key, '/me/coupons'),
+  applyCoupon: (tenantId: string, code: string) => request<unknown>(key, `/tenants/${tenantId}/coupon`, { method: 'POST', body: JSON.stringify({ code }) }),
+  removeCoupon: (tenantId: string) => request<unknown>(key, `/tenants/${tenantId}/coupon`, { method: 'DELETE' }),
   extendTrial: (id: string, days: number) =>
     request<SubscriptionStatusView>(key, `/tenants/${id}/subscription/extend-trial`, { method: 'POST', body: JSON.stringify({ days }) }),
   extendSubscription: (id: string, days: number) =>

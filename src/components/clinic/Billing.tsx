@@ -85,9 +85,15 @@ export function Billing({ tenant }: { tenant: Tenant }) {
               {plan.lines.map((l) => (
                 <p key={l.label} className="flex justify-between gap-3 font-body-sm text-body-sm text-on-surface-variant">
                   <span>{l.label}</span>
-                  <span className="text-on-surface">{inr(l.amount_inr)}</span>
+                  <span className={l.amount_inr < 0 ? 'text-tertiary' : 'text-on-surface'}>{l.amount_inr < 0 ? `−${inr(-l.amount_inr)}` : inr(l.amount_inr)}</span>
                 </p>
               ))}
+              {plan.coupon?.discount_active && plan.coupon.discount_until && (
+                <p className="font-body-sm text-body-sm text-tertiary mt-1">
+                  {plan.coupon.code}: {plan.coupon.percent_off}% off until{' '}
+                  {new Date(plan.coupon.discount_until).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}, then {inr(plan.list_total_inr ?? 0)}/mo.
+                </p>
+              )}
             </div>
           ) : (
             <p className="font-body-sm text-body-sm text-on-surface-variant mt-1">

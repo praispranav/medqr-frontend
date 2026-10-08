@@ -15,6 +15,7 @@ const NAV = [
   { href: '/owner', label: 'Activity', icon: 'monitoring' },
   { href: '/owner/clinics', label: 'Clinics', icon: 'local_hospital' },
   { href: '/owner/referrers', label: 'Referrers', icon: 'handshake' },
+  { href: '/owner/coupons', label: 'Coupons', icon: 'sell' },
   { href: '/owner/leads', label: 'Trial requests', icon: 'inbox' },
   { href: '/owner/module-requests', label: 'Module requests', icon: 'extension' },
   { href: '/owner/setting-requests', label: 'Setting requests', icon: 'auto_awesome' },

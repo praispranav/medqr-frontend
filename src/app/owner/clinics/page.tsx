@@ -3,16 +3,17 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import type { AdminApi, AdminTenant } from '@/lib/adminApi';
+import type { AdminApi, AdminTenant, Coupon } from '@/lib/adminApi';
+import { describeCoupon } from '@/lib/coupons';
 import { Icon } from '@/components/patient/ui';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { inr } from '@/components/staff/bits';
 
 export default function AdminClinicsPage() {
-  return <AdminShell active="/owner/clinics">{(api) => <Clinics api={api} />}</AdminShell>;
+  return <AdminShell active="/owner/clinics">{(api, me) => <Clinics api={api} referrer={me.role === 'referrer'} />}</AdminShell>;
 }
 
-function Clinics({ api }: { api: AdminApi }) {
+function Clinics({ api, referrer }: { api: AdminApi; referrer: boolean }) {
   const router = useRouter();
   const [list, setList] = useState<AdminTenant[] | null>(null);
   const [name, setName] = useState('');
@@ -20,6 +21,12 @@ function Clinics({ api }: { api: AdminApi }) {
   const [codeTouched, setCodeTouched] = useState(false);
   const [city, setCity] = useState('');
   const [address, setAddress] = useState('');
+  // Decision 36: optional coupon. Referrers pick from the codes issued to them; super admin types any.
+  const [coupon, setCoupon] = useState('');
+  const [myCoupons, setMyCoupons] = useState<Coupon[]>([]);
+  useEffect(() => {
+    if (referrer) api.myCoupons().then(setMyCoupons).catch(() => undefined);
+  }, [api, referrer]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -40,7 +47,7 @@ function Clinics({ api }: { api: AdminApi }) {
     setBusy(true);
     setError(null);
     try {
-      const t = await api.createTenant({ subdomain: effectiveCode, display_name: name, city: city.trim() || undefined, address: address.trim() || undefined });
+      const t = await api.createTenant({ subdomain: effectiveCode, display_name: name, city: city.trim() || undefined, address: address.trim() || undefined, coupon_code: coupon || undefined });
       router.push(`/owner/clinics/${t.id}`);
     } catch (e) {
       setError((e as Error).message);
@@ -109,6 +116,26 @@ function Clinics({ api }: { api: AdminApi }) {
         <p className="font-body-sm text-body-sm text-on-surface-variant -mt-1">
           Used for the public doctor directory (medqr.in/doctors) — doctors there share the clinic&apos;s own address, so there&apos;s no separate address per doctor.
         </p>
+        <label className="flex flex-col gap-1 max-w-md">
+          <span className="font-label-md text-label-md">Coupon (optional)</span>
+          {referrer ? (
+            <select value={coupon} onChange={(e) => setCoupon(e.target.value)} className="h-12 rounded-xl bg-surface-container-low px-3 font-body-lg text-body-lg">
+              <option value="">No coupon</option>
+              {myCoupons.map((c) => (
+                <option key={c.id} value={c.code}>
+                  {c.code} — {describeCoupon(c)}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <input
+              value={coupon}
+              onChange={(e) => setCoupon(e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, ''))}
+              placeholder="e.g. DOCTOR40"
+              className="h-12 rounded-xl bg-surface-container-low px-3 font-body-lg text-body-lg focus:outline-none focus:ring-2 focus:ring-primary/30"
+            />
+          )}
+        </label>
         {error && <p className="font-body-sm text-body-sm text-error">{error}</p>}
         <button disabled={busy || !name.trim() || !effectiveCode} className="self-start h-11 px-5 rounded-xl bg-primary text-on-primary font-label-lg text-label-lg disabled:opacity-40">
           {busy ? 'Creating…' : 'Create clinic'}

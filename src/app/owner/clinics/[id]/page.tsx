@@ -372,6 +372,7 @@ function SubscriptionCard({ api, tenantId }: { api: AdminApi; tenantId: string }
           </button>
         )}
       </div>
+      <CouponBox api={api} tenantId={tenantId} sub={sub} onChanged={load} />
       {error && <p className="font-body-sm text-body-sm text-error">{error}</p>}
     </section>
   );
@@ -506,6 +507,67 @@ function ModulesTab({ api, tenant, onSaved }: { api: AdminApi; tenant: Tenant; o
         {walletMsg && <p className={`font-body-sm text-body-sm ${walletMsg.kind === 'ok' ? 'text-tertiary' : 'text-error'}`}>{walletMsg.text}</p>}
         <p className="font-body-sm text-body-sm text-on-surface-variant">Manual adjustments until online recharge exists.</p>
       </aside>
+    </div>
+  );
+}
+
+/** Decision 36: the clinic's coupon (snapshot), apply / remove, and any autopay warning. */
+function CouponBox({ api, tenantId, sub, onChanged }: { api: AdminApi; tenantId: string; sub: SubscriptionStatusView; onChanged: () => Promise<unknown> }) {
+  const [code, setCode] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const act = async (fn: () => Promise<unknown>) => {
+    setBusy(true);
+    setError(null);
+    try {
+      await fn();
+      setCode('');
+      await onChanged();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const until = sub.discount_until ? new Date(sub.discount_until).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : null;
+  return (
+    <div className="border-t border-surface-container pt-3 flex flex-col gap-2">
+      {sub.billing_note && (
+        <p className="bg-error-container/50 text-on-error-container rounded-xl p-3 font-body-sm text-body-sm flex items-start gap-2">
+          <Icon name="warning" className="text-[18px] mt-0.5" /> {sub.billing_note}
+        </p>
+      )}
+      {sub.coupon_code ? (
+        <div className="flex items-center gap-3 flex-wrap">
+          <Icon name="sell" className="text-[20px] text-secondary" />
+          <p className="flex-1 font-body-md text-body-md">
+            Coupon <strong>{sub.coupon_code}</strong>
+            {sub.coupon_free_months ? ` · ${sub.coupon_free_months} free month${sub.coupon_free_months > 1 ? 's' : ''} added to the trial` : ''}
+            {sub.coupon_percent_off ? ` · ${sub.coupon_percent_off}% off${until ? ` until ${until}` : ''}` : ''}
+            {sub.coupon_applied_by ? <span className="text-on-surface-variant"> · by {sub.coupon_applied_by}</span> : null}
+          </p>
+          <button
+            disabled={busy}
+            onClick={() => window.confirm(`Remove ${sub.coupon_code}? The normal price applies from now (free months already given stay).`) && act(() => api.removeCoupon(tenantId))}
+            className="h-10 px-4 rounded-xl bg-surface-container-low text-on-surface-variant font-label-md text-label-md"
+          >
+            Remove coupon
+          </button>
+        </div>
+      ) : (
+        <div className="flex items-center gap-2 flex-wrap">
+          <input
+            value={code}
+            onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, ''))}
+            placeholder="Coupon code"
+            className="h-10 w-44 rounded-xl bg-surface-container-low px-3 font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-primary/30"
+          />
+          <button disabled={busy || code.length < 3} onClick={() => act(() => api.applyCoupon(tenantId, code))} className="h-10 px-4 rounded-xl bg-surface-container-low text-primary font-label-md text-label-md disabled:opacity-60">
+            Apply coupon
+          </button>
+        </div>
+      )}
+      {error && <p className="font-body-sm text-body-sm text-error">{error}</p>}
     </div>
   );
 }

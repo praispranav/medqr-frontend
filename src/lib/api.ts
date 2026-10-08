@@ -474,6 +474,9 @@ export interface MonthlyPlan {
   extra_doctor_price_inr: number;
   lines: { label: string; amount_inr: number }[];
   total_inr_per_month: number;
+  /** Decision 36: coupon on this clinic — the discount line is already in `lines`. */
+  coupon?: { code: string; percent_off: number; free_months: number; discount_until: string | null; discount_active: boolean } | null;
+  list_total_inr?: number;
   wallet_balance_inr: number;
 }
 
