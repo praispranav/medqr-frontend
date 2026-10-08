@@ -41,16 +41,15 @@ export const patientBaseUrl = () =>
   (process.env.NEXT_PUBLIC_PATIENT_BASE_URL || (typeof window !== 'undefined' ? window.location.origin : '')).replace(/\/$/, '');
 
 /**
- * Where admin-list standees point: the BACKEND's /q/<code>, which 302s each scan to the linked
- * doctor's clinic subdomain (or the app's "not set up yet" page). Printed codes never need reprinting.
- * NEXT_PUBLIC_QR_BASE_URL = the public backend address (e.g. https://api.medqr.in).
+ * Where admin-list standees point: THIS APP's own /q/<code> page, which calls GET /qr/:code and
+ * decides client-side where to go (the linked doctor's check-in, the clinic's doctor selection, or
+ * an explainer for not-set-up-yet / disabled / off-today) — never a server-side redirect. This keeps
+ * the target domain-correct automatically (whichever frontend build printed the code is the one the
+ * patient lands on) even once a second production domain goes live against the same shared API, and
+ * lets the page show a proper error UI instead of a bare redirect. Printed codes never need reprinting.
  */
-export const qrBaseUrl = () =>
-  (process.env.NEXT_PUBLIC_QR_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000').replace(/\/$/, '');
-
-/** Poster text for a standalone standee (/q/<code>): the doctor, the clinic (whole-clinic QR), or generic while unassigned. */
 export function posterContentFor(q: QrCodeView): PosterContent {
-  const base = qrBaseUrl();
+  const base = patientBaseUrl();
   let host = base;
   try {
     host = new URL(base).host;
