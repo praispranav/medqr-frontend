@@ -969,11 +969,14 @@ function DoctorShifts({
       {shifts.map((v) => {
         const current = (rows ?? []).find((r) => r.doctor.id === v.doctor_id && r.status === 'in_consultation');
         return (
-        <div key={v.doctor_id} className="flex items-center gap-2 bg-surface-container-low rounded-xl px-3 py-2 flex-wrap">
-          <span className={`w-2 h-2 rounded-full shrink-0 ${tone(v.state)}`} />
-          <span className="flex-1 min-w-0 font-label-md text-label-md truncate">
-            {v.doctor_name} <span className="text-on-surface-variant font-normal">· {note?.id === v.doctor_id ? note.text : text(v)}</span>
-          </span>
+        <div key={v.doctor_id} className="flex flex-col gap-2 bg-surface-container-low rounded-xl px-3 py-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className={`w-2 h-2 rounded-full shrink-0 ${tone(v.state)}`} />
+            <span className="flex-1 min-w-0 font-label-md text-label-md truncate">
+              {v.doctor_name} <span className="text-on-surface-variant font-normal">· {note?.id === v.doctor_id ? note.text : text(v)}</span>
+            </span>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
           {current && (
             <button
               disabled={busyId === v.doctor_id}
@@ -1060,6 +1063,7 @@ function DoctorShifts({
               </button>
             </>
           )}
+          </div>
         </div>
         );
       })}

@@ -490,7 +490,7 @@ function QueueItem({ row, now, muted = false, doctor, expanded = false, onToggle
       if ((e.target as HTMLElement).closest('button, a')) return;
       if (!muted) onToggle?.();
     }}>
-      <div className="flex items-center gap-3">
+      <div className="flex items-start gap-3">
         <span className="font-headline-md text-headline-md text-primary w-14 shrink-0">#{row.token_number}</span>
         <div className="flex-1 min-w-0">
           <p className="font-label-lg text-label-lg text-on-surface truncate">
@@ -501,9 +501,9 @@ function QueueItem({ row, now, muted = false, doctor, expanded = false, onToggle
             {[waited !== null ? `joined ${waited}m ago` : null, row.visit?.chief_complaint].filter(Boolean).join(' · ')}
           </p>
         </div>
-        <div className="shrink-0" onClick={e => e.stopPropagation()}>
-          {children}
-        </div>
+      </div>
+      <div className="flex items-center justify-end gap-2 flex-wrap mt-2" onClick={e => e.stopPropagation()}>
+        {children}
       </div>
       
       <div className={`grid transition-all duration-300 ${expanded ? 'grid-rows-[1fr] opacity-100 mt-3' : 'grid-rows-[0fr] opacity-0 mt-0'}`}>
