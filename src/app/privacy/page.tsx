@@ -1,9 +1,10 @@
 import type { Metadata } from 'next';
 import { LegalLayout } from '@/components/legal/LegalLayout';
+import { CONTACT_EMAIL, CONTACT_PHONE_DISPLAY, CONTACT_PHONE_TEL } from '@/components/support/contactInfo';
 
 export const metadata: Metadata = { title: 'Privacy Policy — MedQR' };
 
-const UPDATED = 'September 2026';
+const UPDATED = '9 October 2026';
 
 export default function PrivacyPage() {
   return (
@@ -62,6 +63,8 @@ export default function PrivacyPage() {
         <ul>
           <li><strong>Telnyx</strong> — delivers WhatsApp messages (OTPs and queue notifications) via the WhatsApp Business Platform. A patient&apos;s mobile number and the message content are shared with Telnyx/WhatsApp for delivery.</li>
           <li><strong>Razorpay</strong> — processes online UPI payments a patient chooses to make. Card, UPI or bank details are handled directly by Razorpay; MedQR never receives or stores them, only the payment status and amount.</li>
+          <li><strong>Google Firebase</strong> — delivers the optional &quot;Alert me when it&apos;s my turn&quot; push notification to a patient&apos;s browser, only if the patient turns it on. It receives a device notification address and the notification text.</li>
+          <li><strong>An AI language-model provider</strong> — used only to understand a doctor&apos;s own WhatsApp reply to a shift reminder (for example &quot;start&quot; or &quot;delay 30 minutes&quot;). Patient information is not sent for this.</li>
           <li>Cloud infrastructure providers that host MedQR&apos;s servers and databases.</li>
         </ul>
         <p>We don&apos;t share data with anyone else without the clinic&apos;s or patient&apos;s knowledge, except where required by law.</p>
@@ -94,15 +97,19 @@ export default function PrivacyPage() {
           <li>WhatsApp updates are opt-in and can be turned off at check-in.</li>
           <li>A patient can ask reception, or MedQR directly, to correct or delete their stored information.</li>
           <li>&quot;Remember me on this phone&quot; is optional at check-in — declining it means the device won&apos;t be recognised on a future visit.</li>
+          <li>Push notifications are opt-in and can be turned off in the browser settings at any time.</li>
+          <li>Messages you send us through the Contact page or Help &amp; support (name, email or mobile number, and what you write) are used only to reply to you and to improve the Service.</li>
         </ul>
       </section>
 
       <section>
         <h2>8. Grievance officer and contact</h2>
         <p>
-          For any question about this policy, or to request access, correction or deletion of your data, contact us at{' '}
-          <a className="text-primary underline" href="mailto:privacy@medqr.in">privacy@medqr.in</a>. We aim to respond
-          within a reasonable time and in any case as required by applicable Indian data protection law.
+          For any question about this policy, or to request access, correction or deletion of your data, write to{' '}
+          <a className="text-primary underline" href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a> or call or message{' '}
+          <a className="text-primary underline" href={`tel:${CONTACT_PHONE_TEL}`}>{CONTACT_PHONE_DISPLAY}</a>. You can also use the{' '}
+          <a className="text-primary underline" href="/contact">Contact page</a>. We aim to respond within a reasonable time and in any
+          case as required by applicable Indian data protection law.
         </p>
         <p className="mt-3 font-body-sm text-body-sm">
           Brand: MedQR · Operated by: Altis Labs · PAN: GRTPK1849H · Udyam Registration No: UDYAM-BR-34-0066884

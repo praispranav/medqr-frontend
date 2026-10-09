@@ -443,6 +443,7 @@ export default function LandingPage() {
           <div className="flex gap-4">
             <Link href="/terms">Terms</Link>
             <Link href="/privacy">Privacy</Link>
+            <Link href="/contact">Contact &amp; help</Link>
             <Link href="/login">Doctor/Staff Login</Link>
           </div>
         </div>

@@ -519,6 +519,32 @@ export interface SubscriptionStatus {
   wallet_auto_recharge_amount_inr: number;
 }
 
+/** Decision 37 — Contact us + support requests. */
+export type SupportTopic = 'trial' | 'question' | 'problem' | 'billing' | 'feature' | 'other';
+export type SupportStatus = 'new' | 'in_progress' | 'resolved';
+export interface SupportRequest {
+  id: string;
+  source: 'contact' | 'staff';
+  name: string;
+  email: string | null;
+  mobile: string | null;
+  topic: SupportTopic;
+  message: string;
+  clinic_name: string | null;
+  role: string | null;
+  status: SupportStatus;
+  reply: string | null;
+  created_at: string;
+}
+export const SUPPORT_TOPIC_LABEL: Record<SupportTopic, string> = {
+  trial: 'Free trial',
+  question: 'A question',
+  problem: 'Something is not working',
+  billing: 'Billing or payments',
+  feature: 'Idea or feature request',
+  other: 'Something else',
+};
+
 export interface ManageOverview {
   date: string;
   totals: {
@@ -780,6 +806,13 @@ export const api = {
   billingPlan: () => request<MonthlyPlan>('/billing/plan'),
   // Platform-fee trial / subscription (Decision 18)
   getSubscription: () => request<SubscriptionStatus>('/billing/subscription'),
+  support: {
+    contact: (body: { name: string; email?: string; mobile?: string; topic: SupportTopic; message: string; website?: string }) =>
+      request<{ ok: true }>('/support/contact', { method: 'POST', body: JSON.stringify(body) }),
+    create: (body: { topic: SupportTopic; message: string }) =>
+      request<SupportRequest>('/support/requests', { method: 'POST', body: JSON.stringify(body) }),
+    mine: () => request<SupportRequest[]>('/support/requests'),
+  },
   setupAutopay: () => request<{ subscription_id: string; key_id?: string }>('/billing/subscription/autopay', { method: 'POST' }),
 
   // ---- Clinic admin / hospital owner (Decision 14) ----

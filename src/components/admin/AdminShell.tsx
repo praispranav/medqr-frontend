@@ -17,6 +17,7 @@ const NAV = [
   { href: '/owner/referrers', label: 'Referrers', icon: 'handshake' },
   { href: '/owner/coupons', label: 'Coupons', icon: 'sell' },
   { href: '/owner/leads', label: 'Trial requests', icon: 'inbox' },
+  { href: '/owner/support', label: 'Support', icon: 'support_agent' },
   { href: '/owner/module-requests', label: 'Module requests', icon: 'extension' },
   { href: '/owner/setting-requests', label: 'Setting requests', icon: 'auto_awesome' },
   { href: '/owner/qr-codes', label: 'QR codes', icon: 'qr_code_2' },

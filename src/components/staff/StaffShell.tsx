@@ -44,10 +44,12 @@ const NAV: Record<Variant, NavItem[]> = {
     { href: '/doctor/intake-form', label: 'Intake Form', icon: 'assignment' },
     { href: '/doctor/qr-poster', label: 'QR Standee', icon: 'qr_code_2' },
     { href: '/doctor/billing', label: 'Billing & Add-ons', icon: 'account_balance_wallet', managersOnly: true },
+    { href: '/doctor/support', label: 'Help & support', icon: 'support_agent' },
   ],
   reception: [
     { href: '/reception', label: 'Queue Verifier', icon: 'qr_code_scanner' },
     { href: '/reception/payments', label: 'Payments', icon: 'currency_rupee' },
+    { href: '/reception/support', label: 'Help & support', icon: 'support_agent' },
   ],
   manage: [
     { href: '/manage', label: 'Today', icon: 'monitoring' },
@@ -58,13 +60,14 @@ const NAV: Record<Variant, NavItem[]> = {
     { href: '/manage/clinic', label: 'Clinic Profile', icon: 'apartment' },
     { href: '/manage/settings', label: 'Queue Rules', icon: 'tune' },
     { href: '/manage/billing', label: 'Billing & Add-ons', icon: 'account_balance_wallet' },
+    { href: '/manage/support', label: 'Help & support', icon: 'support_agent' },
   ],
 };
 
 const ROLE_LABEL: Record<Me['user']['role'], string> = { doctor: 'Doctor', reception: 'Reception', owner: 'Clinic admin' };
 
 // Decision 18: the public read-only demo never shows payments or admin-ish config screens.
-const DEMO_HIDDEN_HREFS = new Set(['/doctor/payments', '/doctor/settings', '/doctor/billing', '/doctor/profile', '/doctor/notifications', '/doctor/intake-form', '/reception/payments']);
+const DEMO_HIDDEN_HREFS = new Set(['/doctor/payments', '/doctor/settings', '/doctor/billing', '/doctor/profile', '/doctor/notifications', '/doctor/intake-form', '/reception/payments', '/doctor/support', '/reception/support', '/manage/support']);
 
 function navFor(variant: Variant, me: Me, isDemo: boolean): NavItem[] {
   let items: NavItem[];

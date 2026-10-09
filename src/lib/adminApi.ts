@@ -1,4 +1,4 @@
-import { ApiError, type ArrivalQr, type DoctorSession, type Entitlements, type HoursSlot, type HoursWeek, type QrCodeView, type QueueSettings, type QueueSetupMessage, type QueueSetupTurn, type StaffLinkResult, type Tenant, type TokenStatus } from '@/lib/api';
+import { ApiError, type SupportRequest, type SupportStatus, type ArrivalQr, type DoctorSession, type Entitlements, type HoursSlot, type HoursWeek, type QrCodeView, type QueueSettings, type QueueSetupMessage, type QueueSetupTurn, type StaffLinkResult, type Tenant, type TokenStatus } from '@/lib/api';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:4000';
 /** Old key-in-the-browser storage — cleared on sign-in; the admin panel now uses an email + password login. */
@@ -264,6 +264,9 @@ export const adminApi = (key: string) => ({
     request<QrCodeView[]>(key, '/qr-codes', { method: 'POST', body: JSON.stringify({ count, label, ...target }) }),
   updateQrCode: (id: string, body: { doctor_id?: string | null; tenant_id?: string | null; status?: 'disabled' | 'active' }) =>
     request<QrCodeView>(key, `/qr-codes/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  supportRequests: () => request<SupportRequest[]>(key, '/support'),
+  updateSupport: (id: string, patch: { status?: SupportStatus; reply?: string | null }) =>
+    request<SupportRequest>(key, `/support/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
   leads: () => request<TrialLead[]>(key, '/leads'),
   setLeadStatus: (id: string, status: TrialLeadStatus) =>
     request<TrialLead>(key, `/leads/${id}`, { method: 'PATCH', body: JSON.stringify({ status }) }),

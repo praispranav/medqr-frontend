@@ -1,13 +1,14 @@
 import type { Metadata } from 'next';
 import { LegalLayout } from '@/components/legal/LegalLayout';
+import { CONTACT_EMAIL, CONTACT_PHONE_DISPLAY, CONTACT_PHONE_TEL } from '@/components/support/contactInfo';
 
-export const metadata: Metadata = { title: 'Terms of Service — MedQR' };
+export const metadata: Metadata = { title: 'Terms of Use — MedQR' };
 
-const UPDATED = 'September 2026';
+const UPDATED = '9 October 2026';
 
 export default function TermsPage() {
   return (
-    <LegalLayout title="Terms of Service" updated={UPDATED}>
+    <LegalLayout title="Terms of Use" updated={UPDATED}>
       <p className="font-body-lg text-body-lg text-on-surface">
         MedQR is a registered product and software service owned and operated by <strong>Altis Labs</strong>.
       </p>
@@ -15,7 +16,7 @@ export default function TermsPage() {
       <section>
         <h2>1. Who these terms apply to</h2>
         <p>
-          These Terms of Service (&quot;Terms&quot;) govern use of MedQR — the QR-based digital token queue and
+          These Terms of Use (&quot;Terms&quot;) govern use of MedQR — the QR-based digital token queue and
           consultation platform available at medqr.in and its clinic subdomains (together, the &quot;Service&quot;).
           They apply to two kinds of users:
         </p>
@@ -82,7 +83,7 @@ export default function TermsPage() {
         <p>
           We aim to keep the Service available and reliable, but it is provided on an &quot;as available&quot; basis
           without guaranteeing uninterrupted or error-free operation. Planned maintenance or unplanned outages may
-          occasionally affect access. Support requests can be sent to the contact in Section 10.
+          occasionally affect access. Support requests can be raised from the <a className="text-primary underline" href="/contact">Contact page</a> or, for signed-in clinic staff, from Help &amp; support inside the app.
         </p>
       </section>
 
@@ -110,7 +111,9 @@ export default function TermsPage() {
         <h2>10. Contact and governing law</h2>
         <p>
           These Terms are governed by the laws of India. Questions about these Terms can be sent to{' '}
-          <a className="text-primary underline" href="mailto:support@medqr.in">support@medqr.in</a>.
+          <a className="text-primary underline" href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>, by phone or WhatsApp on{' '}
+          <a className="text-primary underline" href={`tel:${CONTACT_PHONE_TEL}`}>{CONTACT_PHONE_DISPLAY}</a>, or through the{' '}
+          <a className="text-primary underline" href="/contact">Contact page</a>.
         </p>
         <p className="mt-3 font-body-sm text-body-sm">
           Brand: MedQR · Operated by: Altis Labs · PAN: GRTPK1849H · Udyam Registration No: UDYAM-BR-34-0066884
