@@ -27,6 +27,11 @@ const SYMPTOMS = [
   { key: 'in_sym_stomach', emoji: '💊' },
 ] as const;
 
+const FINISHED_TOKEN = new Set(['done', 'no_show', 'expired', 'cancelled']);
+const sameName = (a?: string | null, b?: string | null) => (a ?? '').trim().toLowerCase() === (b ?? '').trim().toLowerCase();
+/** A token this phone already holds for the doctor being checked into (and not finished). */
+type MyToken = { id: string; number: number; patient_name: string };
+
 // Decision 17 — human-readable label for a bookingDate (YYYY-MM-DD) query param, in the patient's language.
 const formatBookingDate = (iso: string, opts: Intl.DateTimeFormatOptions, locale = 'en-IN') =>
   new Date(`${iso}T00:00:00`).toLocaleDateString(locale, opts);
@@ -88,9 +93,46 @@ function IntakeForm() {
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const [advanceDays, setAdvanceDays] = useState<any[]>([]);
+  // Which button on the "not available today" screen was tapped — it spins and both lock, so a slow
+  // tap isn't followed by a second one.
+  const [leaving, setLeaving] = useState<'book' | 'other' | null>(null);
+  // Tokens this phone already holds with this doctor (shown as "View token" in the family list).
+  const [myTokens, setMyTokens] = useState<MyToken[]>([]);
+
+  /** This phone's saved tokens for this clinic, re-checked with the server; keep the live ones for this doctor. */
+  async function loadMyTokens(forDoctorId: string, forDate: string | null) {
+    try {
+      const stored: { id: string; clinic_subdomain?: string }[] = JSON.parse(localStorage.getItem('medqr_patient_tokens') || '[]');
+      const mine = stored.filter((x) => x.clinic_subdomain === subdomain).slice(0, 10);
+      const found = await Promise.all(
+        mine.map((x) =>
+          api
+            .getToken(x.id)
+            .then((v) => {
+              const sameDay = forDate ? v.booking_date === forDate : !v.is_future_booking;
+              return v.doctor.id === forDoctorId && !FINISHED_TOKEN.has(v.status) && sameDay
+                ? ({ id: v.id, number: v.token_number, patient_name: v.patient_name ?? '' } as MyToken)
+                : null;
+            })
+            .catch(() => null),
+        ),
+      );
+      setMyTokens(found.filter((x): x is MyToken => !!x));
+    } catch {
+      setMyTokens([]);
+    }
+  }
 
   useEffect(() => {
     (async () => {
+      // A new doctor/date in the URL (e.g. "Book for Mon" on the not-available screen) reloads this page's
+      // data in place, so clear the previous result first — otherwise the old screen stays up and looks stuck.
+      setOffToday(null);
+      setDoctor(null);
+      setTenant(null);
+      setLoadError(false);
+      setLeaving(null);
+      setMyTokens([]);
       try {
         const clinic = await api.getTenantBySubdomain(subdomain);
         if (!clinic) return setLoadError(true);
@@ -123,6 +165,7 @@ function IntakeForm() {
         }
         setTenant(clinic);
         setDoctor(d);
+        if (d) loadMyTokens(d.id, bookingDate);
 
         const rules = await api.checkInRules(clinic.id).catch(() => ({ require_whatsapp_otp: false }));
         setOtpRequired(rules.require_whatsapp_otp);
@@ -189,16 +232,30 @@ function IntakeForm() {
         </p>
         <div className="w-full max-w-xs flex flex-col gap-2 mt-3">
           {offToday.next?.bookable && (
-            <Link
-              href={`/patient/${subdomain}/intake?doctorId=${doctorId}&date=${offToday.next.date}`}
-              className="h-12 bg-primary text-on-primary rounded-xl font-label-lg text-label-lg flex items-center justify-center gap-2"
+            <button
+              type="button"
+              disabled={!!leaving}
+              onClick={() => {
+                setLeaving('book');
+                router.push(`/patient/${subdomain}/intake?doctorId=${doctorId}&date=${offToday.next!.date}`);
+              }}
+              className="h-12 bg-primary text-on-primary rounded-xl font-label-lg text-label-lg flex items-center justify-center gap-2 disabled:opacity-70 touch-manipulation active:scale-[0.99]"
             >
-              <Icon name="event_available" className="text-[20px]" /> {t('in_book_for', { when: nextSessionLabel(offToday.next, locale) })}
-            </Link>
+              <Icon name={leaving === 'book' ? 'progress_activity' : 'event_available'} className={`text-[20px] ${leaving === 'book' ? 'animate-spin' : ''}`} />{' '}
+              {t('in_book_for', { when: nextSessionLabel(offToday.next, locale) })}
+            </button>
           )}
-          <Link href={doctorsPage} className="h-12 bg-surface-container-high text-on-surface rounded-xl font-label-lg text-label-lg flex items-center justify-center gap-2">
-            <Icon name="home" className="text-[20px]" /> {t('in_choose_other')}
-          </Link>
+          <button
+            type="button"
+            disabled={!!leaving}
+            onClick={() => {
+              setLeaving('other');
+              router.push(doctorsPage);
+            }}
+            className="h-12 bg-surface-container-high text-on-surface rounded-xl font-label-lg text-label-lg flex items-center justify-center gap-2 disabled:opacity-70 touch-manipulation active:scale-[0.99]"
+          >
+            <Icon name={leaving === 'other' ? 'progress_activity' : 'home'} className={`text-[20px] ${leaving === 'other' ? 'animate-spin' : ''}`} /> {t('in_choose_other')}
+          </button>
         </div>
       </main>
     );
@@ -220,6 +277,8 @@ function IntakeForm() {
 
   const clinicName = tenant.display_name ?? subdomain;
   const selectedProfile = profiles.find((p) => p.id === selectedProfileId) ?? null;
+  // The picked family member already holds a live token with this doctor → the main button opens it instead of joining twice.
+  const selectedActive = mode === 'returning' && selectedProfile ? myTokens.find((tok) => sameName(tok.patient_name, selectedProfile.name)) : undefined;
   const mobileDigits = mobile.replace(/\D/g, '').slice(-10);
 
   const toggleSymptom = (label: string) => {
@@ -245,6 +304,7 @@ function IntakeForm() {
   };
 
   const handleSubmit = async () => {
+    if (selectedActive) return router.push(`/patient/${subdomain}/queue/${selectedActive.id}`);
     setSubmitError(null);
     let patientId: string;
     try {
@@ -343,6 +403,19 @@ function IntakeForm() {
             </div>
           </div>
 
+          {myTokens
+            .filter((tok) => !profiles.some((p) => sameName(p.name, tok.patient_name)))
+            .map((tok) => (
+              <Link
+                key={tok.id}
+                href={`/patient/${subdomain}/queue/${tok.id}`}
+                className="mt-3 w-full min-h-[48px] px-4 rounded-xl bg-primary text-on-primary font-label-lg text-label-lg flex items-center justify-center gap-2 touch-manipulation active:scale-[0.99]"
+              >
+                <Icon name="confirmation_number" className="text-[20px]" /> {t('in_view_token', { n: tok.number })}
+                {tok.patient_name ? ` · ${tok.patient_name}` : ''}
+              </Link>
+            ))}
+
           {(() => {
             const doctorDays = advanceDays
               .map((day) => ({
@@ -433,10 +506,11 @@ function IntakeForm() {
               <div className="space-y-2.5">
                 {profiles.map((p) => {
                   const active = p.id === selectedProfileId;
+                  const myToken = myTokens.find((tok) => sameName(tok.patient_name, p.name));
                   return (
+                    <div key={p.id}>
                     <button
                       type="button"
-                      key={p.id}
                       onClick={() => setSelectedProfileId(p.id)}
                       className={`w-full text-left p-3 rounded-xl flex items-center justify-between transition-all ${
                         active ? 'bg-surface-container-low' : 'bg-surface-container-lowest hover:bg-surface-container-low'
@@ -468,6 +542,15 @@ function IntakeForm() {
                         className={`text-[24px] ${active ? 'text-primary' : 'text-outline-variant'}`}
                       />
                     </button>
+                    {myToken && (
+                      <Link
+                        href={`/patient/${subdomain}/queue/${myToken.id}`}
+                        className="mt-1.5 w-full min-h-[44px] rounded-xl bg-primary text-on-primary font-label-md text-label-md flex items-center justify-center gap-2 touch-manipulation active:scale-[0.99]"
+                      >
+                        <Icon name="confirmation_number" className="text-[18px]" /> {t('in_view_token', { n: myToken.number })}
+                      </Link>
+                    )}
+                    </div>
                   );
                 })}
                 <button
@@ -794,7 +877,11 @@ function IntakeForm() {
             ) : (
               <>
                 <span>
-                  {mode === 'returning' && selectedProfile ? t('in_join_as', { name: selectedProfile.name }) : t('in_join')}
+                  {selectedActive
+                    ? t('in_view_token', { n: selectedActive.number })
+                    : mode === 'returning' && selectedProfile
+                      ? t('in_join_as', { name: selectedProfile.name })
+                      : t('in_join')}
                 </span>
                 <Icon name="arrow_forward" className="text-[20px]" />
               </>

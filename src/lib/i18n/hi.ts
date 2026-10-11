@@ -166,6 +166,7 @@ export const hi: Partial<Record<TranslationKey, string>> = {
   "in_off_body": "टोकन उसी दिन लिया जा सकता है जिस दिन डॉक्टर बैठते हैं।",
   "in_book_for": "{when} के लिए बुक करें",
   "in_choose_other": "दूसरा डॉक्टर चुनें",
+  "in_view_token": "टोकन #{n} देखें",
   "in_sym_fever": "बुखार",
   "in_sym_followup": "दोबारा दिखाना",
   "in_sym_cold": "खाँसी-ज़ुकाम",

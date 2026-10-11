@@ -182,6 +182,7 @@ export const en = {
   "in_off_body": "Tokens can be taken on the day the doctor is consulting.",
   "in_book_for": "Book for {when}",
   "in_choose_other": "Choose another doctor",
+  "in_view_token": "View token #{n}",
   "in_sym_fever": "Fever",
   "in_sym_followup": "Follow-up",
   "in_sym_cold": "Cough & Cold",
