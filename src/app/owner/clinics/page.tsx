@@ -89,7 +89,7 @@ function Clinics({ api, referrer }: { api: AdminApi; referrer: boolean }) {
                 placeholder="drsharma"
                 className="flex-1 min-w-0 bg-transparent font-body-lg text-body-lg focus:outline-none"
               />
-              <span className="font-body-md text-body-md text-on-surface-variant">.medqr.in</span>
+              <span className="font-body-md text-body-md text-on-surface-variant">.clinicq.in</span>
             </div>
           </label>
         </div>
@@ -114,7 +114,7 @@ function Clinics({ api, referrer }: { api: AdminApi; referrer: boolean }) {
           </label>
         </div>
         <p className="font-body-sm text-body-sm text-on-surface-variant -mt-1">
-          Used for the public doctor directory (medqr.in/doctors) — doctors there share the clinic&apos;s own address, so there&apos;s no separate address per doctor.
+          Used for the public doctor directory (clinicq.in/doctors) — doctors there share the clinic&apos;s own address, so there&apos;s no separate address per doctor.
         </p>
         <label className="flex flex-col gap-1 max-w-md">
           <span className="font-label-md text-label-md">Coupon (optional)</span>
@@ -169,7 +169,7 @@ function Clinics({ api, referrer }: { api: AdminApi; referrer: boolean }) {
                   </span>
                 )}
               </div>
-              <p className="font-body-sm text-body-sm text-on-surface-variant">{t.subdomain}.medqr.in</p>
+              <p className="font-body-sm text-body-sm text-on-surface-variant">{t.subdomain}.clinicq.in</p>
             </div>
             <div className="hidden sm:flex gap-6 font-body-sm text-body-sm text-on-surface-variant text-right">
               <p><strong className="block text-on-surface font-label-lg text-label-lg">{t.doctor_count}</strong>doctors</p>

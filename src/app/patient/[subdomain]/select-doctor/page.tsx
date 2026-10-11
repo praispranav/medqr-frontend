@@ -13,7 +13,7 @@ import {
   LoadingPage,
   PatientHeader,
 } from '@/components/patient/ui';
-import { useT } from '@/lib/i18n';
+import { dateLocale, localizeStatusDetail, useT } from '@/lib/i18n';
 import { addDays, clinicToday } from '@/lib/clinicTime';
 import { getQueueSocket } from '@/lib/socket';
 
@@ -34,11 +34,11 @@ const FINISHED_TOKEN = new Set(['done', 'no_show', 'expired', 'cancelled']);
 // Decision 6: only 'off_today' is non-selectable.
 const isSelectable = (status: DoctorTodayStatus) => status !== 'off_today';
 
-const formatDate = (iso: string) => {
+const formatDateIn = (iso: string, locale: string, tomorrowWord: string) => {
   const d = new Date(`${iso}T00:00:00`);
   const tomorrow = addDays(clinicToday(), 1);
-  if (iso === tomorrow) return 'Tomorrow';
-  return d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
+  if (iso === tomorrow) return tomorrowWord;
+  return d.toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'short' });
 };
 
 export default function SelectDoctorPage() {
@@ -53,7 +53,9 @@ export default function SelectDoctorPage() {
   const [query, setQuery] = useState('');
   const [activeTokens, setActiveTokens] = useState<any[]>([]);
 
-  const { t } = useT(tenant?.queue_settings?.patient_language);
+  const { t, lang } = useT(tenant?.queue_settings?.patient_language);
+  const locale = dateLocale(lang);
+  const formatDate = (iso: string) => formatDateIn(iso, locale, t('sd_tomorrow'));
 
   useEffect(() => {
     const sync = async () => {
@@ -165,9 +167,9 @@ export default function SelectDoctorPage() {
   }, [activeDoctors, query]);
 
   if (error === 'not_found')
-    return <FullPageMessage icon="wrong_location" title="Clinic not found" body="This QR code doesn't match a clinic on MedQR. Please ask the reception desk." />;
+    return <FullPageMessage icon="wrong_location" title={t('sd_nf_title')} body={t('sd_nf_body')} />;
   if (error === 'network')
-    return <FullPageMessage icon="wifi_off" title="Couldn't load the clinic" body="Check your internet connection and scan the QR code again." />;
+    return <FullPageMessage icon="wifi_off" title={t('sd_net_title')} body={t('sd_net_body')} />;
   if (!tenant || !doctors) return <LoadingPage />;
 
   const clinicName = tenant.display_name ?? subdomain;
@@ -179,7 +181,7 @@ export default function SelectDoctorPage() {
     <div className="mt-2 flex flex-col gap-3">
       <div className="flex items-center gap-1.5 text-on-surface-variant px-1">
         <Icon name="confirmation_number" className="text-[18px]" />
-        <h3 className="font-label-sm font-bold uppercase tracking-wider">Your Active Tokens</h3>
+        <h3 className="font-label-sm font-bold uppercase tracking-wider">{t('sd_tokens')}</h3>
       </div>
       <div className="flex flex-col gap-2">
         {activeTokens.map(t => (
@@ -214,7 +216,7 @@ export default function SelectDoctorPage() {
           !isFutureView ? 'bg-primary text-on-primary' : 'bg-surface-container-lowest text-on-surface-variant shadow-sm'
         }`}
       >
-        Today
+        {t('sd_today')}
       </button>
       {advanceDays.map((d) => (
         <button
@@ -236,7 +238,7 @@ export default function SelectDoctorPage() {
   if (activeDoctors.length === 0)
     return (
       <>
-        <PatientHeader eyebrow="MedQR · Scanned ✓" title="Doctor Selection" />
+        <PatientHeader eyebrow={t('sd_scanned')} title={t('sd_title')} />
         <main className="min-h-screen w-full max-w-[480px] mx-auto pt-16 pb-safe bg-surface">
           <div className="flex flex-col px-margin py-space-lg gap-space-md">
             
@@ -244,9 +246,9 @@ export default function SelectDoctorPage() {
             <div className="flex flex-col items-center text-center gap-3 py-16">
               <Icon name="event_busy" className="text-[40px] text-on-surface-variant" />
               <p className="font-headline-sm text-headline-sm text-on-surface">
-                {isFutureView ? `No doctor is scheduled on ${formatDate(selectedDate!)}` : 'No doctors listed today'}
+                {isFutureView ? t('sd_no_doc_date', { date: formatDate(selectedDate!) }) : t('sd_no_doc')}
               </p>
-              <p className="font-body-md text-body-md text-on-surface-variant">Please check with the reception desk at {clinicName}.</p>
+              <p className="font-body-md text-body-md text-on-surface-variant">{t('sd_check_reception', { clinic: clinicName })}</p>
             </div>
             {activeTokensWidget}
           </div>
@@ -260,17 +262,17 @@ export default function SelectDoctorPage() {
     const selectable = isFutureView || isSelectable(d.today_status);
     return (
       <>
-        <PatientHeader eyebrow="MedQR · Scanned ✓" title="Doctor Selection" />
+        <PatientHeader eyebrow={t('sd_scanned')} title={t('sd_title')} />
         <main className="min-h-screen w-full max-w-[480px] mx-auto pt-16 pb-safe bg-surface">
           <div className="flex flex-col px-margin py-space-lg gap-space-lg">
             {dateStrip}
             <div className="flex flex-col gap-1">
-              <span className="font-label-md text-label-md text-primary font-bold uppercase tracking-wider">OPD Express Check-in</span>
+              <span className="font-label-md text-label-md text-primary font-bold uppercase tracking-wider">{t('sd_express')}</span>
               <h2 className="font-headline-md text-headline-md text-on-surface font-extrabold tracking-tight">
                 {isFutureView ? t('booking_for', { name: d.name }) : t('checking_in_with', { name: d.name })}
               </h2>
               <p className="font-body-md text-body-md text-on-surface-variant">
-                {isFutureView ? `Confirm to get your token for ${formatDate(selectedDate!)}.` : 'Confirm the doctor to get your queue token.'}
+                {isFutureView ? t('sd_confirm_date', { date: formatDate(selectedDate!) }) : t('sd_confirm_doc')}
               </p>
             </div>
 
@@ -305,7 +307,7 @@ export default function SelectDoctorPage() {
               {isFutureView ? (
                 <div className="flex items-center gap-1.5 bg-surface-container-low px-3 py-1.5 rounded-lg">
                   <Icon name="event_available" className="text-[16px] text-primary" />
-                  <span className="font-label-sm text-label-sm text-on-surface font-semibold">Consulting on {formatDate(selectedDate!)}</span>
+                  <span className="font-label-sm text-label-sm text-on-surface font-semibold">{t('sd_consulting_on', { date: formatDate(selectedDate!) })}</span>
                 </div>
               ) : (
                 <DoctorStatusRow status={d.today_status} detail={d.today_status_detail} next={d.next_session} />
@@ -315,7 +317,7 @@ export default function SelectDoctorPage() {
             <div className="flex items-center gap-2 px-1">
               <Icon name="verified_user" className="text-primary text-[18px]" />
               <span className="font-body-sm text-body-sm text-on-surface-variant">
-                No paper token needed. Your digital token is issued instantly.
+                {t('sd_no_paper')}
               </span>
             </div>
 
@@ -326,7 +328,7 @@ export default function SelectDoctorPage() {
                   className="w-full h-14 bg-primary text-on-primary font-label-lg text-label-lg rounded-xl flex items-center justify-center gap-2 shadow-md active:opacity-95 transition-all"
                 >
                   <Icon name="event_available" className="text-[20px]" />
-                  <span>Book for {nextSessionLabel(d.next_session)}</span>
+                  <span>{t('in_book_for', { when: nextSessionLabel(d.next_session, locale) })}</span>
                 </button>
               ) : (
                 <button
@@ -334,12 +336,12 @@ export default function SelectDoctorPage() {
                   onClick={() => goToIntake(d.id)}
                   className="w-full h-14 bg-primary text-on-primary font-label-lg text-label-lg rounded-xl flex items-center justify-center gap-2 shadow-md active:opacity-95 transition-all disabled:opacity-40 disabled:shadow-none"
                 >
-                  <span>{selectable ? 'Confirm & Continue' : 'Not consulting today'}</span>
+                  <span>{selectable ? t('sd_confirm') : t('sd_not_today')}</span>
                   {selectable && <Icon name="arrow_forward" className="text-[20px]" />}
                 </button>
               )}
               <p className="text-center font-body-sm text-body-sm text-on-surface-variant">
-                Wrong clinic? Scan the QR code again.
+                {t('sd_wrong_clinic')}
               </p>
             </div>
             {activeTokensWidget}
@@ -355,7 +357,7 @@ export default function SelectDoctorPage() {
 
   return (
     <>
-      <PatientHeader eyebrow="MedQR · Scanned ✓" title="Doctor Selection" />
+      <PatientHeader eyebrow={t('sd_scanned')} title={t('sd_title')} />
       <main className={`min-h-screen w-full max-w-[480px] mx-auto pt-16 bg-surface ${selected ? 'pb-48' : 'pb-safe'}`}>
         <div className="flex flex-col px-margin py-space-lg gap-space-md">
           {dateStrip}
@@ -366,12 +368,12 @@ export default function SelectDoctorPage() {
               <Icon name="verified" className="text-[14px] text-tertiary" />
             </div>
             <h2 className="font-headline-md text-headline-md text-on-surface font-extrabold tracking-tight">
-              Which doctor are you here to see?
+              {t('sd_which')}
             </h2>
             <span className="font-body-sm text-body-sm text-on-surface-variant">
               {isFutureView
-                ? `${selectableCount} doctor${selectableCount === 1 ? '' : 's'} consulting on ${formatDate(selectedDate!)} · Tap to select`
-                : `${selectableCount} of ${activeDoctors.length} doctors consulting today · Tap to select`}
+                ? t('sd_count_date', { n: selectableCount, date: formatDate(selectedDate!) })
+                : t('sd_count_today', { n: selectableCount, m: activeDoctors.length })}
             </span>
           </div>
 
@@ -381,11 +383,11 @@ export default function SelectDoctorPage() {
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search doctor, specialty, cabin..."
+                placeholder={t('sd_search_ph')}
                 className="w-full h-12 pl-11 pr-10 bg-surface-container-lowest rounded-xl font-body-md text-body-md text-on-surface placeholder:text-on-surface-variant shadow-sm focus:outline-none focus:bg-surface-container-low transition-all"
               />
               {query && (
-                <button aria-label="Clear search" className="absolute right-3 text-on-surface-variant" onClick={() => setQuery('')}>
+                <button aria-label={t('sd_clear')} className="absolute right-3 text-on-surface-variant" onClick={() => setQuery('')}>
                   <Icon name="close" className="text-[18px]" />
                 </button>
               )}
@@ -439,27 +441,27 @@ export default function SelectDoctorPage() {
                   {isFutureView ? (
                     <div className="flex items-center gap-1.5 bg-surface-container-low px-2.5 py-1 rounded-lg self-start">
                       <Icon name="event_available" className="text-[14px] text-primary" />
-                      <span className="font-label-sm text-label-sm text-on-surface">Consulting on {formatDate(selectedDate!)}</span>
+                      <span className="font-label-sm text-label-sm text-on-surface">{t('sd_consulting_on', { date: formatDate(selectedDate!) })}</span>
                     </div>
                   ) : (
                     <DoctorStatusRow status={d.today_status} detail={d.today_status_detail} next={d.next_session} />
                   )}
                   {canBookAhead && (
                     <span className="self-start flex items-center gap-1 font-label-sm text-label-sm text-primary font-bold">
-                      <Icon name="event_available" className="text-[14px]" /> Book for {nextSessionLabel(d.next_session!)}
+                      <Icon name="event_available" className="text-[14px]" /> {t('in_book_for', { when: nextSessionLabel(d.next_session!, locale) })}
                     </span>
                   )}
                 </button>
               );
             })}
             {filtered.length === 0 && (
-              <p className="text-center font-body-md text-body-md text-on-surface-variant py-6">No doctor matches “{query}”.</p>
+              <p className="text-center font-body-md text-body-md text-on-surface-variant py-6">{t('sd_no_match', { query })}</p>
             )}
           </div>
 
           {activeTokensWidget}
           <p className="py-2 text-center font-label-md text-label-md text-on-surface-variant">
-            Need assistance? Talk to {tenant?.queue_settings?.front_desk_verifies_arrivals === false ? 'the clinic staff' : 'the reception desk'}.
+            {tenant?.queue_settings?.front_desk_verifies_arrivals === false ? t('sd_help_staff') : t('sd_help_desk')}
           </p>
         </div>
       </main>
@@ -469,7 +471,7 @@ export default function SelectDoctorPage() {
           <div className="max-w-[480px] mx-auto px-margin pt-3 pb-3 flex flex-col gap-3">
             <div className="flex items-center justify-between gap-2">
               <div className="flex flex-col min-w-0">
-                <span className="font-label-sm text-label-sm text-on-surface-variant">Selected consultation</span>
+                <span className="font-label-sm text-label-sm text-on-surface-variant">{t('sd_selected')}</span>
                 <span className="font-label-md text-label-md font-bold text-on-surface truncate">
                   {selected.name}
                   {selected.specialty ? ` (${selected.specialty})` : ''}
@@ -485,17 +487,17 @@ export default function SelectDoctorPage() {
                 {isFutureView
                   ? formatDate(selectedDate!)
                   : selected.today_status === 'available'
-                    ? 'Available'
+                    ? t('sd_available')
                     : selected.today_status === 'on_break'
-                      ? 'On break'
-                      : 'Later today'}
+                      ? t('sd_on_break')
+                      : t('sd_later_today')}
               </span>
             </div>
             <button
               onClick={() => goToIntake(selected.id)}
               className="w-full h-14 bg-primary text-on-primary font-label-lg text-label-lg rounded-xl flex items-center justify-center gap-2 shadow-md active:opacity-95 transition-all"
             >
-              <span>Confirm &amp; Continue</span>
+              <span>{t('sd_confirm')}</span>
               <Icon name="arrow_forward" className="text-[20px]" />
             </button>
           </div>

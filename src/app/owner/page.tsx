@@ -40,7 +40,7 @@ function ActivityView({ api }: { api: AdminApi }) {
     <div className="flex flex-col gap-6">
       <div className="flex items-end justify-between gap-3 flex-wrap">
         <div>
-          <h1 className="font-headline-lg text-headline-lg">Today across MedQR</h1>
+          <h1 className="font-headline-lg text-headline-lg">Today across ClinicQ</h1>
           <p className="font-body-md text-body-md text-on-surface-variant">Live — refreshes every 15 seconds.</p>
         </div>
         <Link href="/owner/clinics" className="h-11 px-4 rounded-xl bg-primary text-on-primary font-label-lg text-label-lg flex items-center gap-2">
@@ -72,7 +72,7 @@ function ActivityView({ api }: { api: AdminApi }) {
               <Link key={c.id} href={`/owner/clinics/${c.id}`} className="py-3 flex items-center gap-3 hover:bg-surface-container-low -mx-2 px-2 rounded-lg">
                 <div className="flex-1 min-w-0">
                   <p className="font-label-lg text-label-lg truncate">{c.name}</p>
-                  <p className="font-body-sm text-body-sm text-on-surface-variant">{c.subdomain}.medqr.in</p>
+                  <p className="font-body-sm text-body-sm text-on-surface-variant">{c.subdomain}.clinicq.in</p>
                 </div>
                 <div className="text-right font-body-sm text-body-sm text-on-surface-variant">
                   <p><strong className="text-on-surface font-headline-sm text-headline-sm">{c.tokens_today}</strong> tokens</p>

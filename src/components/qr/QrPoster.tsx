@@ -58,7 +58,7 @@ export function posterContentFor(q: QrCodeView): PosterContent {
   }
   return {
     url: `${base}/q/${q.code}`,
-    title: q.doctor?.name ?? q.clinic?.name ?? 'MedQR Digital Queue',
+    title: q.doctor?.name ?? q.clinic?.name ?? 'ClinicQ Digital Queue',
     subtitle: q.doctor ? [q.doctor.specialty, q.clinic?.name].filter(Boolean).join(' · ') : q.clinic ? 'Live OPD digital queue' : 'Scan to check in with your doctor',
     footer: `${host}/q/${q.code}`,
     codeLabel: `MQ-${q.code}`,

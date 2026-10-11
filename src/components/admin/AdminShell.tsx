@@ -6,7 +6,7 @@ import { ApiError } from '@/lib/api';
 import { ADMIN_KEY_STORAGE, adminApi, platformAuth, type AdminApi, type PlatformAdminMe } from '@/lib/adminApi';
 import { Icon, LoadingPage } from '@/components/patient/ui';
 
-// Platform admin chrome (MedQR operators, not clinic staff). Sign in with email + password; the
+// Platform admin chrome (ClinicQ operators, not clinic staff). Sign in with email + password; the
 // session is an httpOnly cookie (12 hours). Super admin accounts are created on the server with
 // `npm run admin:create -- <email>` — there's no sign-up page. Referral partners (Decision 27) are
 // created in Owner › Referrers and get a cut-down panel: their clinics + My earnings.
@@ -64,7 +64,7 @@ export function AdminShell({ active, children }: { active: string; children: (ap
             <Icon name="admin_panel_settings" className="text-[22px]" />
           </div>
           <div>
-            <p className="font-headline-sm text-headline-sm leading-tight">MedQR</p>
+            <p className="font-headline-sm text-headline-sm leading-tight">ClinicQ</p>
             <p className="font-label-sm text-label-sm uppercase opacity-70">{referrer ? 'Referral partner' : 'Platform admin'}</p>
           </div>
         </div>
@@ -96,7 +96,7 @@ export function AdminShell({ active, children }: { active: string; children: (ap
       <div className="flex-1 min-w-0">
         <header className="lg:hidden sticky top-0 z-30 bg-inverse-surface text-white px-4 h-14 flex items-center gap-3">
           <Icon name="admin_panel_settings" className="text-[22px]" />
-          <span className="font-label-lg text-label-lg flex-1">{referrer ? 'MedQR partner' : 'MedQR admin'}</span>
+          <span className="font-label-lg text-label-lg flex-1">{referrer ? 'ClinicQ partner' : 'ClinicQ admin'}</span>
           {nav.map((n) => (
             <Link key={n.href} href={n.href} className={`px-3 py-1.5 rounded-full font-label-md text-label-md ${active === n.href ? 'bg-primary-container' : 'opacity-80'}`}>
               {n.label}
@@ -128,7 +128,7 @@ function SignIn({ onOk }: { onOk: (me: PlatformAdminMe) => void }) {
       }
       onOk(me);
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Can't reach the MedQR server.");
+      setError(e instanceof ApiError ? e.message : "Can't reach the ClinicQ server.");
       setBusy(false);
     }
   };
@@ -146,7 +146,7 @@ function SignIn({ onOk }: { onOk: (me: PlatformAdminMe) => void }) {
           <Icon name="admin_panel_settings" className="text-[26px]" />
         </div>
         <div>
-          <h1 className="font-headline-md text-headline-md">MedQR platform admin</h1>
+          <h1 className="font-headline-md text-headline-md">ClinicQ platform admin</h1>
           <p className="font-body-md text-body-md text-on-surface-variant mt-1">Sign in to manage clinics, QR codes and modules.</p>
         </div>
         <label className="flex flex-col gap-1">

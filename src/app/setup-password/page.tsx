@@ -31,7 +31,7 @@ function Shell({ children }: { children: React.ReactNode }) {
           <span className="w-10 h-10 rounded-xl bg-primary-container text-on-primary flex items-center justify-center">
             <Icon name="lock" className="text-[24px]" />
           </span>
-          <span className="font-headline-sm text-headline-sm text-primary">MedQR</span>
+          <span className="font-headline-sm text-headline-sm text-primary">ClinicQ</span>
         </div>
         {children}
       </div>
@@ -122,7 +122,7 @@ function SetupPassword() {
       const res = await api.setupPassword({ token, newPassword });
       setDone({ username: res.username, clinic_code: res.clinic_code, clinic_name: res.clinic_name });
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Can't reach MedQR. Check your connection.");
+      setError(e instanceof ApiError ? e.message : "Can't reach ClinicQ. Check your connection.");
       setBusy(false);
     }
   };
@@ -138,7 +138,7 @@ function SetupPassword() {
       >
         <div>
           <h1 className="font-headline-md text-headline-md text-on-surface">Set your password</h1>
-          <p className="font-body-md text-body-md text-on-surface-variant mt-1">Hello {valid.name}, choose a password for your MedQR login.</p>
+          <p className="font-body-md text-body-md text-on-surface-variant mt-1">Hello {valid.name}, choose a password for your ClinicQ login.</p>
         </div>
 
         <div className="bg-surface-container-low rounded-xl p-3 flex flex-col gap-1 font-body-md text-body-md">

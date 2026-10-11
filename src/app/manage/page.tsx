@@ -34,7 +34,7 @@ function hoursReminderHref(doctorName: string, mobile: string | null) {
   const number = digits.length === 10 ? `91${digits}` : digits;
   const day = new Date().toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'Asia/Kolkata' });
   const text = [
-    `Hello ${doctorName}, a gentle reminder: your consulting hours for today (${day}) aren't set on MedQR yet, so patients can't join your queue.`,
+    `Hello ${doctorName}, a gentle reminder: your consulting hours for today (${day}) aren't set on ClinicQ yet, so patients can't join your queue.`,
     '',
     `Please add today's hours, or mark today as off, here: ${window.location.origin}/doctor/hours`,
   ].join('\n');

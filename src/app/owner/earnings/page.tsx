@@ -7,7 +7,7 @@ import { inr } from '@/components/staff/bits';
 import type { AdminApi, Coupon, ReferrerDetail } from '@/lib/adminApi';
 import { describeCoupon } from '@/lib/coupons';
 
-// Decision 27 — a referral partner's own page: what they've earned, what's due, when MedQR pays,
+// Decision 27 — a referral partner's own page: what they've earned, what's due, when ClinicQ pays,
 // and the bank / UPI details rewards are sent to.
 
 export default function MyEarningsPage() {
@@ -32,7 +32,7 @@ function MyEarnings({ api }: { api: AdminApi }) {
         <p className="font-body-md text-body-md text-on-surface-variant mt-1">
           {[r.one_time_inr > 0 && `${inr(r.one_time_inr)} when a clinic starts paying`, r.monthly_inr > 0 && `${inr(r.monthly_inr)} a month while it keeps paying`]
             .filter(Boolean)
-            .join(' + ') || 'No reward amounts set yet — MedQR will set them.'}
+            .join(' + ') || 'No reward amounts set yet — ClinicQ will set them.'}
           {' · '}Paid out {scheduleText(r).toLowerCase()}.
         </p>
       </div>
@@ -44,7 +44,7 @@ function MyEarnings({ api }: { api: AdminApi }) {
   );
 }
 
-/** Decision 36: the coupon codes MedQR issued to this referrer — share them; use one when adding a clinic. */
+/** Decision 36: the coupon codes ClinicQ issued to this referrer — share them; use one when adding a clinic. */
 function MyCoupons({ api }: { api: AdminApi }) {
   const [list, setList] = useState<Coupon[] | null>(null);
   useEffect(() => {

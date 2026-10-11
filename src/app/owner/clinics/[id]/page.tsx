@@ -217,7 +217,7 @@ function adminTeamApi(api: AdminApi, tenantId: string, referrer: boolean, clinic
     resetPassword: (id) => api.resetPassword(id),
     setupLink: (id) => api.setupLink(id),
     deleteUser: referrer ? undefined : (id) => api.deleteUser(id),
-    canGrantOwner: !referrer, // clinic admins are granted by MedQR only
+    canGrantOwner: !referrer, // clinic admins are granted by ClinicQ only
     // Decision 28: super admin and the clinic's referrer set each doctor's own fee / payment / pacing.
     doctorSettings: clinic ? { clinic, save: (doctorId, patch) => api.updateDoctorSettings(doctorId, patch) } : undefined,
     directoryFields: true,
@@ -234,7 +234,7 @@ function ClinicName({ api, tenant, onSaved }: { api: AdminApi; tenant: Tenant; o
       <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="font-headline-lg text-headline-lg">{tenant.display_name ?? tenant.subdomain}</h1>
-          <p className="font-body-md text-body-md text-on-surface-variant">{tenant.subdomain}.medqr.in</p>
+          <p className="font-body-md text-body-md text-on-surface-variant">{tenant.subdomain}.clinicq.in</p>
         </div>
         <button onClick={() => setEditing(true)} className="h-10 px-3 rounded-xl text-primary font-label-md text-label-md flex items-center gap-1">
           <Icon name="edit" className="text-[18px]" /> Rename

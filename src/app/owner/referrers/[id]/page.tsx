@@ -95,7 +95,7 @@ function ReferrerView({ api }: { api: AdminApi }) {
   );
 }
 
-/** Manual payout: you paid them outside MedQR (bank / UPI / cash) — record it here. */
+/** Manual payout: you paid them outside ClinicQ (bank / UPI / cash) — record it here. */
 function MarkPaid({ r, onPay }: { r: ReferrerDetail; onPay: (b: { amount_inr: number; method: PayoutMethod; reference?: string }) => Promise<void> }) {
   const [amount, setAmount] = useState(String(Math.max(r.balance_inr, 0) || ''));
   const [method, setMethod] = useState<PayoutMethod>(r.bank.upi_id ? 'upi' : r.bank.account_number ? 'bank' : 'cash');
@@ -172,7 +172,7 @@ function Rates({ r, onSave }: { r: ReferrerDetail; onSave: (b: Partial<ReferrerR
       <div>
         <h2 className="font-headline-sm text-headline-sm">Rewards</h2>
         <p className="font-body-sm text-body-sm text-on-surface-variant">
-          Counted only while a clinic is on a paid MedQR plan — never during the free trial. Changes apply to rewards from now on.
+          Counted only while a clinic is on a paid ClinicQ plan — never during the free trial. Changes apply to rewards from now on.
         </p>
       </div>
       <RatesFields value={rates} onChange={setRates} />

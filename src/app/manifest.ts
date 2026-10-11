@@ -5,8 +5,8 @@ import type { MetadataRoute } from 'next';
 // (AddToHomeScreen sets it to the clinic page + a one-time hand-off code).
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'MedQR — Clinic Queue',
-    short_name: 'MedQR',
+    name: 'ClinicQ — Clinic Queue',
+    short_name: 'ClinicQ',
     display: 'standalone',
     background_color: '#f7f9ff',
     theme_color: '#005c55',

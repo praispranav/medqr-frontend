@@ -6,7 +6,7 @@ import { StaffShell } from '@/components/staff/StaffShell';
 import { DoctorsTab, LoginsTab, type TeamApi } from '@/components/team/TeamManager';
 
 // Clinic admin — add/remove doctors, set anyone's planned hours, and create reception/doctor logins
-// (Decision 14). Owner access itself is granted only by MedQR (platform admin).
+// (Decision 14). Owner access itself is granted only by ClinicQ (platform admin).
 
 export default function ManageTeamPage() {
   return (

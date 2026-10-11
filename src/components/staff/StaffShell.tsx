@@ -15,7 +15,7 @@ import { DoctorAvatar, Icon, LoadingPage } from '@/components/patient/ui';
 // screen (or vice versa) gets a clear "wrong login" page instead of the screen.
 //
 // 'manage' is the clinic admin (Decision 14): a separate owner login, or a doctor given owner
-// access by MedQR. Solo-doctor clinics never need it — their doctor keeps Billing and Queue Rules;
+// access by ClinicQ. Solo-doctor clinics never need it — their doctor keeps Billing and Queue Rules;
 // with 2+ doctors those two move to the clinic admin only.
 
 export interface StaffContext {
@@ -146,7 +146,7 @@ export function StaffShell({
   if (failed)
     return (
       <main className="min-h-screen flex flex-col items-center justify-center gap-3 p-6 text-center">
-        <p className="font-headline-md text-headline-md">Can&apos;t reach MedQR</p>
+        <p className="font-headline-md text-headline-md">Can&apos;t reach ClinicQ</p>
         <p className="font-body-md text-body-md text-on-surface-variant">Check the connection and reload the page.</p>
       </main>
     );
@@ -180,7 +180,7 @@ export function StaffShell({
     return (
       <main className="min-h-screen flex flex-col items-center justify-center gap-3 p-6 text-center">
         <p className="font-headline-md text-headline-md">Your doctor profile was removed</p>
-        <p className="font-body-md text-body-md text-on-surface-variant">Ask MedQR support to relink your login.</p>
+        <p className="font-body-md text-body-md text-on-surface-variant">Ask ClinicQ support to relink your login.</p>
         <button onClick={logout} className="font-label-md text-label-md text-primary">
           Log out
         </button>
@@ -219,7 +219,7 @@ export function StaffShell({
             <Icon name="qr_code_2" className="text-[22px]" />
           </div>
           <div className="flex flex-col">
-            <span className="font-headline-sm text-headline-sm text-primary leading-tight">MedQR</span>
+            <span className="font-headline-sm text-headline-sm text-primary leading-tight">ClinicQ</span>
             <span className="font-label-sm text-label-sm text-on-surface-variant uppercase">
               {suiteLabel}
             </span>
@@ -376,7 +376,7 @@ function SubscriptionBanner({ sub, me }: { sub: SubscriptionStatus | null; me: M
       <div className="mb-4 rounded-xl bg-error-container text-on-error-container px-4 py-3 flex items-center gap-3 flex-wrap">
         <Icon name="lock" className="text-[20px] shrink-0" />
         <p className="font-body-md text-body-md flex-1 min-w-[200px]">
-          This clinic&apos;s MedQR subscription payment is overdue — you can view everything, but changes are locked until it&apos;s paid.
+          This clinic&apos;s ClinicQ subscription payment is overdue — you can view everything, but changes are locked until it&apos;s paid.
         </p>
         {billingHref && (
           <Link href={billingHref} className="h-9 px-4 rounded-full bg-on-error-container text-error-container font-label-md text-label-md flex items-center">

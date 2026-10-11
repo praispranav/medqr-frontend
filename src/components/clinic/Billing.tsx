@@ -110,7 +110,7 @@ export function Billing({ tenant }: { tenant: Tenant }) {
             <div>
               <h2 className="font-headline-md text-headline-md text-on-surface">Module marketplace</h2>
               <p className="font-body-sm text-body-sm text-on-surface-variant">
-                To switch a module on or off, contact MedQR support — self-serve activation comes with online billing.
+                To switch a module on or off, contact ClinicQ support — self-serve activation comes with online billing.
               </p>
             </div>
             <span className="px-3 py-1.5 rounded-xl bg-primary-fixed/40 text-on-primary-fixed-variant font-label-md text-label-md whitespace-nowrap">
@@ -195,7 +195,7 @@ export function Billing({ tenant }: { tenant: Tenant }) {
       </div>
 
       <p className="font-body-sm text-body-sm text-on-surface-variant">
-        Billed by MedQR, operated by Altis Labs · PAN GRTPK1849H · Udyam Registration No. UDYAM-BR-34-0066884
+        Billed by ClinicQ, operated by Altis Labs · PAN GRTPK1849H · Udyam Registration No. UDYAM-BR-34-0066884
       </p>
     </div>
   );
@@ -240,8 +240,8 @@ function loadRazorpayCheckout(): Promise<void> {
 const fmtDate = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : null);
 const daysLeft = (iso: string | null) => (iso ? Math.max(0, Math.ceil((new Date(iso).getTime() - Date.now()) / 86400000)) : null);
 
-/** The MedQR platform fee itself — distinct from the module add-ons/WhatsApp wallet below, which
- * are usage-based extras. This is "can this clinic keep using MedQR at all." */
+/** The ClinicQ platform fee itself — distinct from the module add-ons/WhatsApp wallet below, which
+ * are usage-based extras. This is "can this clinic keep using ClinicQ at all." */
 function PlatformSubscriptionCard() {
   const [sub, setSub] = useState<SubscriptionStatus | null>(null);
   const [busy, setBusy] = useState(false);
@@ -258,11 +258,11 @@ function PlatformSubscriptionCard() {
     try {
       const { subscription_id, key_id } = await api.setupAutopay();
       await loadRazorpayCheckout();
-      if (!key_id || !window.Razorpay) throw new Error('Payments are not configured yet — ask MedQR support.');
+      if (!key_id || !window.Razorpay) throw new Error('Payments are not configured yet — ask ClinicQ support.');
       const rzp = new window.Razorpay({
         key: key_id,
         subscription_id,
-        name: 'MedQR',
+        name: 'ClinicQ',
         description: 'Platform subscription — autopay (card or UPI)',
         theme: { color: '#005c55' },
         handler: () => load(),
@@ -331,7 +331,7 @@ function PlatformSubscriptionCard() {
             Free trial{d !== null ? ` — ${d} day${d === 1 ? '' : 's'} left` : ''}
           </p>
           <p className="font-body-sm text-body-sm text-on-surface-variant">
-            Set up autopay any time to keep MedQR running without a gap when the trial ends. Card or UPI, billed monthly.
+            Set up autopay any time to keep ClinicQ running without a gap when the trial ends. Card or UPI, billed monthly.
           </p>
           {error && <p className="font-body-sm text-body-sm text-error mt-1">{error}</p>}
         </div>

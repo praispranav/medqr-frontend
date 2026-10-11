@@ -92,7 +92,7 @@ function Coupons({ api }: { api: AdminApi }) {
           <label className="flex flex-col gap-1">
             <span className="font-label-md text-label-md">Issue to referrer</span>
             <select value={form.referrer_id} onChange={set('referrer_id')} className={input}>
-              <option value="">MedQR only (not issued)</option>
+              <option value="">ClinicQ only (not issued)</option>
               {referrers.map((r) => (
                 <option key={r.id} value={r.id}>
                   {r.name}

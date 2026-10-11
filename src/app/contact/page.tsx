@@ -6,8 +6,8 @@ import { HelpCenter } from '@/components/support/HelpCenter';
 import { CONTACT_EMAIL, CONTACT_PHONE_DISPLAY, CONTACT_PHONE_TEL, CONTACT_WHATSAPP } from '@/components/support/contactInfo';
 
 export const metadata: Metadata = {
-  title: 'Contact us and help — MedQR',
-  description: 'Contact MedQR, ask for a free trial, and find how-to guides and answers to common questions.',
+  title: 'Contact us and help — ClinicQ',
+  description: 'Contact ClinicQ, ask for a free trial, and find how-to guides and answers to common questions.',
 };
 
 const card = 'bg-surface-container-lowest rounded-2xl p-5 shadow-sm flex flex-col gap-1 hover:bg-surface-container-low';
@@ -34,7 +34,7 @@ export default function ContactPage() {
         <h2>Send us a message</h2>
         <ContactForm />
         <p className="font-body-sm text-body-sm">
-          Already using MedQR? Log in and open <strong>Help &amp; support</strong> in the menu to raise a request with your clinic details attached.{' '}
+          Already using ClinicQ? Log in and open <strong>Help &amp; support</strong> in the menu to raise a request with your clinic details attached.{' '}
           <Link className="text-primary underline" href="/login">Doctor/Staff login</Link>
         </p>
       </section>

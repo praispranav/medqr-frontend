@@ -1346,7 +1346,7 @@ function TokenSlip({ row, tenant }: { row: QueueRow; tenant: Tenant }) {
       <p style={{ fontSize: 11, marginTop: 8 }}>
         {new Date().toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}
       </p>
-      <p style={{ fontSize: 11, marginTop: 4 }}>Please wait to be called · MedQR</p>
+      <p style={{ fontSize: 11, marginTop: 4 }}>Please wait to be called · ClinicQ</p>
     </div>
   );
 }

@@ -8,9 +8,10 @@ import { api, type PatientPaymentStatus, type TokenStatusView } from '@/lib/api'
 import { getQueueSocket, keepLive } from '@/lib/socket';
 import { QrScanner } from '@/components/staff/QrScanner';
 import { PushAlertCard } from '@/components/patient/PushAlertCard';
+import { EditMyDetails } from '@/components/patient/EditMyDetails';
 import { AddToHomeScreen } from '@/components/patient/AddToHomeScreen';
 import { FullPageMessage, Icon, LoadingPage, PatientHeader } from '@/components/patient/ui';
-import { useT } from '@/lib/i18n';
+import { dateLocale, localizeStatusDetail, useT } from '@/lib/i18n';
 
 // Screen #3 — Live Queue / Token Tracking. Ported from
 // stitch_medqr_clinic_suite_ui_design/patient_live_queue_tracking/code.html.
@@ -40,7 +41,7 @@ export default function LiveQueuePage() {
   const [notFound, setNotFound] = useState(false);
   const [now, setNow] = useState(() => new Date());
   
-  const { t } = useT(view?.patient_language);
+  const { t, lang } = useT(view?.patient_language);
 
   const [storedTokens, setStoredTokens] = useState<{id: string, number: number, patient_name: string, status: string, clinic_subdomain: string}[]>([]);
 
@@ -48,7 +49,7 @@ export default function LiveQueuePage() {
     if (view) {
       try {
         const stored = JSON.parse(localStorage.getItem('medqr_patient_tokens') || '[]');
-        const index = stored.findIndex((t: any) => t.id === tokenId);
+        const index = stored.findIndex((x: any) => x.id === tokenId);
         const tokenData = {
           id: tokenId,
           number: view.token_number,
@@ -69,7 +70,7 @@ export default function LiveQueuePage() {
         newTokens = newTokens.sort((a, b) => b.timestamp - a.timestamp).slice(0, 10);
         localStorage.setItem('medqr_patient_tokens', JSON.stringify(newTokens));
         
-        setStoredTokens(newTokens.filter(t => t.id !== tokenId && t.status !== 'done' && t.status !== 'no_show' && t.status !== 'expired' && t.status !== 'cancelled'));
+        setStoredTokens(newTokens.filter(x => x.id !== tokenId && x.status !== 'done' && x.status !== 'no_show' && x.status !== 'expired' && x.status !== 'cancelled'));
       } catch(e) {}
     }
   }, [view, tokenId]);
@@ -145,12 +146,13 @@ export default function LiveQueuePage() {
   }, [view, refresh]);
 
   if (notFound)
-    return <FullPageMessage icon="confirmation_number" title="Token not found" body="This link may have expired. Please ask the clinic staff." />;
+    return <FullPageMessage icon="confirmation_number" title={t('tk_not_found')} body={t('tk_not_found_body')} />;
   if (!view) return <LoadingPage />;
 
   const { doctor, clinic } = view;
-  const cabin = doctor.cabin_label ?? 'the consultation room';
-  const header = <PatientHeader eyebrow="MedQR Live" title={clinic.name} homeUrl={`/patient/${clinic.subdomain}/select-doctor`} />;
+  const cabin = doctor.cabin_label ?? t('tk_room');
+  const staffWord = view.front_desk ? t('tk_desk') : t('tk_staff');
+  const header = <PatientHeader eyebrow="ClinicQ Live" title={clinic.name} homeUrl={`/patient/${clinic.subdomain}/select-doctor`} />;
 
   // ---------- Your turn ----------
   if (view.status === 'in_consultation') {
@@ -162,13 +164,13 @@ export default function LiveQueuePage() {
             <div className="w-14 h-14 rounded-full flex items-center justify-center bg-tertiary-fixed text-on-tertiary-fixed">
               <Icon name="check" fill className="text-[28px]" />
             </div>
-            <h1 className="font-headline-md text-headline-md text-on-surface">Session Ended</h1>
+            <h1 className="font-headline-md text-headline-md text-on-surface">{t('session_ended')}</h1>
             <p className="font-body-md text-body-md text-on-surface-variant max-w-xs">
-              Thank you for visiting {clinic.name}. The doctor&apos;s session has ended. Get well soon!
+              {t('thanks_get_well', { clinic: clinic.name })}
             </p>
             <div className="w-full max-w-xs mt-3">
               <Link href={`/patient/${clinic.subdomain}/select-doctor`} className="w-full h-12 bg-primary text-on-primary rounded-xl font-label-lg text-label-lg flex items-center justify-center">
-                Back to doctor selection
+                {t('back_to_doctor_selection')}
               </Link>
             </div>
           </main>
@@ -183,10 +185,10 @@ export default function LiveQueuePage() {
           <div className="w-20 h-20 rounded-full bg-on-primary/15 flex items-center justify-center animate-pulse">
             <Icon name="notifications_active" fill className="text-[44px]" />
           </div>
-          <p className="font-label-md text-label-md uppercase tracking-wider opacity-90">Token #{view.token_number}</p>
-          <h1 className="font-headline-lg text-headline-lg">It&apos;s your turn</h1>
-          <p className="font-headline-sm text-headline-sm">Please go to {cabin}</p>
-          <p className="font-body-md text-body-md opacity-90">{doctor.name} is ready to see you.</p>
+          <p className="font-label-md text-label-md uppercase tracking-wider opacity-90">{t('tk_token_n', { number: view.token_number })}</p>
+          <h1 className="font-headline-lg text-headline-lg">{t('its_your_turn')}</h1>
+          <p className="font-headline-sm text-headline-sm">{t('go_to_cabin', { cabin })}</p>
+          <p className="font-body-md text-body-md opacity-90">{t('doctor_ready', { doctor: doctor.name })}</p>
         </main>
       </>
     );
@@ -194,7 +196,7 @@ export default function LiveQueuePage() {
 
   // ---------- Decision 17: booked for a future date — distinct from same-day Pre-Session ----------
   if (view.is_future_booking && view.booking_date) {
-    const dateLabel = new Date(`${view.booking_date}T00:00:00`).toLocaleDateString('en-IN', {
+    const dateLabel = new Date(`${view.booking_date}T00:00:00`).toLocaleDateString(dateLocale(lang), {
       weekday: 'long',
       day: 'numeric',
       month: 'long',
@@ -207,22 +209,21 @@ export default function LiveQueuePage() {
             <div className="w-full bg-surface-container-lowest rounded-2xl p-space-lg shadow-sm flex flex-col items-center text-center gap-2 relative overflow-hidden">
               <div className="absolute -top-12 -right-12 w-36 h-36 bg-primary-fixed/20 rounded-full blur-2xl pointer-events-none" />
               <Icon name="event_available" className="text-primary text-[36px]" />
-              <span className="font-label-sm text-label-sm uppercase tracking-wider font-semibold text-on-surface-variant">You&apos;re booked</span>
+              <span className="font-label-sm text-label-sm uppercase tracking-wider font-semibold text-on-surface-variant">{t('youre_booked')}</span>
               <h1 className="font-headline-md text-headline-md text-primary tracking-tight">{dateLabel}</h1>
-              <p className="font-body-md text-body-md text-on-surface-variant">with {doctor.name}{doctor.cabin_label ? ` · ${doctor.cabin_label}` : ''}</p>
+              <p className="font-body-md text-body-md text-on-surface-variant">{t('with_doctor', { doctor: doctor.name })}{doctor.cabin_label ? ` · ${doctor.cabin_label}` : ''}</p>
               <div className="mt-2 inline-flex items-center gap-2 bg-surface-container-high text-on-surface px-4 py-1.5 rounded-full shadow-sm">
                 <Icon name="tag" className="text-primary text-[18px]" />
-                <span className="font-label-md text-label-md font-semibold">Token #{view.token_number}</span>
+                <span className="font-label-md text-label-md font-semibold">{t('tk_token_n', { number: view.token_number })}</span>
               </div>
               {view.ahead_tokens.length > 0 && (
                 <p className="font-body-sm text-body-sm text-on-surface-variant">
-                  {view.ahead_tokens.length} patient{view.ahead_tokens.length === 1 ? '' : 's'} already booked ahead of you
+                  {view.ahead_tokens.length === 1 ? t('tk_booked_one') : t('patients_booked_ahead', { count: view.ahead_tokens.length })}
                 </p>
               )}
             </div>
             <p className="text-center font-body-sm text-body-sm text-on-surface-variant px-4">
-              Come back and open this link on the day — your queue position and wait time will show once the doctor&apos;s
-              session starts.
+              {t('come_back_on_day')}
             </p>
           </div>
         </main>
@@ -242,13 +243,13 @@ export default function LiveQueuePage() {
           <div className="w-14 h-14 rounded-full flex items-center justify-center bg-surface-container text-on-surface-variant">
             <Icon name="event_busy" className="text-[28px]" />
           </div>
-          <h1 className="font-headline-md text-headline-md text-on-surface">This token has expired</h1>
+          <h1 className="font-headline-md text-headline-md text-on-surface">{t('token_expired')}</h1>
           <p className="font-body-md text-body-md text-on-surface-variant max-w-xs">
-            Token #{view.token_number} was for an earlier day and wasn&apos;t used. Tokens are valid only on the day they&apos;re issued.
+            {t('token_for_earlier_day', { number: view.token_number })}
           </p>
           <div className="w-full max-w-xs mt-3">
             <Link href={`/patient/${clinic.subdomain}/select-doctor`} className="w-full h-12 bg-primary text-on-primary rounded-xl font-label-lg text-label-lg flex items-center justify-center">
-              Get a new token
+              {t('get_new_token')}
             </Link>
           </div>
         </main>
@@ -271,19 +272,19 @@ export default function LiveQueuePage() {
             <Icon name={done ? 'check' : removed ? 'event_busy' : 'schedule'} fill className="text-[28px]" />
           </div>
           <h1 className="font-headline-md text-headline-md text-on-surface">
-            {done ? 'Consultation complete' : removed ? 'Your token was cancelled' : 'Your token was missed'}
+            {done ? t('consultation_complete') : removed ? t('token_cancelled') : t('token_missed')}
           </h1>
           <p className="font-body-md text-body-md text-on-surface-variant max-w-xs">
             {done
-              ? `Thank you for visiting ${clinic.name}. Get well soon!`
+              ? t('thanks_visiting', { clinic: clinic.name })
               : removed
-                ? `${clinic.name} removed this token from today's queue. If that's a mistake, please speak to ${view.front_desk ? 'the reception desk' : 'the clinic staff'}.`
-                : `Your turn was called while you were away. Please speak to ${view.front_desk ? 'the reception desk' : 'the clinic staff'}.`}
+                ? t('clinic_removed_token', { clinic: clinic.name, staff: staffWord })
+                : t('turn_called_away', { staff: staffWord })}
           </p>
           {done && pay && <div className="w-full max-w-xs mt-3"><PaymentCard pay={pay} payUrl={payUrl} afterVisit /></div>}
           <div className="w-full max-w-xs mt-3">
             <Link href={`/patient/${clinic.subdomain}/select-doctor`} className="w-full h-12 bg-surface-container-high text-on-surface rounded-xl font-label-lg text-label-lg flex items-center justify-center">
-              Back to clinic
+              {t('back_to_clinic')}
             </Link>
           </div>
         </main>
@@ -304,7 +305,7 @@ export default function LiveQueuePage() {
   const shiftEnded = view.doctor_state.state === 'ended';
   const aheadCount = view.ahead_tokens.length;
   const waitMins = aheadCount * view.avg_consult_mins;
-  const estTime = new Date(now.getTime() + waitMins * 60000).toLocaleTimeString('en-IN', {
+  const estTime = new Date(now.getTime() + waitMins * 60000).toLocaleTimeString(dateLocale(lang), {
     hour: 'numeric',
     minute: '2-digit',
   });
@@ -323,8 +324,7 @@ export default function LiveQueuePage() {
             <div className="w-full bg-surface-container-low text-on-surface p-space-sm px-space-md rounded-xl flex items-center gap-space-sm shadow-sm">
               <Icon name="info" className="text-primary text-[22px] flex-shrink-0" />
               <p className="font-body-sm text-body-sm leading-tight flex-1">
-                <strong className="font-label-sm uppercase tracking-wider text-primary">Pre-Session:</strong> The doctor
-                hasn&apos;t started yet. Your place in line is already saved.
+                <strong className="font-label-sm uppercase tracking-wider text-primary">{t('pre_session')}</strong> {t('doctor_not_started')}
               </p>
             </div>
           )}
@@ -332,8 +332,8 @@ export default function LiveQueuePage() {
             <div className="w-full bg-secondary-fixed/50 text-on-secondary-fixed-variant p-space-sm px-space-md rounded-xl flex items-center gap-space-sm shadow-sm">
               <Icon name="coffee" className="text-secondary text-[22px] flex-shrink-0" />
               <p className="font-body-sm text-body-sm leading-tight flex-1">
-                <strong className="font-label-sm uppercase tracking-wider text-secondary">Short break:</strong> {doctor.name} will be back
-                shortly ({view.doctor_state.detail.toLowerCase()}). Your place is saved.
+                <strong className="font-label-sm uppercase tracking-wider text-secondary">{t('short_break')}</strong>{' '}
+                {t('doctor_back_shortly', { doctor: doctor.name, detail: localizeStatusDetail(view.doctor_state.detail, t).toLowerCase() })}
               </p>
             </div>
           )}
@@ -341,7 +341,7 @@ export default function LiveQueuePage() {
             <div className="w-full bg-error-container/60 text-on-error-container p-space-sm px-space-md rounded-xl flex items-center gap-space-sm shadow-sm">
               <Icon name="info" className="text-error text-[22px] flex-shrink-0" />
               <p className="font-body-sm text-body-sm leading-tight flex-1">
-                {doctor.name} has finished for today. Please speak to {view.front_desk ? 'the reception desk' : 'the clinic staff'}.
+                {t('finished_for_today', { doctor: doctor.name, staff: staffWord })}
               </p>
             </div>
           )}
@@ -349,7 +349,8 @@ export default function LiveQueuePage() {
             <div className="w-full bg-tertiary-fixed/40 text-on-tertiary-fixed-variant p-space-sm px-space-md rounded-xl flex items-center gap-space-sm shadow-sm border border-tertiary/20">
               <Icon name="notifications_active" className="text-tertiary flex-shrink-0 text-[22px] animate-pulse" />
               <p className="font-body-sm text-body-sm leading-tight flex-1">
-                <strong className="font-label-sm uppercase tracking-wider text-tertiary">Get ready:</strong> Please come near {doctor.cabin_label ?? doctor.name} — you&apos;ll be called soon.
+                <strong className="font-label-sm uppercase tracking-wider text-tertiary">{t('tk_get_ready')}</strong>{' '}
+                {t('tk_get_ready_body', { place: doctor.cabin_label ?? doctor.name })}
               </p>
             </div>
           )}
@@ -362,33 +363,33 @@ export default function LiveQueuePage() {
               <>
                 <div className="flex items-center gap-1.5 text-on-surface-variant mb-1">
                   <Icon name="event" className="text-[18px] text-primary" />
-                  <span className="font-label-sm text-label-sm uppercase tracking-wider font-semibold">Upcoming session</span>
+                  <span className="font-label-sm text-label-sm uppercase tracking-wider font-semibold">{t('upcoming_session')}</span>
                 </div>
                 <div className="font-headline-lg text-headline-lg text-primary my-1 tracking-tight">
                   {plannedStart
-                    ? `${doctor.name}'s session starts at ${toDisplayTime(plannedStart)}`
-                    : `Waiting for ${doctor.name} to start`}
+                    ? t('session_starts_at', { doctor: doctor.name, time: toDisplayTime(plannedStart) })
+                    : t('waiting_for_doctor', { doctor: doctor.name })}
                 </div>
                 <div className="mt-3 inline-flex items-center gap-2 bg-surface-container-high text-on-surface px-4 py-1.5 rounded-full shadow-sm">
                   <Icon name="tag" className="text-primary text-[18px]" />
-                  <span className="font-label-md text-label-md font-semibold">You&apos;re Token #{view.token_number}</span>
+                  <span className="font-label-md text-label-md font-semibold">{t('you_are_token', { number: view.token_number })}</span>
                 </div>
                 <div className="mt-4 w-full bg-surface-container-low rounded-xl p-space-md flex flex-col items-center space-y-1">
                   {plannedStart ? (
                     <>
                       <div className="flex items-center gap-1.5 text-secondary font-label-md text-label-md">
                         <Icon name="timer" className="text-[18px]" />
-                        <span>Session countdown</span>
+                        <span>{t('session_countdown')}</span>
                       </div>
                       <p className="font-numeric-metric text-numeric-metric text-on-surface tracking-tight">
-                        Starts in {countdownTo(plannedStart, now)}
+                        {t('starts_in', { time: countdownTo(plannedStart, now) })}
                       </p>
                     </>
                   ) : (
-                    <p className="font-headline-sm text-headline-sm text-on-surface">The doctor will start shortly</p>
+                    <p className="font-headline-sm text-headline-sm text-on-surface">{t('doctor_start_shortly')}</p>
                   )}
                   <span className="font-body-sm text-body-sm text-on-surface-variant">
-                    Wait times show once the doctor starts seeing patients
+                    {t('wait_times_show_later')}
                   </span>
                 </div>
               </>
@@ -396,7 +397,7 @@ export default function LiveQueuePage() {
               <>
                 <div className="flex items-center gap-1.5 text-on-surface-variant mb-1">
                   <Icon name="person_pin" className="text-[18px] text-primary" />
-                  <span className="font-label-sm text-label-sm uppercase tracking-wider font-semibold">Your token</span>
+                  <span className="font-label-sm text-label-sm uppercase tracking-wider font-semibold">{t('your_token')}</span>
                 </div>
                 <div className="font-display-token text-display-token text-primary my-1">#{view.token_number}</div>
                 <div className="mt-2 inline-flex items-center gap-2 bg-primary-fixed/50 text-on-primary-fixed-variant px-4 py-1.5 rounded-full shadow-sm">
@@ -406,11 +407,9 @@ export default function LiveQueuePage() {
                   </span>
                   <span className="font-label-md text-label-md">
                     {view.now_serving ? (
-                      <>
-                        Now serving: <strong className="font-bold">#{view.now_serving}</strong>
-                      </>
+                      t('now_serving', { number: view.now_serving })
                     ) : (
-                      'Doctor will call the first token shortly'
+                      t('doctor_will_call_shortly')
                     )}
                   </span>
                 </div>
@@ -423,7 +422,7 @@ export default function LiveQueuePage() {
                         <div className="w-9 h-9 rounded-full bg-tertiary text-on-tertiary flex items-center justify-center font-label-md text-label-md shadow-md">
                           {view.now_serving}
                         </div>
-                        <span className="text-[10px] font-bold text-tertiary mt-1">In cabin</span>
+                        <span className="text-[10px] font-bold text-tertiary mt-1">{t('tk_in_cabin')}</span>
                       </div>
                     )}
                     {shownAhead.map((n, i) => (
@@ -431,7 +430,7 @@ export default function LiveQueuePage() {
                         <div className="w-8 h-8 mt-0.5 rounded-full bg-surface-container-high text-on-surface-variant flex items-center justify-center font-label-sm text-label-sm shadow-sm">
                           {n}
                         </div>
-                        <span className="text-[10px] text-outline mt-1">{i === 0 ? 'Next' : 'Wait'}</span>
+                        <span className="text-[10px] text-outline mt-1">{i === 0 ? t('next') : t('wait')}</span>
                       </div>
                     ))}
                     {hiddenAhead > 0 && (
@@ -439,14 +438,14 @@ export default function LiveQueuePage() {
                         <div className="w-8 h-8 mt-0.5 rounded-full bg-surface-container text-on-surface-variant flex items-center justify-center font-label-sm text-label-sm">
                           +{hiddenAhead}
                         </div>
-                        <span className="text-[10px] text-outline mt-1">More</span>
+                        <span className="text-[10px] text-outline mt-1">{t('more')}</span>
                       </div>
                     )}
                     <div className="relative z-10 flex flex-col items-center">
                       <div className="w-10 h-10 -mt-0.5 rounded-full bg-primary text-on-primary flex items-center justify-center font-headline-sm text-headline-sm shadow-md ring-4 ring-primary-fixed/50">
                         {view.token_number}
                       </div>
-                      <span className="text-[10px] font-bold text-primary mt-1">You</span>
+                      <span className="text-[10px] font-bold text-primary mt-1">{t('you')}</span>
                     </div>
                   </div>
                 </div>
@@ -463,18 +462,20 @@ export default function LiveQueuePage() {
                 </div>
                 <div className="flex flex-col min-w-0">
                   <h3 className="font-headline-sm text-headline-sm text-on-surface tracking-tight">
-                    {aheadCount === 0 ? "You're next" : `~${waitMins} min wait`}
+                    {aheadCount === 0 ? t('you_are_next') : t('wait_time_approx', { mins: waitMins })}
                   </h3>
                   <p className="font-body-sm text-body-sm text-on-surface-variant truncate">
                     {aheadCount === 0
-                      ? 'Stay close to the cabin'
-                      : `${aheadCount} ${aheadCount === 1 ? 'patient' : 'patients'} ahead of you`}
+                      ? t('stay_close')
+                      : aheadCount === 1
+                        ? t('tk_ahead_one')
+                        : t('patients_ahead', { count: aheadCount })}
                   </p>
                 </div>
               </div>
               {aheadCount > 0 && (
                 <div className="bg-surface-container-lowest px-3 py-1.5 rounded-lg text-right flex-shrink-0 shadow-sm">
-                  <span className="font-label-sm text-label-sm text-outline block">EST. TIME</span>
+                  <span className="font-label-sm text-label-sm text-outline block">{t('est_time')}</span>
                   <span className="font-label-lg text-label-lg font-bold text-on-surface">{estTime}</span>
                 </div>
               )}
@@ -490,9 +491,9 @@ export default function LiveQueuePage() {
               <div className="flex items-start gap-3">
                 <Icon name="qr_code_scanner" className="text-[28px] text-primary" />
                 <div>
-                  <p className="font-label-lg text-label-lg text-on-surface">At the clinic? Confirm you’ve arrived</p>
+                  <p className="font-label-lg text-label-lg text-on-surface">{t('at_clinic_confirm')}</p>
                   <p className="font-body-sm text-body-sm text-on-surface-variant">
-                    Scan the <strong>Arrival QR</strong> poster at the clinic. The doctor can call you only after this.
+                    {t('scan_arrival_poster')}
                   </p>
                 </div>
               </div>
@@ -503,7 +504,7 @@ export default function LiveQueuePage() {
                 }}
                 className="w-full h-12 bg-primary text-on-primary rounded-xl font-label-lg text-label-lg flex items-center justify-center gap-2"
               >
-                <Icon name="photo_camera" className="text-[20px]" /> I’ve arrived — scan the QR
+                <Icon name="photo_camera" className="text-[20px]" /> {t('arrived_scan_qr')}
               </button>
               {arriveError && <p className="font-body-sm text-body-sm text-error">{arriveError}</p>}
             </div>
@@ -523,47 +524,47 @@ export default function LiveQueuePage() {
                   await api.arriveByScan(tokenId, code);
                   await refresh();
                 } catch (e) {
-                  setArriveError(e instanceof Error ? e.message : 'Could not confirm your arrival');
+                  setArriveError(e instanceof Error ? e.message : t('tk_arrive_fail'));
                 }
               }}
             />
           )}
           <div className="w-full bg-surface-container-lowest rounded-2xl p-space-md shadow-sm">
             <div className="flex items-center justify-between mb-4">
-              <h4 className="font-headline-sm text-headline-sm text-on-surface">Visit progress</h4>
+              <h4 className="font-headline-sm text-headline-sm text-on-surface">{t('visit_progress')}</h4>
               <span className="font-label-sm text-label-sm text-primary font-semibold">
-                {preSession ? 'Awaiting session' : 'Live tracking'}
+                {preSession ? t('tk_awaiting') : t('live_tracking')}
               </span>
             </div>
             <div className="relative flex flex-col space-y-5 pl-2">
               <div className="absolute left-6 top-3 bottom-3 w-0.5 bg-surface-container-high z-0" />
-              <Step state="done" icon="check" title="Token booked" subtitle="Your place in line is saved" />
+              <Step state="done" icon="check" title={t('token_booked')} subtitle={t('place_in_line_saved')} />
               {arrivalScan ? (
                 <Step
                   state={verified ? 'done' : 'active'}
                   icon={verified ? 'check' : 'qr_code_scanner'}
-                  title={verified ? 'Arrival confirmed' : 'Confirm you’ve arrived'}
-                  subtitle={verified ? 'Please wait nearby — the doctor will call your number' : 'When you reach the clinic, scan the Arrival QR poster'}
+                  title={verified ? t('arrival_confirmed') : t('confirm_arrival')}
+                  subtitle={verified ? t('wait_nearby') : t('scan_arrival_qr')}
                 />
               ) : noDesk ? (
                 <Step
                   state="done"
                   icon="check"
-                  title="No check-in needed"
-                  subtitle="The doctor calls you directly — please wait near the cabin, within calling range"
+                  title={t('no_checkin_needed')}
+                  subtitle={t('doctor_calls_directly')}
                 />
               ) : (
                 <Step
                   state={verified ? 'done' : 'active'}
                   icon={verified ? 'check' : 'how_to_reg'}
-                  title={verified ? 'Verified at reception' : 'Check in at reception'}
-                  subtitle={verified ? 'Please wait in the lobby, within calling range' : `Show Token #${view.token_number} at the desk when you arrive`}
+                  title={verified ? t('verified_reception') : t('check_in_reception')}
+                  subtitle={verified ? t('wait_in_lobby') : t('show_token_at_desk', { number: view.token_number })}
                 />
               )}
               <Step
                 state={arrived && !preSession ? 'active' : 'upcoming'}
                 icon="stethoscope"
-                title={`Consultation · ${doctor.cabin_label ?? doctor.name}`}
+                title={t('consultation', { cabin: doctor.cabin_label ?? doctor.name })}
                 subtitle={[doctor.name, doctor.qualification].filter(Boolean).join(', ')}
               />
             </div>
@@ -574,7 +575,7 @@ export default function LiveQueuePage() {
               <p style={{ fontSize: 20, fontWeight: 800, lineHeight: 1.15 }}>{clinic.name}</p>
               <p style={{ fontSize: 13, color: '#3e4947', marginTop: 3 }}>{doctor.name} {doctor.cabin_label ? `· ${doctor.cabin_label}` : ''}</p>
               <div style={{ marginTop: 20, marginBottom: 4 }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: '#0f766e', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Your Token</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: '#0f766e', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('your_token')}</span>
               </div>
               <p style={{ fontSize: 48, fontWeight: 800, color: '#005c55', lineHeight: 1 }}>#{view.token_number}</p>
               
@@ -589,12 +590,12 @@ export default function LiveQueuePage() {
               </div>
               <p style={{ fontSize: 13, fontWeight: 700, color: '#0f766e' }}>
                 {arrivalScan && !verified
-                  ? 'Scan the clinic’s Arrival QR when you get there'
+                  ? t('tk_card_scan_arrival')
                   : noDesk
-                    ? 'Wait for the doctor to call your number'
+                    ? t('tk_card_wait_call')
                     : verified
-                      ? 'Verified at reception'
-                      : 'Scan at reception to verify arrival'}
+                      ? t('verified_reception')
+                      : t('tk_card_scan_reception')}
               </p>
               {!arrived && (
                 <p style={{ fontSize: 11, color: '#3e4947', marginTop: 8, textTransform: 'uppercase' }}>
@@ -610,11 +611,11 @@ export default function LiveQueuePage() {
                   className="w-full h-12 bg-primary text-on-primary rounded-xl font-label-lg text-label-lg flex items-center justify-center gap-2 hover:opacity-90 transition-colors disabled:opacity-60"
                 >
                   <Icon name={downloading ? 'progress_activity' : 'download'} className={`text-[20px] ${downloading ? 'animate-spin' : ''}`} />
-                  Download my token
+                  {t('download_token')}
                 </button>
                 <button
                   onClick={() => {
-                    const text = encodeURIComponent(`Here is my clinic token #${view?.token_number} for ${view?.doctor.name} at ${view?.clinic.name ?? clinic.name}. Track live status here: ${window.location.href}`);
+                    const text = encodeURIComponent(t('tk_share', { number: view.token_number, doctor: doctor.name, clinic: clinic.name, url: window.location.href }));
                     window.open(`https://wa.me/?text=${text}`, '_blank');
                   }}
                   className="w-full h-12 mt-3 bg-[#25D366] text-white rounded-xl font-label-lg text-label-lg flex items-center justify-center gap-2 hover:opacity-90 transition-colors"
@@ -622,13 +623,16 @@ export default function LiveQueuePage() {
                   <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
                     <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.888-.788-1.489-1.761-1.662-2.06-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
                   </svg>
-                  Share via WhatsApp
+                  {t('share_whatsapp')}
                 </button>
               </div>
             )}
           </div>
 
           {pay && <PaymentCard pay={pay} payUrl={payUrl} />}
+
+          {/* Decision 38: change reason / weight / photos until called in */}
+          <EditMyDetails tokenId={tokenId} />
 
           {/* Clinic card */}
           <div className="w-full bg-surface-container-lowest rounded-2xl p-space-md shadow-sm flex items-center gap-3">
@@ -654,22 +658,22 @@ export default function LiveQueuePage() {
               className="w-full h-12 border-2 border-primary text-primary rounded-xl font-label-lg text-label-lg flex items-center justify-center gap-2"
             >
               <Icon name="person_add" className="text-[20px]" />
-              Book another patient / Family member
+              {t('book_another')}
             </Link>
 
             {storedTokens.length > 0 && (
               <div className="w-full bg-surface-container-lowest rounded-2xl p-space-md shadow-sm">
-                <h4 className="font-headline-sm text-headline-sm text-on-surface mb-3">Other active tokens</h4>
+                <h4 className="font-headline-sm text-headline-sm text-on-surface mb-3">{t('tk_other_tokens')}</h4>
                 <div className="flex flex-col gap-2">
-                  {storedTokens.map(t => (
+                  {storedTokens.map(tk => (
                     <Link 
-                      key={t.id} 
-                      href={`/patient/${t.clinic_subdomain}/queue/${t.id}`}
+                      key={tk.id} 
+                      href={`/patient/${tk.clinic_subdomain}/queue/${tk.id}`}
                       className="flex items-center justify-between p-3 rounded-xl bg-surface-container hover:bg-surface-container-high transition-colors"
                     >
                       <div>
-                        <div className="font-label-md font-bold text-on-surface">{t.patient_name}</div>
-                        <div className="font-body-sm text-on-surface-variant text-[12px]">Token #{t.number}</div>
+                        <div className="font-label-md font-bold text-on-surface">{tk.patient_name}</div>
+                        <div className="font-body-sm text-on-surface-variant text-[12px]">{t('tk_token_n', { number: tk.number })}</div>
                       </div>
                       <Icon name="arrow_forward_ios" className="text-[16px] text-on-surface-variant" />
                     </Link>
@@ -680,7 +684,7 @@ export default function LiveQueuePage() {
           </div>
 
           <p className="text-center font-body-sm text-body-sm text-on-surface-variant px-4">
-            Keep this page open — it updates by itself when the queue moves.
+            {t('keep_page_open')}
           </p>
 
         </div>
@@ -700,6 +704,7 @@ function Step({
   title: string;
   subtitle: string;
 }) {
+  const { t } = useT();
   return (
     <div className={`relative z-10 flex items-start gap-space-md ${state === 'upcoming' ? 'opacity-60' : ''}`}>
       <div
@@ -724,7 +729,7 @@ function Step({
           </span>
           {state === 'active' && (
             <span className="font-label-sm text-label-sm bg-primary-fixed/60 text-on-primary-fixed-variant px-2 py-0.5 rounded-full font-bold flex-shrink-0">
-              Now
+              {t('tk_now')}
             </span>
           )}
         </div>
@@ -736,6 +741,7 @@ function Step({
 
 /** Fee status on the token screen (Decisions 8–10). Never blocks anything — it only informs and offers online pay. */
 function PaymentCard({ pay, payUrl, afterVisit = false }: { pay: PatientPaymentStatus; payUrl: string; afterVisit?: boolean }) {
+  const { t } = useT();
   if (pay.fee_inr <= 0) return null;
   const fee = `₹${pay.fee_inr.toLocaleString('en-IN')}`;
 
@@ -744,7 +750,7 @@ function PaymentCard({ pay, payUrl, afterVisit = false }: { pay: PatientPaymentS
       <div className="w-full bg-tertiary-fixed/30 rounded-2xl p-4 flex items-center gap-3 text-left">
         <Icon name="check_circle" fill className="text-tertiary text-[24px]" />
         <p className="font-label-lg text-label-lg text-on-tertiary-fixed-variant">
-          Fee paid · {fee} {pay.payment_method === 'upi_online' ? '(online)' : ''}
+          {t('fee_paid', { fee, online: pay.payment_method === 'upi_online' ? t('tk_online') : '' })}
         </p>
       </div>
     );
@@ -754,7 +760,7 @@ function PaymentCard({ pay, payUrl, afterVisit = false }: { pay: PatientPaymentS
     return (
       <div className="w-full bg-surface-container-low rounded-2xl p-4 flex items-center gap-3 text-left">
         <Icon name="schedule" className="text-primary text-[22px]" />
-        <p className="font-body-md text-body-md text-on-surface-variant">The consultation fee is collected after your visit.</p>
+        <p className="font-body-md text-body-md text-on-surface-variant">{t('fee_collected_after')}</p>
       </div>
     );
   }
@@ -765,16 +771,16 @@ function PaymentCard({ pay, payUrl, afterVisit = false }: { pay: PatientPaymentS
           <Icon name="currency_rupee" className="text-[22px]" />
         </span>
         <div className="flex-1">
-          <p className="font-label-lg text-label-lg text-on-surface">Consultation fee {fee}</p>
+          <p className="font-label-lg text-label-lg text-on-surface">{t('consultation_fee', { fee })}</p>
           <p className="font-body-sm text-body-sm text-on-surface-variant">
-            {pay.payment_choice === 'cash' ? 'You chose to pay at the counter.' : 'Pay online now, or at the counter.'}
+            {pay.payment_choice === 'cash' ? t('chose_pay_counter') : t('pay_online_or_counter')}
           </p>
         </div>
       </div>
       {pay.online_available && (
         <Link href={payUrl} className="h-11 rounded-xl bg-primary text-on-primary font-label-md text-label-md flex items-center justify-center gap-2">
           <Icon name="qr_code_scanner" className="text-[18px]" />
-          {pay.payment_choice === 'online' && pay.qr ? 'Continue UPI payment' : `Pay ${fee} online`}
+          {pay.payment_choice === 'online' && pay.qr ? t('continue_upi') : t('pay_online', { fee })}
         </Link>
       )}
     </div>

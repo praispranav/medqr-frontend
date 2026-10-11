@@ -10,11 +10,18 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 })(window,document,'script','dataLayer','${GTM_ID}');`;
 
 export const metadata: Metadata = {
-  title: 'MedQR | Smart Clinic Queue Management & Digital OPD Tokens',
-  description: 'Transform your clinic with MedQR. Offer patients digital tokens, live WhatsApp queue updates, and seamless check-ins. No app required.',
+  title: 'ClinicQ | Smart Clinic Queue Management & Digital OPD Tokens',
+  description: 'Transform your clinic with ClinicQ. Offer patients digital tokens, live WhatsApp queue updates, and seamless check-ins. No app required.',
   keywords: 'clinic queue management system, digital OPD tokens, patient check-in software, doctor appointment system, smart clinic software',
-  appleWebApp: { capable: true, title: 'MedQR', statusBarStyle: 'default' },
-  icons: { apple: '/icons/180' },
+  appleWebApp: { capable: true, title: 'ClinicQ', statusBarStyle: 'default' },
+  icons: {
+    icon: [
+      { url: '/icons/32', sizes: '32x32', type: 'image/png' },
+      { url: '/icons/192', sizes: '192x192', type: 'image/png' },
+    ],
+    shortcut: '/favicon.ico',
+    apple: '/icons/180',
+  },
 };
 
 export const viewport: Viewport = {
@@ -34,7 +41,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             __html: JSON.stringify({
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
-  "name": "MedQR",
+  "name": "ClinicQ",
   "applicationCategory": "HealthApplication",
   "operatingSystem": "Web",
   "description": "Smart clinic queue management system enabling digital OPD tokens, live queue tracking, and automated patient alerts.",

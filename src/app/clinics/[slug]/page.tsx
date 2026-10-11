@@ -16,10 +16,10 @@ async function getClinic(slug: string): Promise<DirectoryClinicProfile | null> {
 
 export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
   const clinic = await getClinic(params.slug);
-  if (!clinic) return { title: 'Clinic not found — MedQR' };
+  if (!clinic) return { title: 'Clinic not found — ClinicQ' };
   const place = [clinic.clinic_name, clinic.city].filter(Boolean).join(', ');
   return {
-    title: `${place} — Doctors & Queue | MedQR`,
+    title: `${place} — Doctors & Queue | ClinicQ`,
     description: `${clinic.doctors.length} doctor${clinic.doctors.length === 1 ? '' : 's'} at ${clinic.clinic_name}${clinic.city ? ` in ${clinic.city}` : ''}. Join the digital queue, no app download.`,
   };
 }
@@ -42,7 +42,7 @@ export default async function ClinicProfilePage({ params }: { params: { slug: st
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <header className="border-b border-surface-container">
         <div className="max-w-3xl mx-auto px-4 h-16 flex items-center">
-          <span className="font-headline-sm text-headline-sm text-primary">MedQR</span>
+          <span className="font-headline-sm text-headline-sm text-primary">ClinicQ</span>
           <Link href="/doctors" className="ml-auto font-label-md text-label-md text-on-surface-variant hover:text-on-surface">
             ← All doctors
           </Link>

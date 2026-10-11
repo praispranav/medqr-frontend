@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { Icon } from '@/components/patient/ui';
+import { useT } from '@/lib/i18n';
 import {
   HANDOFF_PARAM,
   OPEN_A2HS_EVENT,
@@ -54,12 +55,13 @@ export function HomeScreenBridge() {
 }
 
 /**
- * "Add MedQR to your Home Screen" popup on the live token page. Opens by itself once (not again for
+ * "Add ClinicQ to your Home Screen" popup on the live token page. Opens by itself once (not again for
  * 3 days after closing) and whenever something fires OPEN_A2HS_EVENT (the iPhone alerts hint).
  * iPhone: Share → Add to Home Screen steps, with the hand-off code put in the address meanwhile.
  * Android: Chrome's own install prompt when it offers one, otherwise the ⋮ menu steps.
  */
 export function AddToHomeScreen({ active }: { active: boolean }) {
+  const { t: tr } = useT();
   const [open, setOpen] = useState(false);
   const [platform, setPlatform] = useState<'ios' | 'android' | null>(null);
   const [preparing, setPreparing] = useState(false);
@@ -118,13 +120,13 @@ export function AddToHomeScreen({ active }: { active: boolean }) {
           </span>
           <div className="flex-1">
             <h2 id="a2hs-title" className="font-headline-sm text-headline-sm text-on-surface">
-              Add MedQR to your Home Screen
+              {tr('a2_title')}
             </h2>
             <p className="font-body-md text-body-md text-on-surface-variant mt-1">
-              Open your token in one tap{platform === 'ios' ? ' and get an alert when it’s your turn' : ''}.
+              {platform === 'ios' ? tr('a2_sub_ios') : tr('a2_sub')}
             </p>
           </div>
-          <button onClick={close} aria-label="Close" className="w-11 h-11 -mr-2 -mt-2 flex items-center justify-center text-on-surface-variant">
+          <button onClick={close} aria-label={tr('a2_close')} className="w-11 h-11 -mr-2 -mt-2 flex items-center justify-center text-on-surface-variant">
             <Icon name="close" className="text-[24px]" />
           </button>
         </div>
@@ -134,19 +136,19 @@ export function AddToHomeScreen({ active }: { active: boolean }) {
             <li className="flex items-center gap-3">
               <Step n={1} />
               <span>
-                Tap the <strong>Share</strong> button <Icon name="ios_share" className="text-[20px] align-middle text-primary" />
+                {rich(tr('a2_ios1'))} <Icon name="ios_share" className="text-[20px] align-middle text-primary" />
               </span>
             </li>
             <li className="flex items-center gap-3">
               <Step n={2} />
               <span>
-                Choose <strong>Add to Home Screen</strong> <Icon name="add_box" className="text-[20px] align-middle text-primary" />
+                {rich(tr('a2_ios2'))} <Icon name="add_box" className="text-[20px] align-middle text-primary" />
               </span>
             </li>
             <li className="flex items-center gap-3">
               <Step n={3} />
               <span>
-                Open <strong>MedQR</strong> from your Home Screen and tap <strong>Alert me</strong>
+                {rich(tr('a2_ios3'))}
               </span>
             </li>
           </ol>
@@ -158,34 +160,39 @@ export function AddToHomeScreen({ active }: { active: boolean }) {
             }}
             className="h-12 bg-primary text-on-primary rounded-xl font-label-lg text-label-lg flex items-center justify-center gap-2"
           >
-            <Icon name="add_to_home_screen" className="text-[20px]" /> Add to Home Screen
+            <Icon name="add_to_home_screen" className="text-[20px]" /> {tr('a2_add')}
           </button>
         ) : (
           <ol className="flex flex-col gap-3 bg-surface-container-low rounded-2xl p-4 font-body-md text-body-md text-on-surface">
             <li className="flex items-center gap-3">
               <Step n={1} />
               <span>
-                Tap the menu <Icon name="more_vert" className="text-[20px] align-middle text-primary" /> at the top right
+                {tr('a2_and1')}
               </span>
             </li>
             <li className="flex items-center gap-3">
               <Step n={2} />
               <span>
-                Choose <strong>Add to Home screen</strong> or <strong>Install app</strong>
+                {rich(tr('a2_and2'))}
               </span>
             </li>
           </ol>
         )}
 
         {platform === 'ios' && preparing && (
-          <p className="font-body-sm text-body-sm text-on-surface-variant text-center">Getting your token ready for the Home Screen…</p>
+          <p className="font-body-sm text-body-sm text-on-surface-variant text-center">{tr('a2_preparing')}</p>
         )}
         <button onClick={close} className="h-11 font-label-lg text-label-lg text-on-surface-variant">
-          Not now
+          {tr('a2_not_now')}
         </button>
       </div>
     </div>
   );
+}
+
+/** "Tap *Share*" → bold the starred words. */
+function rich(text: string) {
+  return text.split('*').map((part, i) => (i % 2 ? <strong key={i}>{part}</strong> : part));
 }
 
 function Step({ n }: { n: number }) {

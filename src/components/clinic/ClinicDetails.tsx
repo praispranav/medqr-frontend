@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { api, ApiError, type Tenant } from '@/lib/api';
 import { Icon } from '@/components/patient/ui';
 
-// Clinic address / city / phone + the clinic-wide medqr.in listing switch. Lives on Public Profile
+// Clinic address / city / phone + the clinic-wide clinicq.in listing switch. Lives on Public Profile
 // (doctor portal) and Clinic Profile (clinic admin) — not in Queue Rules. Editable by whoever can
 // manage the clinic (solo doctor or clinic admin, Decision 14); read-only for other doctors.
 
@@ -65,7 +65,7 @@ export function ClinicDetails({
   }
 
   return (
-    <Section title="Clinic details" subtitle="Your clinic's address and phone, and whether it's listed on medqr.in/doctors for patients searching online.">
+    <Section title="Clinic details" subtitle="Your clinic's address and phone, and whether it's listed on clinicq.in/doctors for patients searching online.">
       <div className="flex flex-col gap-4">
         <label className="flex items-center justify-between gap-3">
           <div>

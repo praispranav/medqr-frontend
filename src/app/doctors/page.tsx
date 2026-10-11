@@ -6,11 +6,11 @@ export async function generateMetadata({ searchParams }: { searchParams: { q?: s
   const citySuffix = searchParams.city ? ` in ${searchParams.city}` : '';
 
   return {
-    title: `Best ${specialty}${citySuffix} - Book Online & Live Queue | MedQR`,
-    description: `Find top-rated ${specialty}${citySuffix}. Get digital tokens, track live OPD waiting times, and skip the waiting room with MedQR.`,
+    title: `Best ${specialty}${citySuffix} - Book Online & Live Queue | ClinicQ`,
+    description: `Find top-rated ${specialty}${citySuffix}. Get digital tokens, track live OPD waiting times, and skip the waiting room with ClinicQ.`,
     keywords: `Best ${specialty}${citySuffix}, online doctor appointment, live OPD status, digital token ${specialty}`,
     openGraph: {
-      title: `Book ${specialty} Appointments | MedQR`,
+      title: `Book ${specialty} Appointments | ClinicQ`,
       description: `Track live queues and book ${specialty}s instantly.`,
     }
   };
@@ -21,7 +21,7 @@ export default function DoctorsIndexPage({ searchParams }: { searchParams: { q?:
   const schemaData = {
     "@context": "https://schema.org",
     "@type": "MedicalWebPage",
-    "name": "Find Best Doctors and Clinics | MedQR",
+    "name": "Find Best Doctors and Clinics | ClinicQ",
     "description": "Directory of verified doctors offering digital OPD tokens and live queue tracking.",
     "audience": {
       "@type": "Patient"
@@ -40,7 +40,7 @@ export default function DoctorsIndexPage({ searchParams }: { searchParams: { q?:
       />
       <header className="border-b border-surface-container">
         <div className="max-w-5xl mx-auto px-4 h-16 flex items-center">
-          <span className="font-headline-sm text-headline-sm text-primary">MedQR</span>
+          <span className="font-headline-sm text-headline-sm text-primary">ClinicQ</span>
         </div>
       </header>
       <div className="max-w-5xl mx-auto px-4 py-10 flex flex-col gap-6">

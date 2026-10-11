@@ -56,7 +56,7 @@ export function Ledger({ r, onVoid }: { r: ReferrerDetail; onVoid?: (id: string)
       <h2 className="font-headline-sm text-headline-sm px-5 pt-5 pb-3">Rewards & payouts</h2>
       {rows.length === 0 && (
         <p className="px-5 pb-5 font-body-md text-body-md text-on-surface-variant">
-          Nothing yet. Rewards appear once a clinic is on a paid MedQR plan (not during the free trial).
+          Nothing yet. Rewards appear once a clinic is on a paid ClinicQ plan (not during the free trial).
         </p>
       )}
       {rows.map((row) =>
@@ -215,7 +215,7 @@ export function RatesFields({ value, onChange }: { value: ReferrerRates; onChang
 /** The referrer's login, shown once after create / reset, with a WhatsApp share (click-to-chat). */
 export function LoginShareCard({ name, email, mobile, password, onClose }: { name: string; email: string; mobile: string | null; password: string; onClose: () => void }) {
   const url = typeof window !== 'undefined' ? `${window.location.origin}/owner` : '/owner';
-  const text = `Hi ${name}, your MedQR partner login:\n${url}\nEmail: ${email}\nPassword: ${password}\n\nAdd your clinics, doctors and reception logins there. Your rewards are under "My earnings".`;
+  const text = `Hi ${name}, your ClinicQ partner login:\n${url}\nEmail: ${email}\nPassword: ${password}\n\nAdd your clinics, doctors and reception logins there. Your rewards are under "My earnings".`;
   return (
     <section className="bg-tertiary-fixed/40 rounded-2xl p-5 flex flex-col gap-3">
       <div className="flex items-start gap-3">

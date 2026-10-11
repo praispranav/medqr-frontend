@@ -53,7 +53,7 @@ function ChangePasswordForm() {
       const next = params.get('next');
       router.replace(next && next.startsWith('/') ? next : HOME_FOR_ROLE[updated.user.role]);
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Can't reach MedQR. Check your connection.");
+      setError(e instanceof ApiError ? e.message : "Can't reach ClinicQ. Check your connection.");
       setBusy(false);
     }
   };
@@ -61,7 +61,7 @@ function ChangePasswordForm() {
   if (failed)
     return (
       <main className="min-h-screen flex flex-col items-center justify-center gap-3 p-6 text-center">
-        <p className="font-headline-md text-headline-md">Can&apos;t reach MedQR</p>
+        <p className="font-headline-md text-headline-md">Can&apos;t reach ClinicQ</p>
         <p className="font-body-md text-body-md text-on-surface-variant">Check the connection and reload the page.</p>
       </main>
     );
@@ -80,7 +80,7 @@ function ChangePasswordForm() {
           <span className="w-10 h-10 rounded-xl bg-primary-container text-on-primary flex items-center justify-center">
             <Icon name="lock_reset" className="text-[24px]" />
           </span>
-          <span className="font-headline-sm text-headline-sm text-primary">MedQR</span>
+          <span className="font-headline-sm text-headline-sm text-primary">ClinicQ</span>
         </div>
         <div>
           <h1 className="font-headline-md text-headline-md text-on-surface">

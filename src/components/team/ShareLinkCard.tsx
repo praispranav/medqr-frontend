@@ -18,8 +18,8 @@ function messageFor(t: ShareTarget) {
   const site = new URL(t.setup_link).origin;
   const intro =
     t.kind === 'invite'
-      ? `Hello ${t.name}, your MedQR login for ${t.clinic_name} is ready.`
-      : `Hello ${t.name}, your MedQR password for ${t.clinic_name} has been reset.`;
+      ? `Hello ${t.name}, your ClinicQ login for ${t.clinic_name} is ready.`
+      : `Hello ${t.name}, your ClinicQ password for ${t.clinic_name} has been reset.`;
   return [
     intro,
     '',

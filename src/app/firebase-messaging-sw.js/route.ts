@@ -14,7 +14,7 @@ self.addEventListener('push', (event) => {
   const data = p.data || {};
   const url = data.url || (p.fcmOptions && p.fcmOptions.link) || '/';
   event.waitUntil(
-    self.registration.showNotification(n.title || 'MedQR', {
+    self.registration.showNotification(n.title || 'ClinicQ', {
       body: n.body || '',
       tag: data.tag || n.tag || 'medqr',
       renotify: true,

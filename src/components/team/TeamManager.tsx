@@ -49,7 +49,7 @@ export interface TeamApi {
   pricing?: { included_doctors: number; extra_doctor_price_inr: number };
   /** Decision 28: per-doctor settings card (super admin, referrer, clinic admin). Omitted = hidden. */
   doctorSettings?: { clinic: QueueSettings; save: (doctorId: string, patch: Record<string, unknown>) => Promise<unknown> };
-  /** Platform admin only — the medqr.in/doctors public directory listing fields (bio, "list me"). */
+  /** Platform admin only — the clinicq.in/doctors public directory listing fields (bio, "list me"). */
   directoryFields?: boolean;
 }
 
@@ -251,7 +251,7 @@ function DoctorEditor({
       {directoryFields && (
         <>
           <label className="flex flex-col gap-1">
-            <span className="font-label-sm text-label-sm text-on-surface-variant">Public bio (shown on medqr.in/doctors)</span>
+            <span className="font-label-sm text-label-sm text-on-surface-variant">Public bio (shown on clinicq.in/doctors)</span>
             <textarea
               value={f.bio}
               placeholder="A short line about this doctor for patients searching online…"

@@ -9,7 +9,7 @@ import { Icon, LoadingPage } from '@/components/patient/ui';
 
 // Staff login. Reception and doctors have separate accounts (created in /admin); the role decides
 // where you land and which screens the server lets you use.
-// Clinic code: opened on a clinic's own subdomain (drkumar.medqr.in/login) we move to the main
+// Clinic code: opened on a clinic's own subdomain (drkumar.clinicq.in/login) we move to the main
 // domain's /login?clinic=drkumar — staff screens and the session cookie live there, and a cookie
 // set from a clinic subdomain isn't reliably sent (never locally: drkumar.localhost ≠ localhost).
 // With ?clinic= naming a real clinic, the code is filled in and the field is hidden.
@@ -142,7 +142,7 @@ function LoginForm() {
             : ['/reception'];
       router.replace(next && allowed.some((a) => next.startsWith(a)) ? next : HOME_FOR_ROLE[me.user.role]);
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Can't reach MedQR. Check your connection.");
+      setError(e instanceof ApiError ? e.message : "Can't reach ClinicQ. Check your connection.");
       setBusy(false);
     }
   };
@@ -160,7 +160,7 @@ function LoginForm() {
           <span className="w-10 h-10 rounded-xl bg-primary-container text-on-primary flex items-center justify-center">
             <Icon name="qr_code_2" className="text-[24px]" />
           </span>
-          <span className="font-headline-sm text-headline-sm text-primary">MedQR</span>
+          <span className="font-headline-sm text-headline-sm text-primary">ClinicQ</span>
         </div>
         <div>
           <h1 className="font-headline-md text-headline-md text-on-surface">Doctor/Staff Login</h1>
@@ -219,7 +219,7 @@ function LoginForm() {
                 aria-autocomplete="list"
                 className="flex-1 min-w-0 bg-transparent font-body-lg text-body-lg focus:outline-none"
               />
-              <span className="font-body-md text-body-md text-on-surface-variant">.medqr.in</span>
+              <span className="font-body-md text-body-md text-on-surface-variant">.clinicq.in</span>
             </div>
             {showSuggestions && suggestions.length > 0 && (
               <ul className="absolute left-0 right-0 top-full mt-1 z-10 bg-surface-container-lowest rounded-xl shadow-md overflow-hidden border border-surface-container-low">

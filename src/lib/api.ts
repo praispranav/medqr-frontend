@@ -132,7 +132,7 @@ export interface Tenant {
   queue_settings: QueueSettings;
   /** The permanent "See the doctor suite" demo clinic — always read-only (Decision 18). */
   is_demo?: boolean;
-  /** Public doctor/clinic directory (medqr.in/doctors) — off by default, platform admin opts a clinic in. */
+  /** Public doctor/clinic directory (clinicq.in/doctors) — off by default, platform admin opts a clinic in. */
   is_publicly_listed?: boolean;
   city?: string | null;
   address?: string | null;
@@ -480,7 +480,7 @@ export interface MonthlyPlan {
   wallet_balance_inr: number;
 }
 
-// Public doctor/clinic directory (medqr.in/doctors)
+// Public doctor/clinic directory (clinicq.in/doctors)
 export interface DirectoryDoctorSummary {
   slug: string;
   name: string;
@@ -517,6 +517,14 @@ export interface SubscriptionStatus {
   wallet_auto_recharge_enabled: boolean;
   wallet_auto_recharge_below_inr: number;
   wallet_auto_recharge_amount_inr: number;
+}
+
+/** Decision 38 — what the patient filled in, editable until they are called in. */
+export interface PatientDetails {
+  editable: boolean;
+  chief_complaint: string | null;
+  weight_kg: number | null;
+  photos: { url: string; name: string }[];
 }
 
 /** Decision 37 — Contact us + support requests. */
@@ -636,6 +644,11 @@ export const api = {
   changePassword: (body: { currentPassword: string; newPassword: string }) =>
     request<Me>('/auth/change-password', { method: 'POST', body: JSON.stringify(body) }),
   getMyTenant: () => request<Tenant>('/tenants/mine'),
+  patientDetails: (tokenId: string) => request<PatientDetails>(`/queue/tokens/${tokenId}/details`),
+  updatePatientDetails: (tokenId: string, body: { chief_complaint?: string | null; weight_kg?: number | null }) =>
+    request<PatientDetails>(`/queue/tokens/${tokenId}/details`, { method: 'PATCH', body: JSON.stringify(body) }),
+  removePatientPhoto: (tokenId: string, url: string) =>
+    request<PatientDetails>(`/queue/tokens/${tokenId}/attachments/remove`, { method: 'POST', body: JSON.stringify({ url }) }),
   addPatientAttachment: (tokenId: string, file: { url: string; name: string }) =>
     request(`/queue/tokens/${tokenId}/attachments`, { method: 'POST', body: JSON.stringify(file) }),
 
@@ -731,7 +744,7 @@ export const api = {
   /** Logs an ask from the chat for something that isn't an actual setting yet, for the platform admin to review. */
   requestSetting: (tenantId: string, description: string) =>
     request(`/tenants/${tenantId}/queue-setup/request`, { method: 'POST', body: JSON.stringify({ description }) }),
-  // Public doctor/clinic directory (medqr.in/doctors) — clinic-wide fields: doctor/owner self-service (Decision 14).
+  // Public doctor/clinic directory (clinicq.in/doctors) — clinic-wide fields: doctor/owner self-service (Decision 14).
   updateTenantPublicProfile: (
     tenantId: string,
     patch: { is_publicly_listed?: boolean; city?: string | null; address?: string | null; public_phone?: string | null },
@@ -795,7 +808,7 @@ export const api = {
   // Public landing page "Start free trial" lead form (Decision 18) — never creates a tenant by itself.
   submitTrialLead: (body: { clinic_name: string; contact_name: string; phone: string; email?: string; city?: string; message?: string }) =>
     request<{ id: string }>('/leads', { method: 'POST', body: JSON.stringify(body) }),
-  // Public doctor/clinic directory (medqr.in/doctors) — only clinics/doctors that opted in ever show up here.
+  // Public doctor/clinic directory (clinicq.in/doctors) — only clinics/doctors that opted in ever show up here.
   directorySearch: (opts: { q?: string; specialty?: string; city?: string } = {}) =>
     request<DirectoryDoctorSummary[]>(`/directory/doctors${toQuery(opts)}`),
   directoryDoctor: (slug: string) => request<DirectoryDoctorProfile>(`/directory/doctors/${encodeURIComponent(slug)}`),

@@ -27,7 +27,7 @@ export function LegalLayout({
                 qr_code_2
               </span>
             </span>
-            <span className="font-headline-sm text-headline-sm text-primary">MedQR</span>
+            <span className="font-headline-sm text-headline-sm text-primary">ClinicQ</span>
           </Link>
           <nav className="ml-auto flex items-center gap-4 font-label-md text-label-md text-on-surface-variant">
             <Link href="/terms" className="hover:text-on-surface">Terms</Link>
@@ -50,7 +50,7 @@ export function LegalLayout({
 
       <footer className="border-t border-surface-container">
         <div className={`${width} mx-auto px-4 py-8 flex flex-col sm:flex-row gap-3 justify-between font-body-sm text-body-sm text-on-surface-variant`}>
-          <p>© {new Date().getFullYear()} MedQR · Operated by Altis Labs</p>
+          <p>© {new Date().getFullYear()} ClinicQ · Operated by Altis Labs</p>
           <div className="flex gap-4">
             <Link href="/">Home</Link>
             <Link href="/terms">Terms</Link>

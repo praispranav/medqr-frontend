@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import type { DirectoryDoctorProfile } from '@/lib/api';
 
-// Public, server-rendered doctor profile — the actual target of medqr.in/doctors search results and
+// Public, server-rendered doctor profile — the actual target of clinicq.in/doctors search results and
 // of Google search. Deliberately a server component (not 'use client' like the rest of the app) so
 // the title/description/structured data are in the HTML a crawler sees, not injected after the fact.
 
@@ -17,9 +17,9 @@ async function getDoctor(slug: string): Promise<DirectoryDoctorProfile | null> {
 
 export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
   const doctor = await getDoctor(params.slug);
-  if (!doctor) return { title: 'Doctor not found — MedQR' };
+  if (!doctor) return { title: 'Doctor not found — ClinicQ' };
   const place = [doctor.clinic_name, doctor.city].filter(Boolean).join(', ');
-  const title = `${doctor.name}${doctor.specialty ? ` — ${doctor.specialty}` : ''}${place ? ` in ${place}` : ''} | MedQR`;
+  const title = `${doctor.name}${doctor.specialty ? ` — ${doctor.specialty}` : ''}${place ? ` in ${place}` : ''} | ClinicQ`;
   const description = doctor.bio || `Book a digital queue token with ${doctor.name}${place ? ` at ${place}` : ''}. No app download, no waiting in line.`;
   return { title, description };
 }
@@ -43,7 +43,7 @@ export default async function DoctorProfilePage({ params }: { params: { slug: st
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <header className="border-b border-surface-container">
         <div className="max-w-3xl mx-auto px-4 h-16 flex items-center">
-          <span className="font-headline-sm text-headline-sm text-primary">MedQR</span>
+          <span className="font-headline-sm text-headline-sm text-primary">ClinicQ</span>
           <Link href="/doctors" className="ml-auto font-label-md text-label-md text-on-surface-variant hover:text-on-surface">
             ← All doctors
           </Link>
@@ -85,7 +85,7 @@ export default async function DoctorProfilePage({ params }: { params: { slug: st
         >
           Get a digital queue token
         </Link>
-        <p className="text-center font-body-sm text-body-sm text-on-surface-variant">No app download — instant QR check-in via MedQR.</p>
+        <p className="text-center font-body-sm text-body-sm text-on-surface-variant">No app download — instant QR check-in via ClinicQ.</p>
       </div>
     </main>
   );

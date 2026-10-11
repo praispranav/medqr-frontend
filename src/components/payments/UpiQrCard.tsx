@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { api, type PaymentQrView } from '@/lib/api';
 import { Icon } from '@/components/patient/ui';
+import { useT } from '@/lib/i18n';
 
 // One auto-created, single-use UPI QR for one visit (Decision 11). The QR encodes the gateway's own
 // upi://pay link, so the same string also powers "Open UPI app" on the patient's phone (you can't
@@ -35,17 +36,20 @@ export function UpiQrCard({
   /** Defaults to "Pay ₹N by UPI" — override for a non-visit QR (e.g. "Recharge ₹N by UPI"). */
   label?: string;
 }) {
+  const { t } = useT();
   const { secs, label } = useCountdown(qr.close_by);
   const [simulating, setSimulating] = useState(false);
   const expired = secs === 0;
+  // Staff screens (reception / wallet recharge) stay English; the patient's own phone follows their language.
+  const tr = (key: Parameters<typeof t>[0], english: string, vars?: Record<string, string | number>) => (onPatientPhone ? t(key, vars) : english);
 
   return (
     <div className="bg-surface-container-lowest rounded-2xl p-5 shadow-sm flex flex-col items-center text-center gap-3">
       <div className="flex items-center gap-2">
         <Icon name="qr_code_2" className="text-primary text-[20px]" />
-        <p className="font-label-lg text-label-lg">{payLabel ?? `Pay ₹${qr.amount_inr.toLocaleString('en-IN')} by UPI`}</p>
+        <p className="font-label-lg text-label-lg">{payLabel ?? tr('upi_pay', `Pay ₹${qr.amount_inr.toLocaleString('en-IN')} by UPI`, { amount: qr.amount_inr.toLocaleString('en-IN') })}</p>
         {qr.gateway === 'mock' && (
-          <span className="px-2 py-0.5 rounded-full bg-secondary-fixed text-on-secondary-fixed font-label-sm text-label-sm">Test mode</span>
+          <span className="px-2 py-0.5 rounded-full bg-secondary-fixed text-on-secondary-fixed font-label-sm text-label-sm">{tr('upi_test', 'Test mode')}</span>
         )}
       </div>
 
@@ -58,14 +62,14 @@ export function UpiQrCard({
           className="w-full h-14 rounded-xl bg-primary text-on-primary font-label-lg text-label-lg flex items-center justify-center gap-2 shadow-md"
         >
           <Icon name="account_balance_wallet" className="text-[20px]" />
-          Open UPI app (GPay, PhonePe, Paytm)
+          {t('upi_open')}
         </a>
       )}
 
       <div className={`p-3 bg-white rounded-xl border border-surface-container ${expired ? 'opacity-30' : ''}`}>
         {qr.image_url ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={qr.image_url} alt="UPI QR code" width={onPatientPhone ? 180 : 220} height={onPatientPhone ? 180 : 220} className="object-contain" />
+          <img src={qr.image_url} alt={tr('upi_alt', 'UPI QR code')} width={onPatientPhone ? 180 : 220} height={onPatientPhone ? 180 : 220} className="object-contain" />
         ) : (
           <QRCodeSVG value={qr.upi_uri} size={onPatientPhone ? 180 : 220} level="M" marginSize={2} />
         )}
@@ -74,8 +78,8 @@ export function UpiQrCard({
         {!onPatientPhone
           ? 'Ask the patient to scan with any UPI app.'
           : qr.gateway === 'mock'
-            ? 'Or scan this from another phone.'
-            : 'Scan this with a UPI app from another phone.'}
+            ? t('upi_other_mock')
+            : t('upi_other')}
       </p>
 
       <p className={`font-label-md text-label-md flex items-center gap-1.5 ${expired ? 'text-error' : 'text-on-surface-variant'}`}>
@@ -83,7 +87,7 @@ export function UpiQrCard({
           {!expired && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />}
           <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${expired ? 'bg-error' : 'bg-primary'}`} />
         </span>
-        {expired ? 'This QR has expired' : `Waiting for payment · expires in ${label}`}
+        {expired ? tr('upi_expired', 'This QR has expired') : tr('upi_waiting', `Waiting for payment · expires in ${label}`, { time: label })}
       </p>
 
       {qr.gateway === 'mock' && !expired && (

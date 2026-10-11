@@ -26,7 +26,7 @@ const WHO: Record<PaymentEvent['actor_type'], string> = {
   patient: 'patient',
   reception: 'reception',
   doctor: 'doctor',
-  system: 'MedQR',
+  system: 'ClinicQ',
   razorpay: 'Razorpay',
 };
 

@@ -153,7 +153,7 @@ export default function LandingPage() {
             <span className="w-9 h-9 rounded-lg bg-primary-container text-on-primary flex items-center justify-center">
               <Icon name="qr_code_2" className="text-[22px]" />
             </span>
-            <span className="font-headline-sm text-headline-sm text-primary">MedQR</span>
+            <span className="font-headline-sm text-headline-sm text-primary">ClinicQ</span>
           </Link>
           <nav className="hidden md:flex items-center gap-6 ml-6 font-label-md text-label-md text-on-surface-variant">
             <Link href="/doctors" className="hover:text-on-surface">Find a doctor</Link>
@@ -162,11 +162,13 @@ export default function LandingPage() {
             <a href="#pricing" className="hover:text-on-surface">Pricing</a>
           </nav>
           <div className="ml-auto flex items-center gap-2">
-            <button onClick={() => setTrialOpen(true)} className="h-10 px-4 inline-flex items-center rounded-xl bg-primary-container text-on-primary-container font-label-md text-label-md">
+            {/* On phones the hero right below already has the big trial button, so the header keeps just Login. */}
+            <button onClick={() => setTrialOpen(true)} className="hidden sm:inline-flex h-10 px-4 items-center whitespace-nowrap rounded-xl bg-primary-container text-on-primary-container font-label-md text-label-md">
               Start free trial
             </button>
-            <Link href="/login" className="h-10 px-4 inline-flex items-center rounded-xl bg-primary text-on-primary font-label-md text-label-md">
-              Doctor/Staff Login
+            <Link href="/login" className="h-10 px-4 inline-flex items-center whitespace-nowrap rounded-xl bg-primary text-on-primary font-label-md text-label-md">
+              <span className="sm:hidden">Login</span>
+              <span className="hidden sm:inline">Doctor/Staff Login</span>
             </Link>
           </div>
         </div>
@@ -189,7 +191,7 @@ export default function LandingPage() {
             <button onClick={() => setTrialOpen(true)} className="h-14 px-6 inline-flex items-center gap-2 rounded-xl bg-primary text-on-primary font-label-lg text-label-lg shadow-md">
               Start {trialDays ? `your free ${trialDays}-day trial` : 'free trial'} <Icon name="arrow_forward" className="text-[20px]" />
             </button>
-            <Link href="/patient/drkumar" className="h-14 px-6 inline-flex items-center gap-2 rounded-xl bg-surface-container-lowest text-primary font-label-lg text-label-lg shadow-sm">
+            <Link href="/patient/demo" className="h-14 px-6 inline-flex items-center gap-2 rounded-xl bg-surface-container-lowest text-primary font-label-lg text-label-lg shadow-sm">
               Try it as a patient
             </Link>
           </div>
@@ -283,7 +285,7 @@ export default function LandingPage() {
           <p className="text-center font-label-sm text-label-sm text-primary uppercase tracking-wider">Engineered for high-density OPDs</p>
           <h2 className="text-center font-headline-lg text-headline-lg mt-2">Built for real-world Indian clinics</h2>
           <p className="text-center font-body-md text-body-md text-on-surface-variant mt-2 max-w-xl mx-auto">
-            Doctors don&apos;t want to be data-entry clerks. MedQR keeps your normal clinical pace while digitising the rest.
+            Doctors don&apos;t want to be data-entry clerks. ClinicQ keeps your normal clinical pace while digitising the rest.
           </p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-10">
             {FEATURES.map((f) => (
@@ -430,7 +432,7 @@ export default function LandingPage() {
             <button onClick={() => setTrialOpen(true)} className="h-12 px-5 inline-flex items-center rounded-xl bg-white text-primary font-label-lg text-label-lg">
               Start free trial
             </button>
-            <Link href="/patient/drkumar" className="h-12 px-5 inline-flex items-center rounded-xl bg-white/15 text-white font-label-lg text-label-lg">
+            <Link href="/patient/demo" className="h-12 px-5 inline-flex items-center rounded-xl bg-white/15 text-white font-label-lg text-label-lg">
               Try the patient flow
             </Link>
           </div>
@@ -439,7 +441,7 @@ export default function LandingPage() {
 
       <footer className="border-t border-surface-container">
         <div className="max-w-6xl mx-auto px-4 py-8 flex flex-col sm:flex-row gap-3 justify-between font-body-sm text-body-sm text-on-surface-variant">
-          <p>© {new Date().getFullYear()} MedQR · Digital OPD queues for Indian clinics</p>
+          <p>© {new Date().getFullYear()} ClinicQ · Digital OPD queues for Indian clinics</p>
           <div className="flex gap-4">
             <Link href="/terms">Terms</Link>
             <Link href="/privacy">Privacy</Link>
@@ -486,7 +488,7 @@ function StartTrialModal({ trialDays, onClose }: { trialDays: number | null; onC
             <Icon name="check_circle" className="text-tertiary text-[36px]" />
             <h2 className="font-headline-md text-headline-md">Request received</h2>
             <p className="font-body-md text-body-md text-on-surface-variant">
-              MedQR will reach out on your number shortly to set up your clinic{trialDays ? ` on a free ${trialDays}-day trial` : ''}.
+              ClinicQ will reach out on your number shortly to set up your clinic{trialDays ? ` on a free ${trialDays}-day trial` : ''}.
             </p>
             <button onClick={onClose} className="h-12 rounded-xl bg-primary text-on-primary font-label-lg text-label-lg">
               Close

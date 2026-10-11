@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { createPortal } from 'react-dom';
 import { useState } from 'react';
-import { useT, LANG_NAMES, PATIENT_LANGUAGES_READY, type LangCode } from '@/lib/i18n';
+import { useT, dateLocale, localizeStatusDetail, LANG_NAMES, PATIENT_LANGUAGES_READY, type LangCode } from '@/lib/i18n';
 
 import type { DoctorToday, DoctorTodayStatus, NextSession } from '@/lib/api';
 
@@ -61,14 +61,17 @@ export function nextSessionLabel(n: NextSession, locale = 'en-IN') {
   return `${day}, ${h % 12 === 0 ? 12 : h % 12}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
 }
 
-export function DoctorStatusRow({ status, detail, next }: { status: DoctorTodayStatus; detail: string; next?: NextSession | null }) {
+export function DoctorStatusRow({ status, detail: rawDetail, next }: { status: DoctorTodayStatus; detail: string; next?: NextSession | null }) {
+  // Shared component: follows the patient's language without ever setting it (Decision 35).
+  const { t, lang } = useT();
+  const detail = localizeStatusDetail(rawDetail, t);
   switch (status) {
     case 'available':
       return (
         <div className="mt-1 flex items-center justify-between bg-surface-container-low px-3 py-1.5 rounded-lg">
           <div className="flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-tertiary" />
-            <span className="font-label-sm text-label-sm text-on-surface font-semibold">Available</span>
+            <span className="font-label-sm text-label-sm text-on-surface font-semibold">{t('sd_available')}</span>
           </div>
           <span className="font-label-sm text-label-sm text-on-surface-variant font-medium">{detail}</span>
         </div>
@@ -78,7 +81,7 @@ export function DoctorStatusRow({ status, detail, next }: { status: DoctorTodayS
         <div className="mt-1 flex items-center justify-between bg-secondary-fixed/30 px-3 py-1.5 rounded-lg">
           <div className="flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-secondary" />
-            <span className="font-label-sm text-label-sm text-secondary font-bold">On break</span>
+            <span className="font-label-sm text-label-sm text-secondary font-bold">{t('sd_on_break')}</span>
           </div>
           <span className="font-label-sm text-label-sm text-secondary font-medium">{detail}</span>
         </div>
@@ -88,7 +91,7 @@ export function DoctorStatusRow({ status, detail, next }: { status: DoctorTodayS
         <div className="mt-1 flex items-center justify-between bg-surface-container-low px-3 py-1.5 rounded-lg">
           <div className="flex items-center gap-1.5">
             <Icon name="schedule" className="text-[16px] text-primary" />
-            <span className="font-label-sm text-label-sm text-primary font-bold">Starts later today</span>
+            <span className="font-label-sm text-label-sm text-primary font-bold">{t('sd_later_today')}</span>
           </div>
           <span className="font-label-sm text-label-sm text-on-surface-variant font-medium">{detail}</span>
         </div>
@@ -98,9 +101,9 @@ export function DoctorStatusRow({ status, detail, next }: { status: DoctorTodayS
         <div className="mt-1 flex items-center justify-between bg-surface-container px-3 py-1.5 rounded-lg">
           <div className="flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-error" />
-            <span className="font-label-sm text-label-sm text-error font-bold">Off today</span>
+            <span className="font-label-sm text-label-sm text-error font-bold">{t('sd_off_today')}</span>
           </div>
-          <span className="font-label-sm text-label-sm text-on-surface-variant font-medium">{next ? `Next: ${nextSessionLabel(next)}` : detail}</span>
+          <span className="font-label-sm text-label-sm text-on-surface-variant font-medium">{next ? t('sd_next', { when: nextSessionLabel(next, dateLocale(lang)) }) : detail}</span>
         </div>
       );
   }
