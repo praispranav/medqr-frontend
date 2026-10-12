@@ -279,6 +279,9 @@ function IntakeForm() {
   const selectedProfile = profiles.find((p) => p.id === selectedProfileId) ?? null;
   // The picked family member already holds a live token with this doctor → the main button opens it instead of joining twice.
   const selectedActive = mode === 'returning' && selectedProfile ? myTokens.find((tok) => sameName(tok.patient_name, selectedProfile.name)) : undefined;
+  // Anyone already holding an active token today doesn't need to "join" again — they're shown once,
+  // consolidated, above (not repeated per-profile) and dropped out of the pick-a-person list entirely.
+  const selectableProfiles = profiles.filter((p) => !myTokens.some((tok) => sameName(tok.patient_name, p.name)));
   const mobileDigits = mobile.replace(/\D/g, '').slice(-10);
 
   const toggleSymptom = (label: string) => {
@@ -403,18 +406,53 @@ function IntakeForm() {
             </div>
           </div>
 
-          {myTokens
-            .filter((tok) => !profiles.some((p) => sameName(p.name, tok.patient_name)))
-            .map((tok) => (
-              <Link
-                key={tok.id}
-                href={`/patient/${subdomain}/queue/${tok.id}`}
-                className="mt-3 w-full min-h-[48px] px-4 rounded-xl bg-primary text-on-primary font-label-lg text-label-lg flex items-center justify-center gap-2 touch-manipulation active:scale-[0.99]"
-              >
-                <Icon name="confirmation_number" className="text-[20px]" /> {t('in_view_token', { n: tok.number })}
-                {tok.patient_name ? ` · ${tok.patient_name}` : ''}
-              </Link>
-            ))}
+          {/* Decision 40 — only shown while the doctor's Emergency/Night OPD session is actually live. */}
+          {doctor.active_session && (
+            <div
+              className={`mt-2 flex items-center gap-2 rounded-xl px-3 py-2 ${
+                doctor.active_session.type === 'emergency' ? 'bg-error-container text-on-error-container' : 'bg-secondary-fixed text-on-secondary-fixed'
+              }`}
+            >
+              <Icon name={doctor.active_session.type === 'emergency' ? 'emergency' : 'bedtime'} className="text-[18px] shrink-0" />
+              <span className="flex-1 font-label-md text-label-md">
+                {doctor.active_session.type === 'emergency' ? t('in_emergency_opd_now') : t('in_night_opd_now')}
+              </span>
+              {doctor.active_session.fee_override_inr != null && (
+                <span className="font-label-md text-label-md font-bold">₹{doctor.active_session.fee_override_inr}</span>
+              )}
+            </div>
+          )}
+
+          {/* Already-queued today, shown once here — never repeated per-profile below. One token
+              stays a prominent button; several collapse into a compact list so it doesn't turn
+              into a wall of big green buttons. */}
+          {myTokens.length === 1 && (
+            <Link
+              href={`/patient/${subdomain}/queue/${myTokens[0].id}`}
+              className="mt-3 w-full min-h-[48px] px-4 rounded-xl bg-primary text-on-primary font-label-lg text-label-lg flex items-center justify-center gap-2 touch-manipulation active:scale-[0.99]"
+            >
+              <Icon name="confirmation_number" className="text-[20px]" /> {t('in_view_token', { n: myTokens[0].number })}
+              {myTokens[0].patient_name ? ` · ${myTokens[0].patient_name}` : ''}
+            </Link>
+          )}
+          {myTokens.length > 1 && (
+            <div className="mt-3 bg-surface-container-lowest rounded-2xl shadow-sm divide-y divide-surface-container overflow-hidden">
+              {myTokens.map((tok) => (
+                <Link
+                  key={tok.id}
+                  href={`/patient/${subdomain}/queue/${tok.id}`}
+                  className="min-h-[44px] px-4 py-2.5 flex items-center gap-2 hover:bg-surface-container-low touch-manipulation"
+                >
+                  <Icon name="confirmation_number" className="text-primary text-[18px] shrink-0" />
+                  <span className="flex-1 min-w-0 font-label-md text-label-md text-on-surface truncate">
+                    {t('in_view_token', { n: tok.number })}
+                    {tok.patient_name ? ` · ${tok.patient_name}` : ''}
+                  </span>
+                  <Icon name="chevron_right" className="text-on-surface-variant text-[18px] shrink-0" />
+                </Link>
+              ))}
+            </div>
+          )}
 
           {(() => {
             const doctorDays = advanceDays
@@ -438,7 +476,9 @@ function IntakeForm() {
                   const isSelected = bookingDate ? bookingDate === d.date : isToday;
                   const disabled = d.doctor.is_full;
                   const label = isToday ? t('in_today') : formatBookingDate(d.date, { weekday: 'short', day: 'numeric', month: 'short' }, locale);
-                  const subLabel = d.doctor.is_full ? t('in_full') : t('in_left', { n: d.doctor.tokens_left });
+                  // Decision 32 amended: the remaining-token count was always showing the unconfigured
+                  // 100-a-day default, which reads as a meaningless number to patients — only flag it
+                  // when the queue is actually full.
 
                   return (
                     <button
@@ -462,9 +502,11 @@ function IntakeForm() {
                       }`}
                     >
                       <span className="font-label-md text-label-md font-bold">{label}</span>
-                      <span className={`font-label-sm text-[11px] ${isSelected ? 'text-on-primary/80' : 'text-on-surface-variant/80'}`}>
-                        {subLabel}
-                      </span>
+                      {d.doctor.is_full && (
+                        <span className={`font-label-sm text-[11px] ${isSelected ? 'text-on-primary/80' : 'text-on-surface-variant/80'}`}>
+                          {t('in_full')}
+                        </span>
+                      )}
                     </button>
                   );
                 })}
@@ -498,18 +540,21 @@ function IntakeForm() {
         >
           {mode === 'returning' ? (
             // ---- Returning patient: 1-tap profile pick (Screen #1, "Returning") ----
+            // Anyone already queued today (shown once, above) drops out of this list — picking them
+            // again to "join" would just be a confusing duplicate of the button they already have.
             <div className="bg-surface-container-lowest rounded-2xl p-4 shadow-sm">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="font-label-lg text-label-lg text-on-surface">{t('in_who_seeing')}</h3>
-                <span className="font-label-sm text-label-sm text-outline">{t('in_tap_profile')}</span>
+                <h3 className="font-label-lg text-label-lg text-on-surface">
+                  {selectableProfiles.length > 0 ? t('in_who_seeing') : t('in_add_someone_else')}
+                </h3>
+                {selectableProfiles.length > 0 && <span className="font-label-sm text-label-sm text-outline">{t('in_tap_profile')}</span>}
               </div>
               <div className="space-y-2.5">
-                {profiles.map((p) => {
+                {selectableProfiles.map((p) => {
                   const active = p.id === selectedProfileId;
-                  const myToken = myTokens.find((tok) => sameName(tok.patient_name, p.name));
                   return (
-                    <div key={p.id}>
                     <button
+                      key={p.id}
                       type="button"
                       onClick={() => setSelectedProfileId(p.id)}
                       className={`w-full text-left p-3 rounded-xl flex items-center justify-between transition-all ${
@@ -542,15 +587,6 @@ function IntakeForm() {
                         className={`text-[24px] ${active ? 'text-primary' : 'text-outline-variant'}`}
                       />
                     </button>
-                    {myToken && (
-                      <Link
-                        href={`/patient/${subdomain}/queue/${myToken.id}`}
-                        className="mt-1.5 w-full min-h-[44px] rounded-xl bg-primary text-on-primary font-label-md text-label-md flex items-center justify-center gap-2 touch-manipulation active:scale-[0.99]"
-                      >
-                        <Icon name="confirmation_number" className="text-[18px]" /> {t('in_view_token', { n: myToken.number })}
-                      </Link>
-                    )}
-                    </div>
                   );
                 })}
                 <button
@@ -598,12 +634,20 @@ function IntakeForm() {
                 <div className="p-4 rounded-2xl shadow-sm bg-surface-container-lowest flex items-center gap-3">
                   <Icon name="verified" className="text-tertiary text-[22px]" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-label-sm font-label-sm text-on-surface-variant">{t('in_mobile_verified')}</p>
+                    <p className="text-label-sm font-label-sm text-on-surface-variant">
+                      {profiles.length > 0 ? t('in_family_same_number') : t('in_mobile_verified')}
+                    </p>
                     <p className="font-headline-sm text-headline-sm text-on-surface">+91 {mobile}</p>
                   </div>
-                  <button type="button" onClick={() => startNewPerson(false)} className="text-primary font-label-md text-label-md">
-                    {t('in_change')}
-                  </button>
+                  {/* Only a plain re-verify, not "add family member" — changing numbers mid-add would
+                      silently drop the family list being added to, which is the exact confusing
+                      behaviour this is fixing. Switching numbers lives at "Not you? Use another
+                      number" on the profile-pick screen instead. */}
+                  {profiles.length === 0 && (
+                    <button type="button" onClick={() => startNewPerson(false)} className="text-primary font-label-md text-label-md">
+                      {t('in_change')}
+                    </button>
+                  )}
                 </div>
               ) : (
                 <div className={`p-4 rounded-2xl shadow-sm ${errors.mobile ? 'bg-error-container/30' : 'bg-surface-container-lowest'}`}>

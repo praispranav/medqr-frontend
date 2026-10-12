@@ -5,6 +5,7 @@ import { api, type DoctorToday, type ShiftView, type Tenant } from '@/lib/api';
 import { DoctorStatusRow } from '@/components/patient/ui';
 import { StaffShell } from '@/components/staff/StaffShell';
 import { HoursEditor } from '@/components/schedule/HoursEditor';
+import { SpecialSessions } from '@/components/schedule/SpecialSessions';
 import { ShiftAlertSettings } from '@/components/doctor/ShiftAlertSettings';
 import { ShiftBar } from '@/components/staff/ShiftBar';
 import { HoursReminderBanner } from '@/components/staff/HoursReminderBanner';
@@ -94,6 +95,8 @@ function MyHours({
           applyWeeklyTemplate: (weeks, template) => api.applyWeeklyTemplate(doctor.id, weeks, template),
         }}
       />
+
+      <SpecialSessions doctorId={doctor.id} />
 
       <ShiftAlertSettings key={doctor.id} doctor={doctor} onSaved={onDoctorSaved} />
     </div>

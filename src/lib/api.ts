@@ -174,6 +174,8 @@ export interface DoctorToday {
   notify_you_are_next?: boolean;
   notify_your_turn?: boolean;
   notify_location_override?: string | null;
+  /** Decision 40 — set only while an Emergency/Night OPD session is actually live right now. */
+  active_session?: { type: 'emergency' | 'night'; fee_override_inr: number | null } | null;
 }
 
 export interface Patient {
@@ -369,6 +371,8 @@ export interface ArrivalQr {
   required: boolean;
 }
 
+export type SessionType = 'regular' | 'emergency' | 'night';
+
 export interface DoctorSession {
   id: string;
   doctor_id: string;
@@ -377,6 +381,9 @@ export interface DoctorSession {
   ends_at: string;
   is_break: boolean;
   is_active: boolean;
+  /** Decision 40 — Emergency/Night OPD. 'night' may have ends_at <= starts_at (crosses midnight). */
+  session_type: SessionType;
+  fee_override_inr: number | null;
 }
 
 export interface Vitals {
@@ -756,6 +763,7 @@ export const api = {
   ) => request<DoctorToday & { bio: string | null; public_slug: string | null }>(`/doctors/${doctorId}/public-profile`, { method: 'PATCH', body: JSON.stringify(patch) }),
   // Doctor portal "My Hours"
   listSessions: (doctorId: string, date: string) => request<DoctorSession[]>(`/doctors/${doctorId}/sessions?date=${date}`),
+  removeSession: (doctorId: string, sessionId: string) => request(`/doctors/${doctorId}/sessions/${sessionId}`, { method: 'DELETE' }),
   hoursStatus: (doctorId: string) => request<HoursStatus>(`/doctors/${doctorId}/hours-status`),
   // ---- My Hours week view ----
   hoursWeek: (doctorId: string, from: string) => request<HoursWeek>(`/doctors/${doctorId}/sessions/week?from=${from}`),
@@ -776,8 +784,10 @@ export const api = {
     request<{ status: TokenStatus; already: boolean }>(`/queue/tokens/${tokenId}/arrive`, { method: 'POST', body: JSON.stringify({ code }) }),
   setDaysOff: (doctorId: string, from: string, to: string) =>
     request(`/doctors/${doctorId}/sessions/days-off`, { method: 'POST', body: JSON.stringify({ from, to }) }),
-  addSession: (doctorId: string, body: { session_date: string; starts_at: string; ends_at: string; is_break: boolean }) =>
-    request<DoctorSession>(`/doctors/${doctorId}/sessions`, { method: 'POST', body: JSON.stringify(body) }),
+  addSession: (
+    doctorId: string,
+    body: { session_date: string; starts_at: string; ends_at: string; is_break: boolean; session_type?: SessionType; fee_override_inr?: number | null },
+  ) => request<DoctorSession>(`/doctors/${doctorId}/sessions`, { method: 'POST', body: JSON.stringify(body) }),
   repeatSessions: (doctorId: string, from_date: string, days: number) =>
     request<{ copied_to: string[] }>(`/doctors/${doctorId}/sessions/repeat`, { method: 'POST', body: JSON.stringify({ from_date, days }) }),
   getWeeklyTemplate: (doctorId: string) =>
