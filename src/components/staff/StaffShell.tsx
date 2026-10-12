@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { api, ApiError, type DoctorToday, type Me, type SubscriptionStatus, type Tenant } from '@/lib/api';
 import { HOME_FOR_ROLE } from '@/lib/staffRoutes';
 import { DoctorAvatar, Icon, LoadingPage } from '@/components/patient/ui';
+import { OnlinePaymentBanner } from '@/components/payments/OnlinePaymentBanner';
 
 // Shared chrome for the staff screens (Reception #4, Doctor Suite #5/#6/#9/#10 + QR poster),
 // following the sidebar layout the Stitch staff screens share.
@@ -43,6 +44,7 @@ const NAV: Record<Variant, NavItem[]> = {
     { href: '/doctor/notifications', label: 'Patient Notifications', icon: 'notifications_active' },
     { href: '/doctor/intake-form', label: 'Intake Form', icon: 'assignment' },
     { href: '/doctor/qr-poster', label: 'QR Standee', icon: 'qr_code_2' },
+    { href: '/doctor/online-payments', label: 'Online payment setup', icon: 'account_balance', managersOnly: true },
     { href: '/doctor/billing', label: 'Billing & Add-ons', icon: 'account_balance_wallet', managersOnly: true },
     { href: '/doctor/support', label: 'Help & support', icon: 'support_agent' },
   ],
@@ -59,6 +61,7 @@ const NAV: Record<Variant, NavItem[]> = {
     { href: '/manage/qr', label: 'QR Standees', icon: 'qr_code_2' },
     { href: '/manage/clinic', label: 'Clinic Profile', icon: 'apartment' },
     { href: '/manage/settings', label: 'Queue Rules', icon: 'tune' },
+    { href: '/manage/online-payments', label: 'Online payment setup', icon: 'account_balance' },
     { href: '/manage/billing', label: 'Billing & Add-ons', icon: 'account_balance_wallet' },
     { href: '/manage/support', label: 'Help & support', icon: 'support_agent' },
   ],
@@ -67,7 +70,7 @@ const NAV: Record<Variant, NavItem[]> = {
 const ROLE_LABEL: Record<Me['user']['role'], string> = { doctor: 'Doctor', reception: 'Reception', owner: 'Clinic admin' };
 
 // Decision 18: the public read-only demo never shows payments or admin-ish config screens.
-const DEMO_HIDDEN_HREFS = new Set(['/doctor/payments', '/doctor/settings', '/doctor/billing', '/doctor/profile', '/doctor/notifications', '/doctor/intake-form', '/reception/payments', '/doctor/support', '/reception/support', '/manage/support']);
+const DEMO_HIDDEN_HREFS = new Set(['/doctor/payments', '/doctor/online-payments', '/manage/online-payments', '/doctor/settings', '/doctor/billing', '/doctor/profile', '/doctor/notifications', '/doctor/intake-form', '/reception/payments', '/doctor/support', '/reception/support', '/manage/support']);
 
 function navFor(variant: Variant, me: Me, isDemo: boolean): NavItem[] {
   let items: NavItem[];
@@ -345,6 +348,8 @@ export function StaffShell({
 
         <main className="flex-1 p-4 lg:p-6 print:p-0">
           {tenant.is_demo ? <DemoBanner /> : <SubscriptionBanner sub={sub} me={me} />}
+          {!tenant.is_demo && variant === 'doctor' && active !== '/doctor/online-payments' && <OnlinePaymentBanner />}
+          {!tenant.is_demo && variant === 'manage' && active !== '/manage/online-payments' && <OnlinePaymentBanner href="/manage/online-payments" />}
           {children({ tenant, doctors, doctor, refreshTenant, me })}
         </main>
       </div>

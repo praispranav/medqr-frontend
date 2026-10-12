@@ -62,6 +62,14 @@ function Payment() {
     };
   }, [tokenId, refresh]);
 
+  // While a UPI QR is open, ask every few seconds: a doctor's own Razorpay account has no webhook, ClinicQ checks for the payment (Decision 45).
+  const qrIsOpen = !!status?.qr && status.qr.status === 'active' && status.payment_choice === 'online';
+  useEffect(() => {
+    if (!qrIsOpen) return;
+    const id = setInterval(refresh, 4000);
+    return () => clearInterval(id);
+  }, [qrIsOpen, refresh]);
+
   // Paid → straight on to the live queue.
   useEffect(() => {
     if (status?.is_paid) {

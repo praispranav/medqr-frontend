@@ -7,16 +7,21 @@ import { api, type PatientSearchResult, type Tenant, type Visit } from '@/lib/ap
 import { Icon } from '@/components/patient/ui';
 import { fileUrl } from '@/lib/api';
 
-export function PatientSearchAction({ onWalkIn }: { onWalkIn?: (p: { name: string; mobile: string }) => void }) {
+export function PatientSearchAction({ onWalkIn, label }: { onWalkIn?: (p: { name: string; mobile: string }) => void; label?: string }) {
   const [open, setOpen] = useState(false);
   return (
     <>
       <button
         onClick={() => setOpen(true)}
         aria-label="Search patients"
-        className="w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container-low"
+        className={
+          label
+            ? 'h-9 px-3 rounded-lg bg-surface-container-low text-on-surface-variant font-label-md text-label-md flex items-center gap-1.5'
+            : 'w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container-low'
+        }
       >
-        <Icon name="search" className="text-[20px]" />
+        <Icon name="search" className="text-[18px]" />
+        {label}
       </button>
       {/* Portal to <body>: the staff header uses backdrop-blur, which would trap a `fixed` overlay
           inside the 64px header instead of covering the screen. */}

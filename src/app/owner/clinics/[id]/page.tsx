@@ -16,6 +16,8 @@ import { AdminShell } from '@/components/admin/AdminShell';
 import { inr } from '@/components/staff/bits';
 import { ArrivalQrCard } from '@/components/qr/ArrivalQrCard';
 import { QrStandees } from '@/components/qr/QrStandees';
+import { GatewaySetupTab } from '@/components/admin/GatewaySetupTab';
+import { AdminSetupCard } from '@/components/setup/SetupCards';
 
 // One clinic: doctors, their day-by-day consulting sessions (these drive the today-only
 // availability chips, Decision 6), module switches (Decision 3 keeps OCR and Image-to-Text
@@ -33,7 +35,7 @@ export default function AdminClinicPage() {
 function ClinicDetail({ api, referrer }: { api: AdminApi; referrer: boolean }) {
   const { id } = useParams<{ id: string }>();
   const [tenant, setTenant] = useState<Tenant | null>(null);
-  const [tab, setTab] = useState<'doctors' | 'setup' | 'clinic' | 'logins' | 'modules'>('doctors');
+  const [tab, setTab] = useState<'doctors' | 'setup' | 'clinic' | 'logins' | 'payments' | 'modules'>('doctors');
   const [error, setError] = useState<string | null>(null);
   const queueRulesRef = useRef<QueueRulesHandle>(null);
   const team = useMemo(() => adminTeamApi(api, id, referrer, tenant?.queue_settings), [api, id, referrer, tenant?.queue_settings]);
@@ -79,6 +81,8 @@ function ClinicDetail({ api, referrer }: { api: AdminApi; referrer: boolean }) {
 
       {!referrer && <SubscriptionCard api={api} tenantId={tenant.id} />}
 
+      <AdminSetupCard api={api} tenantId={tenant.id} referrer={referrer} goTab={setTab} />
+
       <div className="flex gap-2 flex-wrap">
         {(
           [
@@ -86,9 +90,10 @@ function ClinicDetail({ api, referrer }: { api: AdminApi; referrer: boolean }) {
             ['setup', 'Doctor setup'],
             ['clinic', 'Clinic & queue rules'],
             ['logins', 'Doctor/Staff Logins'],
+            ['payments', 'Online payments'],
             ['modules', 'Settings, modules & wallet'],
           ] as const
-        ).filter(([k]) => !(referrer && k === 'modules')).map(([k, label]) => (
+        ).filter(([k]) => !(referrer && (k === 'modules' || k === 'payments'))).map(([k, label]) => (
           <button
             key={k}
             onClick={() => setTab(k)}
@@ -141,6 +146,7 @@ function ClinicDetail({ api, referrer }: { api: AdminApi; referrer: boolean }) {
         </div>
       )}
       {tab === 'logins' && <LoginsTab api={team} clinicCode={tenant.subdomain} />}
+      {tab === 'payments' && !referrer && <GatewaySetupTab api={api} tenantId={tenant.id} clinicName={tenant.display_name ?? tenant.subdomain} />}
       {tab === 'modules' && !referrer && <ModulesTab api={api} tenant={tenant} onSaved={setTenant} />}
     </div>
   );
@@ -418,11 +424,11 @@ function ModulesTab({ api, tenant, onSaved }: { api: AdminApi; tenant: Tenant; o
 
   const listBasePrice = doctorCount !== null && doctorCount <= 1 ? 499 : 999;
 
-  const saveOverride = async () => {
+  const saveOverride = async (raw = override) => {
     setOverrideBusy(true);
     setOverrideMsg(null);
     try {
-      const n = override.trim() === '' ? null : Number(override);
+      const n = raw.trim() === '' ? null : Number(raw);
       if (n !== null && (!Number.isFinite(n) || n < 0)) throw new Error('Enter a positive amount, or leave blank to use the normal price');
       onSaved(await api.updateTenant(tenant.id, { base_plan_override_inr: n }));
       setOverrideMsg({ kind: 'ok', text: n === null ? 'Back to the normal tier price.' : `Custom base price set to ${inr(n)}/mo.` });
@@ -493,6 +499,44 @@ function ModulesTab({ api, tenant, onSaved }: { api: AdminApi; tenant: Tenant; o
         >
           <span className={`block w-6 h-6 rounded-full bg-white shadow transition-transform ${otpOn ? 'translate-x-6' : ''}`} />
         </button>
+      </section>
+
+      <section className="bg-surface-container-lowest rounded-2xl p-5 shadow-sm lg:col-span-2 flex flex-col gap-3">
+        <div>
+          <h2 className="font-headline-sm text-headline-sm">Custom base price</h2>
+          <p className="font-body-sm text-body-sm text-on-surface-variant">
+            Normal price for this clinic is {inr(listBasePrice)}/mo ({doctorCount !== null && doctorCount <= 1 ? '1 doctor' : 'up to 3 doctors'}). Set a
+            different amount for a negotiated deal — leave blank to use the normal price. Doctors past 3 still add ₹499/mo each.
+          </p>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center bg-surface-container-low rounded-xl px-3 h-11">
+            <span className="font-label-lg text-label-lg text-on-surface-variant">₹</span>
+            <input
+              inputMode="decimal"
+              value={override}
+              onChange={(e) => setOverride(e.target.value.replace(/[^\d]/g, ''))}
+              placeholder={String(listBasePrice)}
+              className="w-28 bg-transparent px-1 font-label-lg text-label-lg focus:outline-none"
+            />
+          </div>
+          <button disabled={overrideBusy} onClick={() => saveOverride()} className="h-11 px-4 rounded-xl bg-primary text-on-primary font-label-md text-label-md disabled:opacity-50">
+            {overrideBusy ? 'Saving…' : 'Save'}
+          </button>
+          {tenant.base_plan_override_inr != null && (
+            <button
+              disabled={overrideBusy}
+              onClick={() => {
+                setOverride('');
+                saveOverride('');
+              }}
+              className="h-11 px-4 rounded-xl bg-surface-container-low text-on-surface-variant font-label-md text-label-md disabled:opacity-50"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+        {overrideMsg && <p className={`font-body-sm text-body-sm ${overrideMsg.kind === 'ok' ? 'text-tertiary' : 'text-error'}`}>{overrideMsg.text}</p>}
       </section>
 
       <section className="bg-surface-container-lowest rounded-2xl p-5 shadow-sm">

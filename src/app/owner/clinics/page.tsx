@@ -170,6 +170,14 @@ function Clinics({ api, referrer }: { api: AdminApi; referrer: boolean }) {
                 )}
               </div>
               <p className="font-body-sm text-body-sm text-on-surface-variant">{t.subdomain}.clinicq.in</p>
+              {t.setup_percent != null && (
+                <div className="mt-1.5 flex items-center gap-2" title="Setup checklist">
+                  <div className="h-1.5 w-24 rounded-full bg-surface-container-high overflow-hidden">
+                    <div className={`h-full rounded-full ${t.setup_percent === 100 ? 'bg-tertiary' : 'bg-primary'}`} style={{ width: `${t.setup_percent}%` }} />
+                  </div>
+                  <span className="font-label-sm text-label-sm text-on-surface-variant">Setup {t.setup_percent}%</span>
+                </div>
+              )}
             </div>
             <div className="hidden sm:flex gap-6 font-body-sm text-body-sm text-on-surface-variant text-right">
               <p><strong className="block text-on-surface font-label-lg text-label-lg">{t.doctor_count}</strong>doctors</p>

@@ -1,4 +1,4 @@
-import { ApiError, type SupportRequest, type SupportStatus, type ArrivalQr, type DoctorSession, type Entitlements, type HoursSlot, type HoursWeek, type QrCodeView, type QueueSettings, type QueueSetupMessage, type QueueSetupTurn, type StaffLinkResult, type Tenant, type TokenStatus } from '@/lib/api';
+import { ApiError, type ClinicGatewayView, type SetupView, type PayoutView, type SupportRequest, type SupportStatus, type ArrivalQr, type DoctorSession, type Entitlements, type HoursSlot, type HoursWeek, type QrCodeView, type QueueSettings, type QueueSetupMessage, type QueueSetupTurn, type StaffLinkResult, type Tenant, type TokenStatus } from '@/lib/api';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:4000';
 /** Old key-in-the-browser storage — cleared on sign-in; the admin panel now uses an email + password login. */
@@ -101,6 +101,8 @@ export interface AdminTenant extends Tenant {
   subscription?: { status: SubscriptionStatus; trial_ends_at: string | null; grace_ends_at: string | null };
   /** Decision 27: the referral partner who looks after this clinic, if any. */
   referrer_id?: string | null;
+  /** Decision 47: % of the setup checklist done (null for the demo clinic). */
+  setup_percent?: number | null;
 }
 
 export interface AdminDoctor {
@@ -119,6 +121,17 @@ export interface AdminDoctor {
 }
 
 export type AdminSession = DoctorSession;
+
+/** Forwarded to Razorpay for the doctor's linked account; the backend does not store it. */
+export interface PayoutKyc {
+  legal_name: string;
+  pan: string;
+  email: string;
+  phone: string;
+  gst?: string;
+  address: { street1: string; street2?: string; city: string; state: string; postal_code: string };
+  bank: { account_number: string; ifsc: string; beneficiary_name?: string };
+}
 
 export interface Activity {
   totals: { clinics: number; tokens_today: number; waiting: number; in_consultation: number; done: number; no_show: number };
@@ -216,6 +229,25 @@ export const adminApi = (key: string) => ({
   updateDoctor: (id: string, body: DoctorBody) =>
     request<AdminDoctor>(key, `/doctors/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
   deleteDoctor: (id: string) => request(key, `/doctors/${id}`, { method: 'DELETE' }),
+  // Decision 45: the clinic's OWN Razorpay account (API keys) — super admin can paste them on the clinic's behalf
+  gateway: (tenantId: string) => request<ClinicGatewayView>(key, `/tenants/${tenantId}/gateway`),
+  connectGateway: (tenantId: string, key_id: string, key_secret: string) =>
+    request<ClinicGatewayView>(key, `/tenants/${tenantId}/gateway`, { method: 'PUT', body: JSON.stringify({ key_id, key_secret }) }),
+  gatewayKycPending: (tenantId: string) => request<ClinicGatewayView>(key, `/tenants/${tenantId}/gateway/kyc-pending`, { method: 'POST' }),
+  disconnectGateway: (tenantId: string) => request<ClinicGatewayView>(key, `/tenants/${tenantId}/gateway`, { method: 'DELETE' }),
+  // Decision 47: setup checklist (admin + referrer)
+  tenantSetup: (tenantId: string) => request<SetupView | null>(key, `/tenants/${tenantId}/setup`),
+  confirmDoctorSetup: (doctorId: string, item: 'hours' | 'fee') =>
+    request<SetupView | null>(key, `/doctors/${doctorId}/setup/confirm`, { method: 'POST', body: JSON.stringify({ item }) }),
+  // Decision 44: Razorpay Route payout accounts (super admin only; dormant)
+  payoutAccount: (doctorId: string) => request<PayoutView>(key, `/doctors/${doctorId}/payout-account`),
+  createPayoutAccount: (doctorId: string, kyc: PayoutKyc) =>
+    request<PayoutView>(key, `/doctors/${doctorId}/payout-account`, { method: 'POST', body: JSON.stringify(kyc) }),
+  linkPayoutAccount: (doctorId: string, account_id: string) =>
+    request<PayoutView>(key, `/doctors/${doctorId}/payout-account/link`, { method: 'POST', body: JSON.stringify({ account_id }) }),
+  refreshPayoutAccount: (doctorId: string) => request<PayoutView>(key, `/doctors/${doctorId}/payout-account/refresh`, { method: 'POST' }),
+  retryPayoutTransfers: (doctorId: string) => request<{ retried: number }>(key, `/doctors/${doctorId}/payout-account/retry-transfers`, { method: 'POST' }),
+  unlinkPayoutAccount: (doctorId: string) => request<PayoutView>(key, `/doctors/${doctorId}/payout-account`, { method: 'DELETE' }),
   sessions: (doctorId: string, date: string) => request<AdminSession[]>(key, `/doctors/${doctorId}/sessions?date=${date}`),
   addSession: (doctorId: string, body: { session_date: string; starts_at: string; ends_at: string; is_break: boolean }) =>
     request<AdminSession>(key, `/doctors/${doctorId}/sessions`, { method: 'POST', body: JSON.stringify(body) }),

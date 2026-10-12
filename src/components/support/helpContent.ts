@@ -96,6 +96,8 @@ export const FAQS: FaqGroup[] = [
       { q: 'Can I undo a payment I marked by mistake?', a: 'Yes, but you must give a reason. Every payment action is recorded with who did it and when.' },
       { q: 'What if a patient pays twice?', a: 'The duplicate is flagged in the payment log so it can be refunded. Refunds are done manually from the payment gateway dashboard.' },
       { q: 'The online payment QR expired.', a: 'The patient can start online payment again, or simply pay at the counter. A payment problem never stops a patient from being seen.' },
+      { q: 'Does online money reach the doctor directly?', a: 'Yes. Each doctor uses their own Razorpay account (one-time KYC with Razorpay; we help you set it up). In Online payment setup in the menu, the doctor pastes the API keys from that account. Patients then pay straight into the doctor\'s own account and ClinicQ shows the payment as paid automatically. Until a doctor is connected, their patients pay at the counter.' },
+      { q: 'Is GST charged on the consultation fee?', a: 'No. Health care services by a doctor or clinical establishment are exempt (Notification No. 12/2017–Central Tax (Rate), Sl. No. 74). Razorpay and ClinicQ do not collect GST on the fee. A doctor who supplies only exempt services does not need GST registration (Section 23(1)(a), CGST Act). This is general information, not tax advice — please confirm with your accountant.' },
       { q: 'Where do I see the day\'s money?', a: 'Doctors: Payments in the menu. Reception: Payments. Clinic admins: Money under Manage, with a CSV download.' },
     ],
   },

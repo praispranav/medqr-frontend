@@ -78,22 +78,43 @@ export default function LiveQueuePage() {
   const loaded = useRef(false);
   const [pay, setPay] = useState<PatientPaymentStatus | null>(null);
 
-  const tokenCardRef = useRef<HTMLDivElement>(null);
-  const [downloading, setDownloading] = useState(false);
+  // "Download my token": the picture comes from the server (/token-image) — drawing the page into an image is unreliable on
+  // iPhone. It is fetched ahead of time so the tap can open the share sheet right away (iOS needs that: Share → Save Image).
+  const tokenImageUrl = `/token-image/${tokenId}`;
+  const [tokenImage, setTokenImage] = useState<File | null>(null);
+  const [imageFailed, setImageFailed] = useState(false);
+  const tokenNumber = view?.token_number;
+  const tokenStatus = view?.status;
+  useEffect(() => {
+    if (tokenNumber === undefined) return;
+    let cancelled = false;
+    fetch(tokenImageUrl, { cache: 'no-store' })
+      .then((r) => (r.ok ? r.blob() : Promise.reject(new Error('no image'))))
+      .then((blob) => !cancelled && setTokenImage(new File([blob], `clinicq-token-${tokenNumber}.png`, { type: 'image/png' })))
+      .catch(() => !cancelled && setImageFailed(true));
+    return () => {
+      cancelled = true;
+    };
+    // re-draw when the card changes (e.g. checked in → the QR becomes a tick)
+  }, [tokenImageUrl, tokenNumber, tokenStatus]);
 
-  const downloadToken = async () => {
-    if (!tokenCardRef.current) return;
-    setDownloading(true);
-    try {
-      const { toPng } = await import('html-to-image');
-      const dataUrl = await toPng(tokenCardRef.current, { pixelRatio: 4, cacheBust: true, backgroundColor: '#ffffff' });
-      const a = document.createElement('a');
-      a.href = dataUrl;
-      a.download = `token-${view?.token_number}.png`;
-      a.click();
-    } finally {
-      setDownloading(false);
+  const downloadToken = () => {
+    if (!tokenImage) {
+      window.open(tokenImageUrl, '_blank'); // couldn't preload: show the picture, long-press to save
+      return;
     }
+    if (navigator.canShare?.({ files: [tokenImage] })) {
+      navigator.share({ files: [tokenImage], title: 'My ClinicQ token' }).catch(() => undefined); // closing the sheet is not an error
+      return;
+    }
+    const url = URL.createObjectURL(tokenImage);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = tokenImage.name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10_000);
   };
 
   const refresh = useCallback(async () => {
@@ -571,7 +592,7 @@ export default function LiveQueuePage() {
           </div>
 
           <div className="w-full bg-surface-container-lowest rounded-2xl p-space-md shadow-sm flex flex-col items-center text-center">
-            <div ref={tokenCardRef} style={{ background: '#fff', color: '#131b2e', fontFamily: 'Manrope, Inter, sans-serif' }} className="w-full max-w-[320px] flex flex-col items-center justify-center text-center p-6 rounded-2xl">
+            <div style={{ background: '#fff', color: '#131b2e', fontFamily: 'Manrope, Inter, sans-serif' }} className="w-full max-w-[320px] flex flex-col items-center justify-center text-center p-6 rounded-2xl">
               <p style={{ fontSize: 20, fontWeight: 800, lineHeight: 1.15 }}>{clinic.name}</p>
               <p style={{ fontSize: 13, color: '#3e4947', marginTop: 3 }}>{doctor.name} {doctor.cabin_label ? `· ${doctor.cabin_label}` : ''}</p>
               <div style={{ marginTop: 20, marginBottom: 4 }}>
@@ -607,10 +628,10 @@ export default function LiveQueuePage() {
               <div className="w-full mt-2">
                 <button
                   onClick={downloadToken}
-                  disabled={downloading}
+                  disabled={!tokenImage && !imageFailed}
                   className="w-full h-12 bg-primary text-on-primary rounded-xl font-label-lg text-label-lg flex items-center justify-center gap-2 hover:opacity-90 transition-colors disabled:opacity-60"
                 >
-                  <Icon name={downloading ? 'progress_activity' : 'download'} className={`text-[20px] ${downloading ? 'animate-spin' : ''}`} />
+                  <Icon name={!tokenImage && !imageFailed ? 'progress_activity' : 'download'} className={`text-[20px] ${!tokenImage && !imageFailed ? 'animate-spin' : ''}`} />
                   {t('download_token')}
                 </button>
                 <button

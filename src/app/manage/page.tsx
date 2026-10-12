@@ -8,6 +8,7 @@ import { StaffShell } from '@/components/staff/StaffShell';
 import { inr } from '@/components/staff/bits';
 import { WhatsAppIcon } from '@/components/team/ShareLinkCard';
 import { getQueueSocket } from '@/lib/socket';
+import { ManageSetupCard } from '@/components/setup/SetupCards';
 
 // Clinic admin — "Today" (Decision 14). One row per doctor: shift state, patients, money.
 // Read-only: the admin oversees; doctors and reception run the queue. Same screen for a
@@ -16,7 +17,12 @@ import { getQueueSocket } from '@/lib/socket';
 export default function ManageTodayPage() {
   return (
     <StaffShell variant="manage" active="/manage">
-      {({ tenant, doctors }) => <Today clinicName={tenant.display_name ?? tenant.subdomain} doctorIds={doctors.map((d) => d.id)} />}
+      {({ tenant, doctors }) => (
+        <>
+          <ManageSetupCard />
+          <Today clinicName={tenant.display_name ?? tenant.subdomain} doctorIds={doctors.map((d) => d.id)} />
+        </>
+      )}
     </StaffShell>
   );
 }

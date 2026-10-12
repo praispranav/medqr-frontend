@@ -191,8 +191,43 @@ function ReceptionDesk({ tenant, doctors, walkInPreFill, setWalkInPreFill }: { t
   return (
     <>
       <div className="print:hidden grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_460px] gap-5 max-w-[1400px]">
-        {/* ---------- Left: verify + selected token ---------- */}
+        {/* ---------- Left: doctors, verify + selected token, call-next ---------- */}
         <div className="flex flex-col gap-5 min-w-0">
+          {shifts.length > 0 && (
+            <section className="bg-surface-container-lowest rounded-2xl p-5 shadow-sm flex flex-col gap-3">
+              <div className="flex items-center justify-between gap-2">
+                <h2 className="font-headline-sm text-headline-sm text-on-surface">Doctors</h2>
+                {multiDoctor && (
+                  <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
+                    {[{ id: 'all', name: 'All doctors' }, ...doctors].map((d) => (
+                      <button
+                        key={d.id}
+                        onClick={() => setDoctorFilter(d.id)}
+                        className={`whitespace-nowrap px-3 py-1.5 rounded-full font-label-md text-label-md ${
+                          doctorFilter === d.id ? 'bg-primary text-on-primary' : 'bg-surface-container text-on-surface-variant'
+                        }`}
+                      >
+                        {d.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {/* With several doctors this scrolls on its own, so the page never has to grow tall for it. */}
+              <div className="max-h-[220px] overflow-y-auto -mx-1 px-1">
+                <DoctorShifts
+                  shifts={doctorFilter === 'all' ? shifts : shifts.filter((v) => v.doctor_id === doctorFilter)}
+                  rows={rows}
+                  canAlertReady={(doctorId) => (qsFor(doctorId).ready_count ?? 0) > 0}
+                  onChanged={async () => {
+                    loadShifts();
+                    await refresh();
+                  }}
+                />
+              </div>
+            </section>
+          )}
+
           <section className="bg-surface-container-lowest rounded-2xl p-5 shadow-sm">
             <div className="flex items-center justify-between gap-3 mb-4">
               <div className="flex items-center gap-2.5">
@@ -200,6 +235,7 @@ function ReceptionDesk({ tenant, doctors, walkInPreFill, setWalkInPreFill }: { t
                 <h2 className="font-headline-sm text-headline-sm text-on-surface">Verify arrival</h2>
               </div>
               <div className="flex items-center gap-3">
+                <PatientSearchAction label="Search patients" onWalkIn={(p) => setWalkInPreFill(p)} />
                 <button
                   type="button"
                   onClick={() => {
@@ -319,10 +355,20 @@ function ReceptionDesk({ tenant, doctors, walkInPreFill, setWalkInPreFill }: { t
               </p>
             </section>
           )}
+
+          <CallNextBar
+            shifts={shifts}
+            rows={rows}
+            callsFor={callsFor}
+            onChanged={async () => {
+              loadShifts();
+              await refresh();
+            }}
+          />
         </div>
 
         {/* ---------- Right: live queue ---------- */}
-        <section className="bg-surface-container-lowest rounded-2xl p-5 shadow-sm flex flex-col gap-4 min-w-0 xl:max-h-[calc(100vh-7rem)] xl:sticky xl:top-20">
+        <section className="bg-surface-container-lowest rounded-2xl p-5 shadow-sm flex flex-col gap-4 min-w-0 xl:max-h-[calc(100vh-7rem)] xl:overflow-hidden xl:sticky xl:top-20">
           <div className="flex items-center justify-between gap-2">
             <h2 className="font-headline-sm text-headline-sm text-on-surface">Live clinic queue</h2>
             <div className="flex items-center gap-2">
@@ -388,18 +434,9 @@ function ReceptionDesk({ tenant, doctors, walkInPreFill, setWalkInPreFill }: { t
             </div>
           )}
 
-          <DoctorShifts
-            shifts={doctorFilter === 'all' ? shifts : shifts.filter((v) => v.doctor_id === doctorFilter)}
-            rows={rows}
-            canCall={callsFor}
-            canAlertReady={(doctorId) => (qsFor(doctorId).ready_count ?? 0) > 0}
-            onChanged={async () => {
-              loadShifts();
-              await refresh();
-            }}
-          />
-
-          {/* The only part of this column that scrolls — everything above keeps its size. */}
+          {/* The only part of this column that scrolls — everything above keeps its size. The doctors'
+              shift status/controls moved to the top of the left column (Verify arrival side), and
+              "Call next" is now the single smart bar at the bottom of that column. */}
           <div className="flex flex-col gap-2 overflow-y-auto -mx-1 px-1 min-h-[220px] flex-1">
             {rows === null && <p className="font-body-md text-body-md text-on-surface-variant">Loading…</p>}
             {rows?.length === 0 && (
@@ -912,24 +949,121 @@ function PaymentBlock({
 }
 
 /**
+ * The one "Call next" control for the whole desk. With a single live, callable doctor it's a plain
+ * button. With several live at once it doesn't guess silently — it shows each doctor by name with
+ * their waiting count and asks reception to pick, highlighting the one with the most patients
+ * waiting as the suggested default. Either way it calls the same POST .../call-next as the doctor's
+ * own "Call now" (Decision 19), so both the doctor dashboard and this screen stay in sync via the
+ * normal queue-changed WebSocket event (Decision 1) — nothing here needs its own sync logic.
+ */
+function CallNextBar({
+  shifts,
+  rows,
+  callsFor,
+  onChanged,
+}: {
+  shifts: (ShiftView & { doctor_name: string })[];
+  rows: QueueRow[] | null;
+  callsFor: (doctorId: string) => boolean;
+  onChanged: () => Promise<void>;
+}) {
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [note, setNote] = useState<{ id: string; text: string; kind: 'ok' | 'empty' } | null>(null);
+
+  const callable = shifts.filter((v) => v.state === 'live' && callsFor(v.doctor_id));
+  if (callable.length === 0) return null;
+
+  const waitingCount = (doctorId: string) =>
+    (rows ?? []).filter((r) => r.doctor.id === doctorId && (r.status === 'waiting_in_clinic' || r.status === 'checked_in_early')).length;
+  const ranked = [...callable].sort((a, b) => waitingCount(b.doctor_id) - waitingCount(a.doctor_id));
+  const suggested = ranked[0];
+
+  const callFor = async (doctorId: string, name: string) => {
+    setBusyId(doctorId);
+    setNote(null);
+    try {
+      const next = await api.callNext(doctorId);
+      setNote({
+        id: doctorId,
+        text: next ? `Called the next patient for ${name}.` : `Nobody waiting for ${name} right now.`,
+        kind: next ? 'ok' : 'empty',
+      });
+      await onChanged();
+    } catch (e) {
+      setNote({ id: doctorId, text: e instanceof ApiError ? e.message : "Couldn't call the next patient.", kind: 'empty' });
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  return (
+    <section className="bg-surface-container-lowest rounded-2xl p-4 shadow-sm flex flex-col gap-3">
+      {callable.length === 1 ? (
+        <button
+          disabled={busyId === suggested.doctor_id}
+          onClick={() => callFor(suggested.doctor_id, suggested.doctor_name)}
+          className="h-14 px-6 rounded-xl bg-primary text-on-primary font-label-lg text-label-lg flex items-center justify-center gap-2 disabled:opacity-50"
+        >
+          <Icon name="campaign" className="text-[20px]" />
+          Call next — {suggested.doctor_name}
+          {waitingCount(suggested.doctor_id) > 0 && (
+            <span className="ml-1 px-2 py-0.5 rounded-full bg-on-primary/20 font-label-sm text-label-sm">
+              {waitingCount(suggested.doctor_id)} waiting
+            </span>
+          )}
+        </button>
+      ) : (
+        <>
+          <p className="font-label-md text-label-md text-on-surface-variant">Multiple doctors are live — who&apos;s next?</p>
+          <div className="flex flex-col gap-2">
+            {ranked.map((v) => {
+              const n = waitingCount(v.doctor_id);
+              const isSuggested = v.doctor_id === suggested.doctor_id && n > 0;
+              return (
+                <button
+                  key={v.doctor_id}
+                  disabled={busyId === v.doctor_id}
+                  onClick={() => callFor(v.doctor_id, v.doctor_name)}
+                  className={`h-12 px-4 rounded-xl font-label-lg text-label-lg flex items-center justify-between gap-2 disabled:opacity-50 ${
+                    isSuggested ? 'bg-primary text-on-primary' : 'bg-surface-container text-on-surface'
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    <Icon name="campaign" className="text-[18px]" />
+                    Call next — {v.doctor_name}
+                  </span>
+                  <span
+                    className={`px-2 py-0.5 rounded-full font-label-sm text-label-sm ${
+                      isSuggested ? 'bg-on-primary/20' : 'bg-surface-container-high text-on-surface-variant'
+                    }`}
+                  >
+                    {n} waiting
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </>
+      )}
+      {note && <p className={`font-body-sm text-body-sm ${note.kind === 'ok' ? 'text-tertiary' : 'text-on-surface-variant'}`}>{note.text}</p>}
+    </section>
+  );
+}
+
+/**
  * Each doctor's live shift. In "Start shift" clinics reception can start it for the doctor
  * ("Doctor has arrived") — logged with reception's name. Breaks stay the doctor's own action.
- */
-/**
- * One row per doctor: shift state + its actions. Decision 25: when reception may call, a doctor
- * who is on shift gets "Call next" right on their row (no separate block listing the doctors again).
+ * "Call next" itself lives in the single smart CallNextBar above — not duplicated per row here.
  */
 function DoctorShifts({
   shifts,
   rows = [],
   onChanged,
-  canCall = () => false,
   canAlertReady,
 }: {
   shifts: (ShiftView & { doctor_name: string })[];
   rows?: QueueRow[] | null;
   onChanged: () => Promise<void>;
-  canCall?: (doctorId: string) => boolean;
   canAlertReady?: (doctorId: string) => boolean;
 }) {
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -992,25 +1126,6 @@ function DoctorShifts({
               Complete #{current.token_number}
             </button>
           )}
-          {canCall(v.doctor_id) && v.state === 'live' && (
-            <button
-              disabled={busyId === v.doctor_id}
-              onClick={() =>
-                act(
-                  v.doctor_id,
-                  async () => {
-                    setNote(null);
-                    const next = await api.callNext(v.doctor_id);
-                    if (!next) setNote({ id: v.doctor_id, text: 'nobody waiting / break started' });
-                  },
-                  "Couldn't call the next patient.",
-                )
-              }
-              className="h-8 px-3 rounded-lg bg-primary text-on-primary font-label-sm text-label-sm shrink-0 flex items-center gap-1 disabled:opacity-60"
-            >
-              <Icon name="campaign" className="text-[16px]" /> Call next
-            </button>
-          )}
           {canAlertReady?.(v.doctor_id) && v.state === 'live' && (
             <button
               disabled={busyId === v.doctor_id}
@@ -1034,7 +1149,7 @@ function DoctorShifts({
             <button
               disabled={busyId === v.doctor_id}
               onClick={() => {
-                if (confirm(`End Dr ${v.doctor_name}'s shift? Waiting patients stay in the queue.`)) {
+                if (confirm(`End ${v.doctor_name}'s shift? Waiting patients stay in the queue.`)) {
                   act(v.doctor_id, () => api.endShift(v.doctor_id), "Couldn't end the shift.");
                 }
               }}

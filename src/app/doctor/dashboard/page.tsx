@@ -12,6 +12,7 @@ import { minutesSince, PaidBadge, STATUS_LABEL, StatusPill, VitalsChips } from '
 import { clinicToday } from '@/lib/clinicTime';
 import { doctorSettings } from '@/lib/doctorSettings';
 import { PatientSearchAction } from '@/components/staff/PatientSearch';
+import { DoctorSetupCard } from '@/components/setup/SetupCards';
 
 // Screen #5 — Doctor Queue Command Center. Ported from
 // stitch_medqr_clinic_suite_ui_design/doctor_queue_command_center/code.html.
@@ -28,7 +29,12 @@ export default function DoctorDashboardPage() {
       active="/doctor/dashboard"
       headerAction={<PatientSearchAction />}
     >
-      {({ tenant, doctor }) => <CommandCenter tenant={tenant} doctor={doctor!} />}
+      {({ tenant, doctor, me }) => (
+        <>
+          <DoctorSetupCard me={me} />
+          <CommandCenter tenant={tenant} doctor={doctor!} />
+        </>
+      )}
     </StaffShell>
   );
 }

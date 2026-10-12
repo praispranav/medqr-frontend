@@ -81,6 +81,10 @@ function IntakeForm() {
   const [whatsappUpdates, setWhatsappUpdates] = useState(true);
 
   // Visit details — all optional
+  // Decision 43: specialty-aware "reason for visit" chips (e.g. a pediatrician's patients see "Fever",
+  // "Vaccination"; an orthopedic surgeon's see "Fracture", "Joint pain") instead of the generic symptom
+  // list. Cached server-side per doctor — this fetch is a cheap DB read almost every time, not an AI call.
+  const [reasonSuggestions, setReasonSuggestions] = useState<string[]>([]);
   const [complaint, setComplaint] = useState('');
   const [intakeAnswers, setIntakeAnswers] = useState<Record<string, any>>({});
   const [weight, setWeight] = useState('');
@@ -176,6 +180,13 @@ function IntakeForm() {
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [subdomain, doctorId, bookingDate]);
+
+  // Decision 43 — load this doctor's reason chips once we know who they are; falls back to [] (generic chips) on error.
+  useEffect(() => {
+    if (!doctor?.id) return;
+    setReasonSuggestions([]);
+    api.getReasonSuggestions(doctor.id).then((r) => setReasonSuggestions(r.reasons)).catch(() => setReasonSuggestions([]));
+  }, [doctor?.id]);
 
   /** Saved check-in on this phone → 1-tap. Ask for WhatsApp OTP only if the clinic requires it. */
   async function loadDeviceProfiles(required: boolean) {
@@ -764,7 +775,27 @@ function IntakeForm() {
               <span className="text-label-sm font-label-sm text-on-surface-variant">{t('in_optional')}</span>
             </div>
             <div className="flex flex-wrap gap-2 mb-3">
-              {SYMPTOMS.map((s) => {
+              {/* Decision 43: this doctor's specialty-specific reasons first (AI-suggested, cached — see
+                  reason-suggestions.service.ts), then the generic follow-up chip which always applies. */}
+              {reasonSuggestions.map((label) => {
+                const on = complaint.split(',').map((x) => x.trim()).includes(label);
+                return (
+                  <button
+                    type="button"
+                    key={label}
+                    onClick={() => toggleSymptom(label)}
+                    aria-pressed={on}
+                    className={`px-3 py-1.5 rounded-full text-label-sm font-label-sm active:scale-95 transition-transform ${
+                      on
+                        ? 'bg-primary-fixed text-on-primary-fixed font-semibold shadow-sm'
+                        : 'bg-surface-container text-on-surface font-medium hover:bg-surface-container-high'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+              {(reasonSuggestions.length ? SYMPTOMS.filter((s) => s.key === 'in_sym_followup') : SYMPTOMS).map((s) => {
                 const label = t(s.key);
                 const on = complaint.split(',').map((x) => x.trim()).includes(label);
                 return (

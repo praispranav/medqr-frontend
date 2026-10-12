@@ -20,6 +20,10 @@ const LABEL: Record<PaymentEvent['type'], { text: (e: PaymentEvent) => string; i
   unmarked_paid: { text: () => 'Payment undone', icon: 'undo', tone: 'text-secondary' },
   fee_changed: { text: () => 'Fee changed', icon: 'edit', tone: 'text-on-surface-variant' },
   duplicate_payment: { text: () => 'Paid twice — refund needed', icon: 'report', tone: 'text-error' },
+  difference_collected: { text: () => 'Fee difference collected', icon: 'check_circle', tone: 'text-tertiary' },
+  difference_refunded: { text: () => 'Fee difference refunded', icon: 'undo', tone: 'text-secondary' },
+  payout_sent: { text: () => 'Sent to the doctor’s bank account', icon: 'account_balance', tone: 'text-tertiary' },
+  payout_failed: { text: () => 'Transfer to the doctor failed — ClinicQ is fixing it', icon: 'report', tone: 'text-error' },
 };
 
 const WHO: Record<PaymentEvent['actor_type'], string> = {
@@ -35,7 +39,7 @@ export function PaymentLog({ events, showPatient = false }: { events: PaymentEve
   return (
     <ol className="flex flex-col gap-2">
       {events.map((e) => {
-        const l = LABEL[e.type];
+        const l = LABEL[e.type] ?? { text: () => e.type.replace(/_/g, ' '), icon: 'info', tone: 'text-on-surface-variant' };
         return (
           <li key={e.id} className={`flex items-start gap-2.5 ${e.type === 'duplicate_payment' ? 'bg-error-container/40 rounded-lg p-2' : ''}`}>
             <Icon name={l.icon} className={`text-[18px] mt-0.5 ${l.tone}`} />

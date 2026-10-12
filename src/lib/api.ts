@@ -246,7 +246,11 @@ export interface PaymentEvent {
     | 'marked_paid'
     | 'unmarked_paid'
     | 'fee_changed'
-    | 'duplicate_payment';
+    | 'duplicate_payment'
+    | 'difference_collected'
+    | 'difference_refunded'
+    | 'payout_sent'
+    | 'payout_failed';
   amount_inr: string | null;
   method: string | null;
   actor_type: 'patient' | 'reception' | 'doctor' | 'system' | 'razorpay';
@@ -640,6 +644,54 @@ export interface QrResolve {
   doctor?: { id: string; name: string; specialty: string | null; cabin_label: string | null; today_status: DoctorTodayStatus; today_status_detail: string } | null;
 }
 
+/** Decision 44: Razorpay Route payout account of a doctor — status only, never PAN / bank details. */
+export type PayoutStatusName = 'none' | 'created' | 'needs_clarification' | 'under_review' | 'activated' | 'suspended' | 'rejected';
+export interface PayoutView {
+  required: boolean; // Route is enforced: no active account = no "Pay online" for this doctor
+  mock: boolean;
+  linked: boolean;
+  status: PayoutStatusName;
+  account_id: string | null;
+  legal_name: string | null;
+  bank_last4: string | null;
+  requirements: string[];
+  updated_at: string | null;
+}
+
+/** Decision 47 — the setup checklist (percentage of the clinic / doctor setup done). */
+export type SetupTarget = 'hours' | 'profile' | 'fee' | 'clinic_details' | 'online_payments' | 'billing' | 'password';
+export interface SetupItem {
+  key: string;
+  scope: 'clinic' | 'doctor';
+  doctor_id: string | null;
+  doctor_name: string | null;
+  label: string;
+  hint: string;
+  done: boolean;
+  value: string | null;
+  confirm: 'hours' | 'fee' | null;
+  link: SetupTarget | null;
+}
+export interface SetupView {
+  tenant_id: string;
+  tenant_name: string;
+  percent: number;
+  done: number;
+  total: number;
+  items: SetupItem[];
+}
+
+/** Decision 45: the clinic's own Razorpay connection — status only; the secret never comes back. */
+export interface ClinicGatewayView {
+  can_manage?: boolean;
+  required: boolean;
+  stage: 'not_started' | 'kyc_pending' | 'live' | 'invalid';
+  mode: 'live' | 'test' | null;
+  key_hint: string | null;
+  last_error: string | null;
+  verified_at: string | null;
+}
+
 export const api = {
   // Standalone QR standees (/q/<code>) — created unassigned, linked by admin or by the doctor scanning it
   resolveQr: (code: string) => request<QrResolve>(`/qr/${encodeURIComponent(code)}`),
@@ -672,6 +724,8 @@ export const api = {
   // Decision 17 — advance booking window + which doctors have a session on each of the next N days.
   getAdvanceBooking: (tenantId: string) =>
     request<{ advance_booking_days: number; days: AdvanceBookingDay[] }>(`/doctors/tenant/${tenantId}/advance-booking`),
+  // Decision 43 — specialty-aware "reason for visit" chips; cached server-side, so this almost never triggers an AI call.
+  getReasonSuggestions: (doctorId: string) => request<{ reasons: string[] }>(`/doctors/${doctorId}/reason-suggestions`),
   // Patient WhatsApp OTP (Telnyx)
   sendOtp: (mobile_number: string) =>
     request<{ sent: boolean; expires_in_seconds: number; dev_code?: string }>('/patients/otp/send', { method: 'POST', body: JSON.stringify({ mobile_number }) }),
@@ -723,6 +777,13 @@ export const api = {
   paymentStatus: (tokenId: string) => request<PatientPaymentStatus>(`/payments/tokens/${tokenId}`),
   choosePayment: (tokenId: string, choice: PaymentChoice) =>
     request<PatientPaymentStatus>(`/payments/tokens/${tokenId}/choice`, { method: 'POST', body: JSON.stringify({ choice }) }),
+  clinicGateway: () => request<ClinicGatewayView>('/payments/clinic-gateway'),
+  connectClinicGateway: (key_id: string, key_secret: string) =>
+    request<ClinicGatewayView>('/payments/clinic-gateway', { method: 'PUT', body: JSON.stringify({ key_id, key_secret }) }),
+  disconnectClinicGateway: () => request<ClinicGatewayView>('/payments/clinic-gateway', { method: 'DELETE' }),
+  setupChecklist: (all = false) => request<SetupView | null>(`/setup/checklist${all ? '?all=1' : ''}`),
+  confirmSetup: (item: 'hours' | 'fee') => request<SetupView | null>('/setup/confirm', { method: 'POST', body: JSON.stringify({ item }) }),
+  payoutStatus: () => request<PayoutView>('/payments/payout-status'),
   paymentConfig: () => request<{ gateway: 'razorpay' | 'mock'; online_available: boolean }>('/payments/config'),
   staffQr: (visitId: string) => request<PaymentQrView>(`/payments/visits/${visitId}/qr`, { method: 'POST' }),
   markPaid: (visitId: string, method: 'cash' | 'upi_counter', amount_inr?: number) =>
