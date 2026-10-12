@@ -238,6 +238,7 @@ export const hi: Partial<Record<TranslationKey, string>> = {
   "sd_consulting_on": "{date} को उपलब्ध",
   "sd_no_paper": "काग़ज़ का टोकन नहीं चाहिए। आपका डिजिटल टोकन तुरंत मिलता है।",
   "sd_confirm": "पुष्टि करें और आगे बढ़ें",
+  "sd_get_directions": "दिशा-निर्देश पाएं",
   "sd_not_today": "आज उपलब्ध नहीं",
   "sd_wrong_clinic": "ग़लत क्लिनिक? QR कोड दोबारा स्कैन करें।",
   "sd_which": "आप किस डॉक्टर से मिलने आए हैं?",

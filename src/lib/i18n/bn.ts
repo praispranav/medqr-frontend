@@ -224,6 +224,7 @@ export const bn: Partial<Record<TranslationKey, string>> = {
   "sd_consulting_on": "{date} তারিখে পাওয়া যাবে",
   "sd_no_paper": "কাগজের টোকেন লাগবে না। আপনার ডিজিটাল টোকেন সঙ্গে সঙ্গে পাবেন।",
   "sd_confirm": "নিশ্চিত করে এগিয়ে যান",
+  "sd_get_directions": "দিক নির্দেশনা পান",
   "sd_not_today": "আজ বসছেন না",
   "sd_wrong_clinic": "ভুল ক্লিনিক? QR কোড আবার স্ক্যান করুন।",
   "sd_which": "আপনি কোন ডাক্তারকে দেখাতে এসেছেন?",

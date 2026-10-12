@@ -75,7 +75,6 @@ function QrSuite({ tenant, doctor }: { tenant: Tenant; doctor: DoctorToday }) {
     url: clinicUrl,
     title: doctor.name,
     subtitle: [doctor.specialty, clinicName].filter(Boolean).join(' · '),
-    footer: tenant.subdomain,
   };
   const isLocal = /localhost|127\.0\.0\.1/.test(base);
   const open = mine?.find((q) => q.id === openId) ?? null;
@@ -98,14 +97,30 @@ function QrSuite({ tenant, doctor }: { tenant: Tenant; doctor: DoctorToday }) {
         )}
       </div>
 
-      {/* ---- My QR codes ---- */}
+      {/* ---- Your main QR standee: always available, works the moment you print it ---- */}
+      <section className="bg-surface-container-lowest rounded-2xl p-5 shadow-sm flex flex-col gap-4">
+        <div>
+          <h2 className="font-headline-sm text-headline-sm">Main QR standee</h2>
+          <p className="font-body-sm text-body-sm text-on-surface-variant break-all">
+            Goes straight to your check-in — patients don&apos;t pick a doctor. {clinicUrl}
+          </p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+          {POSTER_FORMATS.map((f) => (
+            <PosterCard key={f.key} kind={f.key} content={clinicPoster} fileBase={`medqr-${tenant.subdomain}-${doctor.name.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}`} />
+          ))}
+        </div>
+      </section>
+
+      {/* ---- Admin-printed standees: same destination, but trackable (scan count) and reassignable
+           without reprinting — only worth showing its own poster grid once you actually have one. ---- */}
       <section className="bg-surface-container-lowest rounded-2xl p-5 shadow-sm flex flex-col gap-4">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
-            <h2 className="font-headline-sm text-headline-sm">My QR codes</h2>
+            <h2 className="font-headline-sm text-headline-sm">Extra assigned QR codes</h2>
             <p className="font-body-sm text-body-sm text-on-surface-variant">
-              Patients who scan these go straight to your check-in. Got a new standee? Scan it with your phone while logged in,
-              or type its code.
+              Only if your clinic printed MQ-coded standees ahead of time — these track scans and can be handed to a
+              different doctor later without reprinting. Scan one with your phone while logged in, or type its code.
             </p>
           </div>
           <form
@@ -133,46 +148,28 @@ function QrSuite({ tenant, doctor }: { tenant: Tenant; doctor: DoctorToday }) {
         {msg && <p className={`font-body-md text-body-md ${msg.kind === 'ok' ? 'text-tertiary' : 'text-error'}`}>{msg.text}</p>}
 
         {mine === null && <p className="font-body-md text-body-md text-on-surface-variant">Loading…</p>}
-        {mine?.length === 0 && (
-          <p className="bg-surface-container-low rounded-xl p-4 font-body-md text-body-md text-on-surface-variant">
-            No standees linked to you yet. Your check-in QR below works in the meantime.
-          </p>
-        )}
         {mine && mine.length > 0 && (
-          <div className="flex gap-2 flex-wrap">
-            {mine.map((q) => (
-              <button
-                key={q.id}
-                onClick={() => setOpenId(q.id)}
-                className={`px-3 py-1.5 rounded-full font-label-md text-label-md tracking-wider ${openId === q.id ? 'bg-primary text-on-primary' : 'bg-surface-container text-on-surface-variant'}`}
-              >
-                MQ-{q.code}
-              </button>
-            ))}
-          </div>
+          <>
+            <div className="flex gap-2 flex-wrap">
+              {mine.map((q) => (
+                <button
+                  key={q.id}
+                  onClick={() => setOpenId(q.id)}
+                  className={`px-3 py-1.5 rounded-full font-label-md text-label-md tracking-wider ${openId === q.id ? 'bg-primary text-on-primary' : 'bg-surface-container text-on-surface-variant'}`}
+                >
+                  MQ-{q.code}
+                </button>
+              ))}
+            </div>
+            {open && (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+                {POSTER_FORMATS.map((f) => (
+                  <PosterCard key={f.key} kind={f.key} content={posterContentFor(open)} fileBase={`medqr-MQ-${open.code}`} />
+                ))}
+              </div>
+            )}
+          </>
         )}
-        {open && (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-            {POSTER_FORMATS.map((f) => (
-              <PosterCard key={f.key} kind={f.key} content={posterContentFor(open)} fileBase={`medqr-MQ-${open.code}`} />
-            ))}
-          </div>
-        )}
-      </section>
-
-      {/* ---- Clinic QR ---- */}
-      <section className="bg-surface-container-lowest rounded-2xl p-5 shadow-sm flex flex-col gap-4">
-        <div>
-          <h2 className="font-headline-sm text-headline-sm">My check-in QR</h2>
-          <p className="font-body-sm text-body-sm text-on-surface-variant break-all">
-            Goes straight to your check-in — patients don&apos;t pick a doctor. {clinicUrl}
-          </p>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-          {POSTER_FORMATS.map((f) => (
-            <PosterCard key={f.key} kind={f.key} content={clinicPoster} fileBase={`medqr-${tenant.subdomain}-${doctor.name.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}`} />
-          ))}
-        </div>
       </section>
     </div>
   );

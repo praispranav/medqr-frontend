@@ -254,6 +254,7 @@ export const en = {
   "sd_consulting_on": "Consulting on {date}",
   "sd_no_paper": "No paper token needed. Your digital token is issued instantly.",
   "sd_confirm": "Confirm & Continue",
+  "sd_get_directions": "Get Directions",
   "sd_not_today": "Not consulting today",
   "sd_wrong_clinic": "Wrong clinic? Scan the QR code again.",
   "sd_which": "Which doctor are you here to see?",

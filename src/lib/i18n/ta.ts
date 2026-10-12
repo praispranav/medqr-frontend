@@ -224,6 +224,7 @@ export const ta: Partial<Record<TranslationKey, string>> = {
   "sd_consulting_on": "{date} அன்று ஆலோசனை",
   "sd_no_paper": "காகித டோக்கன் தேவையில்லை. உங்கள் டிஜிட்டல் டோக்கன் உடனே கிடைக்கும்.",
   "sd_confirm": "உறுதிப்படுத்தித் தொடரவும்",
+  "sd_get_directions": "வழிகளைப் பெறு",
   "sd_not_today": "இன்று ஆலோசனை இல்லை",
   "sd_wrong_clinic": "தவறான கிளினிக்? QR குறியீட்டை மீண்டும் ஸ்கேன் செய்யவும்.",
   "sd_which": "நீங்கள் எந்த மருத்துவரைப் பார்க்க வந்தீர்கள்?",

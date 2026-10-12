@@ -15,6 +15,7 @@ import { Icon } from '@/components/patient/ui';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { inr } from '@/components/staff/bits';
 import { ArrivalQrCard } from '@/components/qr/ArrivalQrCard';
+import { QrStandees } from '@/components/qr/QrStandees';
 
 // One clinic: doctors, their day-by-day consulting sessions (these drive the today-only
 // availability chips, Decision 6), module switches (Decision 3 keeps OCR and Image-to-Text
@@ -125,6 +126,7 @@ function ClinicDetail({ api, referrer }: { api: AdminApi; referrer: boolean }) {
             onSaved={async () => setTenant(await api.tenant(tenant.id))}
             save={(patch) => api.updateTenant(tenant.id, patch)}
           />
+          <TenantQrStandees api={api} tenantId={tenant.id} />
           <ArrivalQrCard load={() => api.arrivalQr(tenant.id)} regenerate={() => api.regenerateArrivalQr(tenant.id)} rulesHint="Queue Rules below" />
           <QueueRules
             ref={queueRulesRef}
@@ -195,6 +197,25 @@ function DoctorSetupTab({ api, tenant }: { api: AdminApi; tenant: Tenant }) {
         clinicLanguage={tenant.queue_settings.patient_language}
       />
     </div>
+  );
+}
+
+/** The main "scan to join" QR — distinct from the Arrival QR card below it. Same UI as /manage/qr. */
+function TenantQrStandees({ api, tenantId }: { api: AdminApi; tenantId: string }) {
+  const [doctors, setDoctors] = useState<DoctorToday[] | null>(null);
+  useEffect(() => {
+    api
+      .doctors(tenantId)
+      .then((list) => setDoctors(list as unknown as DoctorToday[]))
+      .catch(() => setDoctors([]));
+  }, [api, tenantId]);
+  if (!doctors) return <p className="font-body-md text-body-md text-on-surface-variant">Loading…</p>;
+  return (
+    <QrStandees
+      doctors={doctors}
+      list={() => api.tenantQrCodes(tenantId)}
+      create={(body) => api.createTenantQrCode(tenantId, body)}
+    />
   );
 }
 
@@ -385,10 +406,32 @@ function ModulesTab({ api, tenant, onSaved }: { api: AdminApi; tenant: Tenant; o
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [amount, setAmount] = useState('');
   const [walletMsg, setWalletMsg] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
+  const [doctorCount, setDoctorCount] = useState<number | null>(null);
+  const [override, setOverride] = useState(tenant.base_plan_override_inr != null ? String(tenant.base_plan_override_inr) : '');
+  const [overrideMsg, setOverrideMsg] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
+  const [overrideBusy, setOverrideBusy] = useState(false);
 
   useEffect(() => {
     publicApi.getBillingCatalog().then((c) => setCatalog(c.add_ons));
-  }, []);
+    api.doctors(tenant.id).then((ds) => setDoctorCount((ds as unknown as DoctorToday[]).length)).catch(() => setDoctorCount(null));
+  }, [api, tenant.id]);
+
+  const listBasePrice = doctorCount !== null && doctorCount <= 1 ? 499 : 999;
+
+  const saveOverride = async () => {
+    setOverrideBusy(true);
+    setOverrideMsg(null);
+    try {
+      const n = override.trim() === '' ? null : Number(override);
+      if (n !== null && (!Number.isFinite(n) || n < 0)) throw new Error('Enter a positive amount, or leave blank to use the normal price');
+      onSaved(await api.updateTenant(tenant.id, { base_plan_override_inr: n }));
+      setOverrideMsg({ kind: 'ok', text: n === null ? 'Back to the normal tier price.' : `Custom base price set to ${inr(n)}/mo.` });
+    } catch (e) {
+      setOverrideMsg({ kind: 'error', text: (e as Error).message });
+    } finally {
+      setOverrideBusy(false);
+    }
+  };
 
   const toggle = async (key: string) => {
     setBusyKey(key);
@@ -413,7 +456,11 @@ function ModulesTab({ api, tenant, onSaved }: { api: AdminApi; tenant: Tenant; o
   };
 
   const rows: { key: string; name: string; price: number | null }[] = [
-    { key: 'base_plan_active', name: 'Base platform (queue, reception, doctor console)', price: 1199 },
+    {
+      key: 'base_plan_active',
+      name: `Base platform (queue, reception, doctor console)${doctorCount !== null && doctorCount > 1 ? ' — up to 3 doctors' : ' — 1 doctor'}`,
+      price: tenant.base_plan_override_inr ?? listBasePrice,
+    },
     ...(catalog ?? []).map((a) => ({ key: a.key, name: a.name, price: a.price_inr_per_month })),
   ];
 

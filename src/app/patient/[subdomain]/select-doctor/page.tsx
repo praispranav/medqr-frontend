@@ -298,10 +298,21 @@ export default function SelectDoctorPage() {
 
               <div className="bg-surface-container-low rounded-lg p-space-sm flex items-start gap-2.5">
                 <Icon name="apartment" className="text-primary text-[20px] mt-0.5 flex-shrink-0" />
-                <div className="flex flex-col">
+                <div className="flex flex-col flex-1 min-w-0">
                   <span className="font-label-md text-label-md text-on-surface font-semibold">{clinicName}</span>
                   {d.cabin_label && <span className="font-body-sm text-body-sm text-on-surface-variant">{d.cabin_label}</span>}
                 </div>
+                {tenant.maps_url && (
+                  <a
+                    href={tenant.maps_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-surface-container-lowest text-primary font-label-sm text-label-sm shadow-sm"
+                  >
+                    <Icon name="directions" className="text-[16px]" /> {t('sd_get_directions')}
+                  </a>
+                )}
               </div>
 
               {isFutureView ? (

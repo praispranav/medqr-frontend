@@ -26,9 +26,8 @@ export interface PosterContent {
   /** Doctor or clinic name. Unassigned standees use a generic title. */
   title: string;
   subtitle?: string | null;
-  /** Printed small at the bottom, e.g. "MQ-K7P3Q9" — what admin/doctor type to link it. */
+  /** Printed small at the bottom, e.g. "MQ-K7P3Q9" — what admin/doctor type to link it. Never the raw link itself. */
   codeLabel?: string | null;
-  footer: string;
   /** The three steps printed under the QR (default: Scan › Name & mobile › Get token). Keep each short. */
   steps?: string[];
   /** Big call to action (default: "Scan for your token" wording). */
@@ -50,17 +49,10 @@ export const patientBaseUrl = () =>
  */
 export function posterContentFor(q: QrCodeView): PosterContent {
   const base = patientBaseUrl();
-  let host = base;
-  try {
-    host = new URL(base).host;
-  } catch {
-    /* keep */
-  }
   return {
     url: `${base}/q/${q.code}`,
-    title: q.doctor?.name ?? q.clinic?.name ?? 'ClinicQ Digital Queue',
+    title: q.doctor?.name ?? q.clinic?.name ?? 'Digital Queue',
     subtitle: q.doctor ? [q.doctor.specialty, q.clinic?.name].filter(Boolean).join(' · ') : q.clinic ? 'Live OPD digital queue' : 'Scan to check in with your doctor',
-    footer: `${host}/q/${q.code}`,
     codeLabel: `MQ-${q.code}`,
   };
 }
@@ -120,8 +112,7 @@ export const PosterArtboard = forwardRef<HTMLDivElement, { kind: PosterKind; con
             <QRCodeSVG value={content.url} size={250} level="Q" marginSize={2} fgColor="#000000" bgColor="#ffffff" />
           </div>
           <StepsRow color="#000" muted="#000" size={14} steps={content.steps} />
-          <p style={{ fontSize: 15, fontWeight: 700, margin: '10px 0 4px' }}>{content.footer}</p>
-          <p style={{ fontSize: 12, fontWeight: 700, marginBottom: 16, letterSpacing: '0.08em' }}>{content.codeLabel ?? ' '}</p>
+          <p style={{ fontSize: 12, fontWeight: 700, margin: '10px 0 16px', letterSpacing: '0.08em' }}>{content.codeLabel ?? ' '}</p>
         </div>
       </div>
     );
@@ -139,8 +130,7 @@ export const PosterArtboard = forwardRef<HTMLDivElement, { kind: PosterKind; con
           <QRCodeSVG value={content.url} size={190} level="M" marginSize={2} fgColor="#00201d" bgColor="#ffffff" />
         </div>
         <StepsRow color="#005c55" muted="#3e4947" size={11} steps={content.steps} />
-        <p style={{ fontSize: 12, fontWeight: 700, color: '#005c55', marginTop: 8 }}>{content.footer}</p>
-        {content.codeLabel && <p style={{ fontSize: 10, fontWeight: 700, color: '#3e4947', marginTop: 2, letterSpacing: '0.08em' }}>{content.codeLabel}</p>}
+        {content.codeLabel && <p style={{ fontSize: 10, fontWeight: 700, color: '#3e4947', marginTop: 8, letterSpacing: '0.08em' }}>{content.codeLabel}</p>}
       </div>
     );
   }
@@ -166,8 +156,7 @@ export const PosterArtboard = forwardRef<HTMLDivElement, { kind: PosterKind; con
           <QRCodeSVG value={content.url} size={240} level="M" marginSize={2} fgColor="#00201d" bgColor="#ffffff" />
         </div>
         <StepsRow color="#005c55" muted="#3e4947" size={13} steps={content.steps} />
-        <p style={{ fontSize: 13, fontWeight: 700, color: '#005c55', margin: '10px 0 2px' }}>{content.footer}</p>
-        <p style={{ fontSize: 11, fontWeight: 700, color: '#3e4947', marginBottom: 16, letterSpacing: '0.08em' }}>{content.codeLabel ?? ' '}</p>
+        <p style={{ fontSize: 11, fontWeight: 700, color: '#3e4947', margin: '10px 0 16px', letterSpacing: '0.08em' }}>{content.codeLabel ?? ' '}</p>
       </div>
     </div>
   );

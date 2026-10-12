@@ -35,8 +35,7 @@ export function ArrivalQrCard({
     subtitle: 'Arrival check-in',
     headline: 'Scan when you arrive',
     tagline: 'Any phone camera · tells the doctor you’re here',
-    footer: 'One arrival QR for all doctors',
-    codeLabel: 'ARRIVAL',
+    codeLabel: 'ARRIVAL · one QR for all doctors',
     steps: ['Scan', 'Checked in', 'Wait for call'],
   };
 

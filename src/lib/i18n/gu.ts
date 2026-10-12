@@ -224,6 +224,7 @@ export const gu: Partial<Record<TranslationKey, string>> = {
   "sd_consulting_on": "{date} ના રોજ ઉપલબ્ધ",
   "sd_no_paper": "કાગળનું ટોકન જરૂરી નથી. તમારું ડિજિટલ ટોકન તરત મળે છે.",
   "sd_confirm": "પુષ્ટિ કરો અને આગળ વધો",
+  "sd_get_directions": "દિશા મેળવો",
   "sd_not_today": "આજે ઉપલબ્ધ નથી",
   "sd_wrong_clinic": "ખોટું ક્લિનિક? QR કોડ ફરી સ્કેન કરો.",
   "sd_which": "તમે કયા ડૉક્ટરને મળવા આવ્યા છો?",

@@ -224,6 +224,7 @@ export const kn: Partial<Record<TranslationKey, string>> = {
   "sd_consulting_on": "{date} ರಂದು ಲಭ್ಯ",
   "sd_no_paper": "ಕಾಗದದ ಟೋಕನ್ ಬೇಡ. ನಿಮ್ಮ ಡಿಜಿಟಲ್ ಟೋಕನ್ ತಕ್ಷಣ ಸಿಗುತ್ತದೆ.",
   "sd_confirm": "ದೃಢೀಕರಿಸಿ ಮುಂದುವರಿಯಿರಿ",
+  "sd_get_directions": "ದಾರಿ ಪಡೆಯಿರಿ",
   "sd_not_today": "ಇಂದು ಲಭ್ಯವಿಲ್ಲ",
   "sd_wrong_clinic": "ತಪ್ಪು ಕ್ಲಿನಿಕ್? QR ಕೋಡ್ ಮತ್ತೆ ಸ್ಕ್ಯಾನ್ ಮಾಡಿ.",
   "sd_which": "ನೀವು ಯಾವ ವೈದ್ಯರನ್ನು ನೋಡಲು ಬಂದಿದ್ದೀರಿ?",

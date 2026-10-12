@@ -186,6 +186,9 @@ export const adminApi = (key: string) => ({
       city?: string | null;
       address?: string | null;
       public_phone?: string | null;
+      maps_url?: string | null;
+      /** Decision 42 — super admin only: custom monthly base-plan price for this clinic. Null clears it. */
+      base_plan_override_inr?: number | null;
       queue_settings?: Partial<QueueSettings>;
     },
   ) => request<Tenant>(key, `/tenants/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
@@ -237,6 +240,10 @@ export const adminApi = (key: string) => ({
     request(key, `/tenants/${tenantId}/queue-setup/request`, { method: 'POST', body: JSON.stringify({ description }) }),
   arrivalQr: (tenantId: string) => request<ArrivalQr>(key, `/tenants/${tenantId}/arrival-qr`),
   regenerateArrivalQr: (tenantId: string) => request<ArrivalQr>(key, `/tenants/${tenantId}/arrival-qr/regenerate`, { method: 'POST' }),
+  /** The main "scan to join" QR standee (whole clinic or one doctor) — distinct from the arrival QR above. */
+  tenantQrCodes: (tenantId: string) => request<QrCodeView[]>(key, `/tenants/${tenantId}/qr-codes`),
+  createTenantQrCode: (tenantId: string, body: { doctor_id?: string; whole_clinic?: boolean }) =>
+    request<QrCodeView[]>(key, `/tenants/${tenantId}/qr-codes`, { method: 'POST', body: JSON.stringify(body) }),
   setDaysOff: (doctorId: string, from: string, to: string) =>
     request(key, `/doctors/${doctorId}/sessions/days-off`, { method: 'POST', body: JSON.stringify({ from, to }) }),
   applyWeeklyTemplate: (doctorId: string, weeks: number, template: Record<string, { starts_at: string; ends_at: string; is_break: boolean }[]>) =>

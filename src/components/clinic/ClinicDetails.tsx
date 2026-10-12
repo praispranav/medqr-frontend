@@ -9,7 +9,13 @@ import { Icon } from '@/components/patient/ui';
 // (doctor portal) and Clinic Profile (clinic admin) — not in Queue Rules. Editable by whoever can
 // manage the clinic (solo doctor or clinic admin, Decision 14); read-only for other doctors.
 
-type ClinicDetailsPatch = { is_publicly_listed: boolean; city: string | null; address: string | null; public_phone: string | null };
+type ClinicDetailsPatch = {
+  is_publicly_listed: boolean;
+  city: string | null;
+  address: string | null;
+  public_phone: string | null;
+  maps_url: string | null;
+};
 
 export function ClinicDetails({
   tenant,
@@ -27,17 +33,22 @@ export function ClinicDetails({
   const [city, setCity] = useState(tenant.city ?? '');
   const [address, setAddress] = useState(tenant.address ?? '');
   const [phone, setPhone] = useState(tenant.public_phone ?? '');
+  const [mapsUrl, setMapsUrl] = useState(tenant.maps_url ?? '');
   const [state, setState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [error, setError] = useState<string | null>(null);
 
   const dirty =
-    listed !== !!tenant.is_publicly_listed || city !== (tenant.city ?? '') || address !== (tenant.address ?? '') || phone !== (tenant.public_phone ?? '');
+    listed !== !!tenant.is_publicly_listed ||
+    city !== (tenant.city ?? '') ||
+    address !== (tenant.address ?? '') ||
+    phone !== (tenant.public_phone ?? '') ||
+    mapsUrl !== (tenant.maps_url ?? '');
 
   const save = async () => {
     setState('saving');
     setError(null);
     try {
-      await saveFn({ is_publicly_listed: listed, city: city || null, address: address || null, public_phone: phone || null });
+      await saveFn({ is_publicly_listed: listed, city: city || null, address: address || null, public_phone: phone || null, maps_url: mapsUrl.trim() || null });
       await onSaved();
       setState('saved');
     } catch (e) {
@@ -57,6 +68,8 @@ export function ClinicDetails({
           <dd>{tenant.city || '—'}</dd>
           <dt className="text-on-surface-variant">Phone</dt>
           <dd>{tenant.public_phone || '—'}</dd>
+          <dt className="text-on-surface-variant">Map pin</dt>
+          <dd>{tenant.maps_url ? 'Set' : '—'}</dd>
           <dt className="text-on-surface-variant">Listed online</dt>
           <dd>{tenant.is_publicly_listed ? 'Yes' : 'No'}</dd>
         </dl>
@@ -94,6 +107,19 @@ export function ClinicDetails({
         <label className="flex flex-col gap-1">
           <span className="font-label-sm text-label-sm text-on-surface-variant">Address (optional)</span>
           <input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="2nd Floor, MG Road" className="h-11 rounded-lg bg-surface-container-low px-3 font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-primary/30" />
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className="font-label-sm text-label-sm text-on-surface-variant">Google Maps link (optional)</span>
+          <input
+            value={mapsUrl}
+            onChange={(e) => setMapsUrl(e.target.value)}
+            placeholder="Paste the link from Google Maps' Share button"
+            className="h-11 rounded-lg bg-surface-container-low px-3 font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-primary/30"
+          />
+          <span className="font-body-sm text-body-sm text-on-surface-variant">
+            On your phone: open the clinic in Google Maps → Share → Copy link. Patients get a &quot;Get Directions&quot; button straight
+            to your exact pin — the link itself is never shown to them.
+          </span>
         </label>
         {tenant.public_slug && listed && (
           <Link href={`/clinics/${tenant.public_slug}`} target="_blank" className="font-label-md text-label-md text-primary flex items-center gap-1.5 self-start">

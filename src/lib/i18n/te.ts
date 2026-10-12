@@ -224,6 +224,7 @@ export const te: Partial<Record<TranslationKey, string>> = {
   "sd_consulting_on": "{date} న అందుబాటులో",
   "sd_no_paper": "కాగితపు టోకెన్ అవసరం లేదు. మీ డిజిటల్ టోకెన్ వెంటనే వస్తుంది.",
   "sd_confirm": "నిర్ధారించి కొనసాగండి",
+  "sd_get_directions": "దారి పొందండి",
   "sd_not_today": "ఈ రోజు అందుబాటులో లేరు",
   "sd_wrong_clinic": "తప్పు క్లినిక్? QR కోడ్‌ను మళ్లీ స్కాన్ చేయండి.",
   "sd_which": "మీరు ఏ డాక్టర్‌ని చూడటానికి వచ్చారు?",

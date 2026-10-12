@@ -138,6 +138,10 @@ export interface Tenant {
   address?: string | null;
   public_phone?: string | null;
   public_slug?: string | null;
+  /** Decision 41 — a pasted Google Maps link to the clinic's exact pin; opened as-is for "Get Directions". */
+  maps_url?: string | null;
+  /** Decision 42 — super admin only: custom monthly base-plan price for this clinic; null = normal tier price. */
+  base_plan_override_inr?: number | null;
 }
 
 /** Decision 6 — today-only, four states. */
@@ -479,6 +483,10 @@ export interface MonthlyPlan {
   included_doctors: number;
   extra_doctors: number;
   extra_doctor_price_inr: number;
+  /** Decision 42 — the base-plan amount actually charged (tier price, or a super-admin override for this clinic). */
+  base_plan_price_inr?: number;
+  base_plan_list_price_inr?: number;
+  base_plan_overridden?: boolean;
   lines: { label: string; amount_inr: number }[];
   total_inr_per_month: number;
   /** Decision 36: coupon on this clinic — the discount line is already in `lines`. */
@@ -754,7 +762,7 @@ export const api = {
   // Public doctor/clinic directory (clinicq.in/doctors) — clinic-wide fields: doctor/owner self-service (Decision 14).
   updateTenantPublicProfile: (
     tenantId: string,
-    patch: { is_publicly_listed?: boolean; city?: string | null; address?: string | null; public_phone?: string | null },
+    patch: { is_publicly_listed?: boolean; city?: string | null; address?: string | null; public_phone?: string | null; maps_url?: string | null },
   ) => request<Tenant>(`/tenants/${tenantId}/public-profile`, { method: 'PATCH', body: JSON.stringify(patch) }),
   // Per-doctor fields: the doctor's own login, or the clinic admin editing any doctor.
   updateDoctorPublicProfile: (
@@ -812,9 +820,16 @@ export const api = {
   cancelBreak: (doctorId: string) => request<ShiftView>(`/doctors/${doctorId}/shift/break/cancel`, { method: 'POST' }),
   uploadFile,
   getBillingCatalog: () =>
-    request<{ base_plan_price_inr: number; included_doctors: number; extra_doctor_price_inr: number; add_ons: CatalogAddOn[]; trial_days: number }>(
-      '/billing/catalog',
-    ),
+    request<{
+      base_plan_price_inr: number;
+      base_plan_solo_price_inr: number;
+      base_plan_group_price_inr: number;
+      base_plan_group_included_doctors: number;
+      included_doctors: number;
+      extra_doctor_price_inr: number;
+      add_ons: CatalogAddOn[];
+      trial_days: number;
+    }>('/billing/catalog'),
   // Public landing page "Start free trial" lead form (Decision 18) — never creates a tenant by itself.
   submitTrialLead: (body: { clinic_name: string; contact_name: string; phone: string; email?: string; city?: string; message?: string }) =>
     request<{ id: string }>('/leads', { method: 'POST', body: JSON.stringify(body) }),

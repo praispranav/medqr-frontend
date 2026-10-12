@@ -224,6 +224,7 @@ export const ml: Partial<Record<TranslationKey, string>> = {
   "sd_consulting_on": "{date}-ന് ലഭ്യം",
   "sd_no_paper": "പേപ്പർ ടോക്കൺ വേണ്ട. നിങ്ങളുടെ ഡിജിറ്റൽ ടോക്കൺ ഉടൻ ലഭിക്കും.",
   "sd_confirm": "സ്ഥിരീകരിച്ച് തുടരുക",
+  "sd_get_directions": "വഴി കാണിക്കുക",
   "sd_not_today": "ഇന്ന് ലഭ്യമല്ല",
   "sd_wrong_clinic": "തെറ്റായ ക്ലിനിക്? QR കോഡ് വീണ്ടും സ്കാൻ ചെയ്യുക.",
   "sd_which": "നിങ്ങൾ ഏത് ഡോക്ടറെ കാണാനാണ് വന്നത്?",
