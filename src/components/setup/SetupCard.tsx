@@ -35,7 +35,7 @@ export function SetupCard({ title, load, confirm, resolve, canConfirm }: Props) 
 
   if (!view || view.total === 0) return null;
   const complete = view.percent === 100;
-  const expanded = open ?? !complete;
+  const expanded = open ?? false; // collapsed by default: just the percentage; tap to see what is left
 
   const doConfirm = async (item: SetupItem) => {
     if (!confirm || !item.confirm || !item.doctor_id) return;
