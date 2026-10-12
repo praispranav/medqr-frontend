@@ -35,7 +35,8 @@ export function SetupCard({ title, load, confirm, resolve, canConfirm }: Props) 
 
   if (!view || view.total === 0) return null;
   const complete = view.percent === 100;
-  const expanded = open ?? false; // collapsed by default: just the percentage; tap to see what is left
+  // The progress is always visible; the list of what is left opens only when the header is tapped.
+  const expanded = open ?? false;
 
   const doConfirm = async (item: SetupItem) => {
     if (!confirm || !item.confirm || !item.doctor_id) return;
@@ -58,10 +59,10 @@ export function SetupCard({ title, load, confirm, resolve, canConfirm }: Props) 
   ].filter((g) => g.items.length);
 
   return (
-    <section className="mb-4 bg-surface-container-lowest rounded-2xl shadow-sm overflow-hidden">
-      <button onClick={() => setOpen(!expanded)} className="w-full flex items-center gap-4 p-4 text-left" aria-expanded={expanded}>
-        <div className="relative w-14 h-14 shrink-0">
-          <svg viewBox="0 0 36 36" className="w-14 h-14 -rotate-90">
+    <section className="mb-3 bg-surface-container-lowest rounded-2xl shadow-sm overflow-hidden">
+      <button onClick={() => setOpen(!expanded)} className="w-full flex items-center gap-3 px-4 py-2.5 text-left" aria-expanded={expanded}>
+        <div className="relative w-11 h-11 shrink-0">
+          <svg viewBox="0 0 36 36" className="w-11 h-11 -rotate-90">
             <circle cx="18" cy="18" r="15.5" fill="none" strokeWidth="4" className="stroke-surface-container-high" />
             <circle
               cx="18"
@@ -74,12 +75,11 @@ export function SetupCard({ title, load, confirm, resolve, canConfirm }: Props) 
               className={complete ? 'stroke-tertiary' : 'stroke-primary'}
             />
           </svg>
-          <span className="absolute inset-0 flex items-center justify-center font-label-lg text-label-lg text-on-surface">{view.percent}%</span>
+          <span className="absolute inset-0 flex items-center justify-center font-label-sm text-label-sm text-on-surface">{view.percent}%</span>
         </div>
         <div className="flex-1 min-w-0">
-          <p className="font-label-lg text-label-lg text-on-surface">{title}</p>
-          <p className="font-body-sm text-body-sm text-on-surface-variant">
-            {complete ? 'Everything is set up.' : `${view.done} of ${view.total} done — finish the rest so patients can use ${doctorNames.length > 1 ? 'the clinic' : 'it'} with confidence.`}
+          <p className="font-label-lg text-label-lg text-on-surface">
+            {title} <span className="font-body-sm text-body-sm text-on-surface-variant">· {complete ? 'all done' : `${view.done} of ${view.total} done`}</span>
           </p>
         </div>
         <Icon name={expanded ? 'expand_less' : 'expand_more'} className="text-[24px] text-on-surface-variant" />
