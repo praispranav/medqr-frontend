@@ -380,7 +380,7 @@ function CommandCenter({ tenant, doctor }: { tenant: Tenant; doctor: DoctorToday
             <p className="font-label-sm text-label-sm text-on-surface-variant uppercase mt-3">Booked · not arrived yet</p>
           )}
           {confirmsArrival && filter(notArrived).map((r) => (
-            <QueueItem key={r.id} row={r} now={now} muted>
+            <QueueItem key={r.id} row={r} now={now} muted doctor={doctor} expanded={expandedId === r.id} onToggle={() => setExpandedId(expandedId === r.id ? null : r.id)}>
               <div className="flex items-center gap-3">
                 <StatusPill status={r.status} />
                 {doctorCalls && (
@@ -492,9 +492,9 @@ function downloadTodayPatientsCsv(rows: QueueRow[], doctorName: string) {
 function QueueItem({ row, now, muted = false, doctor, expanded = false, onToggle, children }: { row: QueueRow; now: number; muted?: boolean; doctor?: DoctorToday; expanded?: boolean; onToggle?: () => void; children: React.ReactNode }) {
   const waited = minutesSince(row.joined_at, now);
   return (
-    <div className={`flex flex-col p-3 rounded-xl overflow-hidden transition-colors ${muted ? 'bg-surface-container-low opacity-70' : 'bg-surface-container-low hover:bg-surface-container cursor-pointer'}`} onClick={(e) => {
+    <div className={`flex flex-col p-3 rounded-xl overflow-hidden transition-colors bg-surface-container-low ${muted ? 'opacity-80' : ''} ${onToggle ? 'hover:bg-surface-container cursor-pointer' : ''}`} onClick={(e) => {
       if ((e.target as HTMLElement).closest('button, a')) return;
-      if (!muted) onToggle?.();
+      onToggle?.(); // every row opens its details — also "not arrived" and finished ones
     }}>
       <div className="flex items-start gap-3">
         <span className="font-headline-md text-headline-md text-primary w-14 shrink-0">#{row.token_number}</span>
@@ -507,6 +507,7 @@ function QueueItem({ row, now, muted = false, doctor, expanded = false, onToggle
             {[waited !== null ? `joined ${waited}m ago` : null, row.visit?.chief_complaint].filter(Boolean).join(' · ')}
           </p>
         </div>
+        {onToggle && <Icon name={expanded ? 'expand_less' : 'expand_more'} className="text-[22px] text-on-surface-variant shrink-0 mt-1" />}
       </div>
       <div className="flex items-center justify-end gap-2 flex-wrap mt-2" onClick={e => e.stopPropagation()}>
         {children}
