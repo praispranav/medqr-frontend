@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api, ApiError, type DoctorToday, type PaymentEvent, type PaymentQrView, type QueueRow, type QueueSettings, type ShiftView, type Tenant, type TokenStatus, type Vitals } from '@/lib/api';
 import { PaymentLog } from '@/components/payments/PaymentLog';
 import { UpiQrCard } from '@/components/payments/UpiQrCard';
@@ -73,6 +73,11 @@ function ReceptionDesk({ tenant, doctors, walkInPreFill, setWalkInPreFill }: { t
   );
   const [query, setQuery] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // On a phone the patient's details panel sits above the list: bring it into view when a row is tapped.
+  const panelRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (selectedId && typeof window !== 'undefined' && window.innerWidth < 1024) panelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [selectedId]);
   const [flash, setFlash] = useState<{ tokenId: string; kind: 'verified' | 'duplicate' } | null>(null);
   const [scanning, setScanning] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
@@ -318,6 +323,7 @@ function ReceptionDesk({ tenant, doctors, walkInPreFill, setWalkInPreFill }: { t
             )}
           </section>
 
+          <div ref={panelRef} className="scroll-mt-20 flex flex-col gap-4">
           {selected ? (
             <TokenPanel
               key={selected.id}
@@ -355,6 +361,7 @@ function ReceptionDesk({ tenant, doctors, walkInPreFill, setWalkInPreFill }: { t
               </p>
             </section>
           )}
+          </div>
 
           <CallNextBar
             shifts={shifts}
