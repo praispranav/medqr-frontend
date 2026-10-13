@@ -323,4 +323,5 @@ export const gu: Partial<Record<TranslationKey, string>> = {
   "ed_saved": "સાચવ્યું. ડૉક્ટરને આ દેખાશે.",
   "ed_error": "સાચવી શકાયું નથી. કૃપા કરીને ફરી પ્રયાસ કરો.",
   "ed_remove": "દૂર કરો",
+  "otp_second_token": "આ નંબર પર બીજું ટોકન લેવા માટે, કૃપા કરીને WhatsApp પર એકવાર નંબરની પુષ્ટિ કરો. આ ફોનમાં તમે ચકાસાયેલા રહેશો.",
 };

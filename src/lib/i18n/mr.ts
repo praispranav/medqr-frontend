@@ -323,4 +323,5 @@ export const mr: Partial<Record<TranslationKey, string>> = {
   "ed_saved": "जतन झाले. डॉक्टरांना हे दिसेल.",
   "ed_error": "जतन करता आले नाही. कृपया पुन्हा प्रयत्न करा.",
   "ed_remove": "काढा",
+  "otp_second_token": "या नंबरवर आणखी एक टोकन घेण्यासाठी, कृपया WhatsApp वर एकदा नंबर निश्चित करा. या फोनवर तुम्ही पडताळलेले राहाल.",
 };

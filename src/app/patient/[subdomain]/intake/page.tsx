@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { api, ApiError, patientDevice, type DoctorToday, type NextSession, type Patient, type Tenant } from '@/lib/api';
 import { DoctorAvatar, FullPageMessage, Icon, initials, LanguageButton, LoadingPage, nextSessionLabel } from '@/components/patient/ui';
@@ -76,6 +76,16 @@ function IntakeForm() {
   const [gender, setGender] = useState('');
   const [remember, setRemember] = useState(true);
   const [phoneState, setPhoneState] = useState<'checking' | 'needed' | 'ready'>('checking');
+  // Decision 48: a 2nd token on the same mobile asks for a WhatsApp code first (once per phone), then continues by itself.
+  const [joinNeedsOtp, setJoinNeedsOtp] = useState(false);
+  const [autoSubmit, setAutoSubmit] = useState(false);
+  const submitRef = useRef<() => void>();
+  useEffect(() => {
+    if (autoSubmit && phoneState === 'ready') {
+      setAutoSubmit(false);
+      submitRef.current?.();
+    }
+  }, [autoSubmit, phoneState]);
   const [otpRequired, setOtpRequired] = useState(false);
   const [verified, setVerified] = useState(false);
   const [whatsappUpdates, setWhatsappUpdates] = useState(true);
@@ -276,9 +286,19 @@ function IntakeForm() {
       <VerifyPhone
         clinicName={tenant.display_name ?? subdomain}
         doctorName={doctor.name}
-        onBack={goBack}
+        onBack={joinNeedsOtp ? () => { setJoinNeedsOtp(false); setPhoneState('ready'); } : goBack}
+        initialMobile={joinNeedsOtp ? mobileDigitsForOtp(mobile) : undefined}
+        reason={joinNeedsOtp ? 'second' : undefined}
         onVerified={async (token, verifiedMobile) => {
           patientDevice.set(token, verifiedMobile);
+          if (joinNeedsOtp) {
+            // Keep everything the patient filled in; the verified phone is remembered for 90 days.
+            setVerified(true);
+            setJoinNeedsOtp(false);
+            setPhoneState('ready');
+            setAutoSubmit(true);
+            return;
+          }
           setPhoneState('checking');
           await loadDeviceProfiles(otpRequired);
         }}
@@ -367,6 +387,11 @@ function IntakeForm() {
       router.replace(askNow ? `/patient/${subdomain}/payment?token=${token.id}` : `/patient/${subdomain}/queue/${token.id}`);
     } catch (err) {
       setSubmitting(false);
+      if (err instanceof ApiError && err.status === 401) {
+        setJoinNeedsOtp(true);
+        setPhoneState('needed');
+        return;
+      }
       setSubmitError(
         err instanceof ApiError && err.status === 409
           ? err.message
@@ -374,6 +399,8 @@ function IntakeForm() {
       );
     }
   };
+
+  submitRef.current = handleSubmit;
 
   return (
     <div className="min-h-screen bg-surface flex flex-col">
@@ -974,21 +1001,28 @@ function IntakeForm() {
   );
 }
 
+const mobileDigitsForOtp = (m: string) => m.replace(/\D/g, '').slice(-10);
+
 /** WhatsApp OTP step (Telnyx). The code arrives as a WhatsApp message with a copy-code button. */
 function VerifyPhone({
   clinicName,
   doctorName,
   onBack,
   onVerified,
+  initialMobile,
+  reason,
 }: {
   clinicName: string;
   doctorName: string;
   onBack: () => void;
   onVerified: (token: string, mobile: string) => Promise<void>;
+  /** The number the patient already typed (a 2nd token on it needs the code). */
+  initialMobile?: string;
+  reason?: 'second';
 }) {
   const { subdomain } = useParams<{ subdomain: string }>();
   const { t } = useT(); // same language as the form (Decision 35)
-  const [mobile, setMobile] = useState('');
+  const [mobile, setMobile] = useState(initialMobile ?? '');
   const [code, setCode] = useState('');
   const [sentTo, setSentTo] = useState<string | null>(null);
   const [devCode, setDevCode] = useState<string | null>(null);
@@ -1057,6 +1091,7 @@ function VerifyPhone({
           <p className="font-body-md text-body-md text-on-surface-variant mt-1">
             {sentTo ? t('otp_sent_to', { number: sentTo }) : t('otp_will_send')}
           </p>
+          {reason === 'second' && !sentTo && <p className="font-body-sm text-body-sm text-primary mt-2">{t('otp_second_token')}</p>}
         </div>
 
         {!sentTo ? (

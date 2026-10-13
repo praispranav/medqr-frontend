@@ -340,6 +340,7 @@ export const en = {
   "ar_thanks": "Thanks — you're here!",
   "ar_wait": "Please wait nearby. The doctor will call your token number.",
   "ar_unreach": "Could not reach ClinicQ",
+  "otp_second_token": "To get another token on this number, please confirm it on WhatsApp once. You'll stay verified on this phone.",
 };
 
 export type TranslationKey = keyof typeof en;

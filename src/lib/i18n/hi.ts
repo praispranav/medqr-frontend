@@ -324,4 +324,5 @@ export const hi: Partial<Record<TranslationKey, string>> = {
   "ar_thanks": "धन्यवाद — आप पहुँच गए!",
   "ar_wait": "कृपया पास में प्रतीक्षा करें। डॉक्टर आपका टोकन नंबर बुलाएँगे।",
   "ar_unreach": "ClinicQ तक नहीं पहुँच सके",
+  "otp_second_token": "इस नंबर पर एक और टोकन लेने के लिए, कृपया WhatsApp पर एक बार नंबर की पुष्टि करें। इस फ़ोन पर आप सत्यापित रहेंगे।",
 };
