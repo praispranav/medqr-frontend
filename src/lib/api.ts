@@ -461,11 +461,52 @@ export interface CatalogAddOn {
 
 export const fileUrl = (url: string) => (url.startsWith('/') ? `${API_BASE}${url}` : url);
 
-async function uploadFile(file: File) {
+// The server's front door (nginx) refuses request bodies over ~1 MB, and phone photos are 2–8 MB, so images are shrunk on the
+// phone before they are sent: longest side 1800 px, JPEG, tried at lower sizes until it is under the limit. A prescription or
+// report photo stays perfectly readable at that size. PDFs and anything that cannot be shrunk are sent as they are.
+const UPLOAD_TARGET_BYTES = 900 * 1024;
+
+async function shrinkImage(file: File): Promise<File> {
+  if (!/^image\/(jpeg|png|webp|heic|heif)$/.test(file.type) || file.size <= UPLOAD_TARGET_BYTES) return file;
+  try {
+    const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
+    for (const [maxSide, quality] of [[1800, 0.82], [1500, 0.72], [1200, 0.65], [1000, 0.6], [800, 0.55]] as const) {
+      const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+      canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return file;
+      ctx.fillStyle = '#ffffff'; // PNG screenshots with transparency
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      const blob: Blob | null = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', quality));
+      if (blob && blob.size <= UPLOAD_TARGET_BYTES) {
+        bitmap.close?.();
+        return new File([blob], file.name.replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg' });
+      }
+    }
+    bitmap.close?.();
+  } catch {
+    /* this browser cannot decode it (e.g. HEIC outside Safari) — send the original */
+  }
+  return file;
+}
+
+async function uploadFile(original: File) {
+  const file = await shrinkImage(original);
   const body = new FormData();
   body.append('file', file);
   const res = await fetch(`${API_BASE}/uploads`, { method: 'POST', body, credentials: 'include' });
-  if (!res.ok) throw new Error(res.status === 413 ? 'File is larger than 15 MB' : 'Upload failed');
+  if (!res.ok) {
+    throw new Error(
+      res.status === 413
+        ? file.type === 'application/pdf'
+          ? 'This PDF is too large (limit about 1 MB). Please send a photo instead, or a smaller PDF.'
+          : 'This file is too large to upload. Please try a smaller photo.'
+        : 'Upload failed. Please try again.',
+    );
+  }
   return (await res.json()) as { url: string; name: string };
 }
 
