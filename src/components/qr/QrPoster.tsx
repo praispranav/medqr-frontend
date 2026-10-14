@@ -1,6 +1,6 @@
 'use client';
 
-import { forwardRef, useEffect, useRef, useState } from 'react';
+import { forwardRef, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Icon } from '@/components/patient/ui';
 import type { QrCodeView } from '@/lib/api';
@@ -105,7 +105,7 @@ export const PosterArtboard = forwardRef<HTMLDivElement, { kind: PosterKind; con
 ) {
   const f = POSTER_FORMATS.find((x) => x.key === kind)!;
   const [w, h] = [f.mm[0] * PX_PER_MM, f.mm[1] * PX_PER_MM];
-  const base = { width: w, height: h, background: '#fff', fontFamily: 'Manrope, Inter, sans-serif' } as const;
+  const base = { width: w, height: h, background: '#fff', fontFamily: 'Manrope, Inter, sans-serif', overflow: 'hidden' } as const;
 
   if (kind === 'bw') {
     return (
@@ -148,7 +148,8 @@ export const PosterArtboard = forwardRef<HTMLDivElement, { kind: PosterKind; con
 
   const steps = content.steps ?? STEPS;
   return (
-    <div ref={ref} style={{ ...base, color: '#131b2e' }} className="flex items-center justify-center">
+    <div ref={ref} style={{ ...base, color: '#131b2e' }}>
+      <FitToHeight maxH={h - 12}>
       <div style={{ width: w - 36, border: '2px solid #cfe9e5', borderRadius: 26 }} className="flex flex-col items-center text-center overflow-hidden">
         {/* ---- Identity: avatar, certified-facility line, name, specialty ---- */}
         <div style={{ width: '100%', background: '#f0fdfa', padding: '28px 22px 20px' }} className="flex flex-col items-center">
@@ -223,9 +224,35 @@ export const PosterArtboard = forwardRef<HTMLDivElement, { kind: PosterKind; con
         )}
         <p style={{ fontSize: 9, fontWeight: 700, color: '#8a938f', margin: '10px 0 16px', letterSpacing: '0.1em' }}>ClinicQ</p>
       </div>
+      </FitToHeight>
     </div>
   );
 });
+
+/**
+ * Keeps a poster card inside its artboard: when the content (long names, the "camera not working" line, the brand line) is
+ * taller than the paper, it is scaled down to fit instead of spilling over the page — in the preview and in the PDF / PNG.
+ */
+function FitToHeight({ maxH, children }: { maxH: number; children: React.ReactNode }) {
+  const innerRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(1);
+  useLayoutEffect(() => {
+    const el = innerRef.current;
+    if (!el) return;
+    const fit = () => setScale(el.offsetHeight > maxH ? maxH / el.offsetHeight : 1);
+    fit();
+    const ro = new ResizeObserver(fit);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [maxH]);
+  return (
+    <div style={{ height: maxH + 12, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+      <div ref={innerRef} style={{ transform: `scale(${scale})`, transformOrigin: 'center center' }}>
+        {children}
+      </div>
+    </div>
+  );
+}
 
 async function renderPng(node: HTMLElement) {
   const { toPng } = await import('html-to-image');
