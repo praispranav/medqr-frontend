@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { DoctorsSearch } from './DoctorsSearch';
 import { BrandLogo } from '@/components/brand/BrandLogo';
 
@@ -10,6 +11,7 @@ export async function generateMetadata({ searchParams }: { searchParams: { q?: s
     title: `Best ${specialty}${citySuffix} - Book Online & Live Queue | ClinicQ`,
     description: `Find top-rated ${specialty}${citySuffix}. Get digital tokens, track live OPD waiting times, and skip the waiting room with ClinicQ.`,
     keywords: `Best ${specialty}${citySuffix}, online doctor appointment, live OPD status, digital token ${specialty}`,
+    alternates: { canonical: '/doctors' },
     openGraph: {
       title: `Book ${specialty} Appointments | ClinicQ`,
       description: `Track live queues and book ${specialty}s instantly.`,
@@ -40,8 +42,11 @@ export default function DoctorsIndexPage({ searchParams }: { searchParams: { q?:
         dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaData) }}
       />
       <header className="border-b border-surface-container">
-        <div className="max-w-5xl mx-auto px-4 h-16 flex items-center">
+        <div className="max-w-5xl mx-auto px-4 h-16 flex items-center gap-4">
           <BrandLogo />
+          <Link href="/clinics" className="ml-auto font-label-md text-label-md text-on-surface-variant hover:text-on-surface">
+            Find a clinic →
+          </Link>
         </div>
       </header>
       <div className="max-w-5xl mx-auto px-4 py-10 flex flex-col gap-6">

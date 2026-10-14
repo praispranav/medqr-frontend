@@ -18,9 +18,13 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   const clinic = await getClinic(params.slug);
   if (!clinic) return { title: 'Clinic not found — ClinicQ' };
   const place = [clinic.clinic_name, clinic.city].filter(Boolean).join(', ');
+  const title = `${place} — Doctors & Queue | ClinicQ`;
+  const description = clinic.tagline || clinic.about?.slice(0, 160) || `${clinic.doctors.length} doctor${clinic.doctors.length === 1 ? '' : 's'} at ${clinic.clinic_name}${clinic.city ? ` in ${clinic.city}` : ''}. Join the digital queue, no app download.`;
   return {
-    title: `${place} — Doctors & Queue | ClinicQ`,
-    description: clinic.tagline || clinic.about?.slice(0, 160) || `${clinic.doctors.length} doctor${clinic.doctors.length === 1 ? '' : 's'} at ${clinic.clinic_name}${clinic.city ? ` in ${clinic.city}` : ''}. Join the digital queue, no app download.`,
+    title,
+    description,
+    alternates: { canonical: `/clinics/${params.slug}` },
+    openGraph: { title, description, type: 'website' },
   };
 }
 

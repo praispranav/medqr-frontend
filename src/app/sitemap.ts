@@ -1,12 +1,24 @@
 import type { MetadataRoute } from 'next';
+import { headers } from 'next/headers';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:4000';
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
+
+// Self-referencing by whichever domain actually served the request — see robots.ts for why: it's how
+// this site can rank under clinicq.praispranav.com today and clinicq.in later with no env flip.
+function siteUrl(): string {
+  const host = headers().get('host');
+  if (host && !/^(localhost|127\.0\.0\.1)/.test(host)) return `https://${host}`;
+  return process.env.NEXT_PUBLIC_SITE_URL ?? 'https://clinicq.praispranav.com';
+}
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const SITE_URL = siteUrl();
   const base: MetadataRoute.Sitemap = [
     { url: `${SITE_URL}/`, changeFrequency: 'weekly', priority: 1 },
     { url: `${SITE_URL}/doctors`, changeFrequency: 'daily', priority: 0.9 },
+    { url: `${SITE_URL}/clinics`, changeFrequency: 'daily', priority: 0.9 },
+    { url: `${SITE_URL}/privacy`, changeFrequency: 'monthly', priority: 0.3 },
+    { url: `${SITE_URL}/terms`, changeFrequency: 'monthly', priority: 0.3 },
   ];
 
   try {

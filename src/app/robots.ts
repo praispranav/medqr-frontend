@@ -1,17 +1,37 @@
 import type { MetadataRoute } from 'next';
+import { headers } from 'next/headers';
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://clinicq.in';
+// Self-referencing by whichever domain actually served the request (same instinct as the QR redirect
+// system) — so this site ranks correctly under clinicq.praispranav.com right now, and clinicq.in once
+// that's live, with no env flip or redeploy needed either time. NEXT_PUBLIC_SITE_URL is only a
+// fallback for contexts with no request (e.g. a build-time check).
+function siteUrl(): string {
+  const host = headers().get('host');
+  if (host && !/^(localhost|127\.0\.0\.1)/.test(host)) return `https://${host}`;
+  return process.env.NEXT_PUBLIC_SITE_URL ?? 'https://clinicq.praispranav.com';
+}
 
 export default function robots(): MetadataRoute.Robots {
+  const SITE_URL = siteUrl();
   return {
     rules: {
       userAgent: '*',
       allow: '/',
       disallow: [
-        '/manage/',     // Keep admin areas out of search
-        '/owner/',      // Keep platform admin out of search
-        '/patient/',    // Keep patient queue tickets out of search
-        '/doctor/'      // Keep doctor dashboards out of search
+        '/manage',
+        '/manage/',
+        '/owner',
+        '/owner/',
+        '/patient',
+        '/patient/',
+        '/doctor',
+        '/doctor/',
+        '/reception',
+        '/reception/',
+        '/login',
+        '/setup-password',
+        '/change-password',
+        '/q/',
       ],
     },
     sitemap: `${SITE_URL}/sitemap.xml`,

@@ -19,7 +19,12 @@ export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const url = req.nextUrl.clone();
   url.pathname = `/patient${pathname === '/' ? '' : pathname}`;
-  return NextResponse.rewrite(url);
+  const res = NextResponse.rewrite(url);
+  // Every page here is a transactional/private booking flow with zero SEO value, and robots.txt's
+  // path-based disallow rules (for /patient/...) don't apply on this subdomain — the browser never
+  // sends that prefix here, so a crawler would otherwise see these as indexable.
+  res.headers.set('X-Robots-Tag', 'noindex, nofollow');
+  return res;
 }
 
 export const config = {

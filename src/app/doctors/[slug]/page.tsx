@@ -28,7 +28,12 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   const place = [doctor.clinic_name, doctor.city].filter(Boolean).join(', ');
   const title = `${doctor.name}${doctor.specialty ? ` — ${doctor.specialty}` : ''}${place ? ` in ${place}` : ''} | ClinicQ`;
   const description = doctor.bio || `Book a digital queue token with ${doctor.name}${place ? ` at ${place}` : ''}. No app download, no waiting in line.`;
-  return { title, description };
+  return {
+    title,
+    description,
+    alternates: { canonical: `/doctors/${params.slug}` },
+    openGraph: { title, description, type: 'profile', images: doctor.photo_url ? [fileUrl(doctor.photo_url)] : undefined },
+  };
 }
 
 export default async function DoctorProfilePage({ params }: { params: { slug: string } }) {
