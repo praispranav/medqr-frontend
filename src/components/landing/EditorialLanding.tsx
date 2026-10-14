@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { BrandLogo } from '@/components/brand/BrandLogo';
-import type { DirectoryLandingDoctor } from '@/lib/api';
+import { fileUrl, type DirectoryLandingDoctor } from '@/lib/api';
 import { WHY, directionsUrl, initials, orderedDoctors, telHref, tokenHref, type LandingProps } from './landingData';
 
 // Template 1 — "Warm Clinical Editorial": paper-toned canvas, serif (Newsreader) headlines, cream cards with hairline
@@ -129,7 +129,7 @@ function DoctorCard({ d, href }: { d: DirectoryLandingDoctor; href: string }) {
     <article className={`${card} p-5 md:p-7 flex flex-col md:flex-row gap-6`}>
       {d.photo_url ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={d.photo_url} alt={d.name} className="w-32 h-32 md:w-40 md:h-40 rounded-3xl object-cover shrink-0" />
+        <img src={fileUrl(d.photo_url)} alt={d.name} className="w-32 h-32 md:w-40 md:h-40 rounded-3xl object-cover shrink-0" />
       ) : (
         <div className="w-32 h-32 md:w-40 md:h-40 rounded-3xl bg-[#9CF2E8] text-[#005C55] text-[44px] flex items-center justify-center shrink-0" style={serif}>{initials(d.name)}</div>
       )}

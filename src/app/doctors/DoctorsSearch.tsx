@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { api, type DirectoryDoctorSummary } from '@/lib/api';
+import { api, fileUrl, type DirectoryDoctorSummary } from '@/lib/api';
 import { Icon } from '@/components/patient/ui';
 
 export function DoctorsSearch({ initialQ }: { initialQ?: string }) {
@@ -64,7 +64,7 @@ export function DoctorsSearch({ initialQ }: { initialQ?: string }) {
           <Link key={d.slug} href={`/doctors/${d.slug}`} className="bg-surface-container-lowest rounded-2xl shadow-sm p-4 flex items-center gap-3 hover:shadow-md transition-shadow">
             {d.photo_url ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={d.photo_url} alt={d.name} className="w-12 h-12 rounded-full object-cover shrink-0" />
+              <img src={fileUrl(d.photo_url)} alt={d.name} className="w-12 h-12 rounded-full object-cover shrink-0" />
             ) : (
               <div className="w-12 h-12 rounded-full bg-primary-fixed text-primary font-bold flex items-center justify-center shrink-0">
                 {d.name

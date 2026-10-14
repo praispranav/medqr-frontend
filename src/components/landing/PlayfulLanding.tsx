@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { BrandLogo } from '@/components/brand/BrandLogo';
-import type { DirectoryLandingDoctor } from '@/lib/api';
+import { fileUrl, type DirectoryLandingDoctor } from '@/lib/api';
 import { WHY, directionsUrl, initials, orderedDoctors, telHref, tokenHref, type LandingProps } from './landingData';
 
 // Template 2 — "Playful": bright, rounded, pastel-tinted tiles and friendly icons. Same content as the editorial
@@ -142,7 +142,7 @@ function DoctorCard({ d, href }: { d: DirectoryLandingDoctor; href: string }) {
     <article className="bg-white rounded-[2rem] shadow-[0_8px_30px_rgba(15,118,110,0.08)] p-5 md:p-7 flex flex-col sm:flex-row gap-5">
       {d.photo_url ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={d.photo_url} alt={d.name} className="w-28 h-28 rounded-full object-cover ring-4 ring-[#CCFBF1] shrink-0" />
+        <img src={fileUrl(d.photo_url)} alt={d.name} className="w-28 h-28 rounded-full object-cover ring-4 ring-[#CCFBF1] shrink-0" />
       ) : (
         <div className="w-28 h-28 rounded-full bg-[#CCFBF1] text-[#0F766E] font-extrabold text-[34px] flex items-center justify-center ring-4 ring-[#DCFCE7] shrink-0">{initials(d.name)}</div>
       )}

@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom';
 import { useState } from 'react';
 import { useT, dateLocale, localizeStatusDetail, LANG_NAMES, PATIENT_LANGUAGES_READY, type LangCode } from '@/lib/i18n';
 
-import type { DoctorToday, DoctorTodayStatus, NextSession } from '@/lib/api';
+import { fileUrl, type DoctorToday, type DoctorTodayStatus, type NextSession } from '@/lib/api';
 
 /** Material Symbols glyph, as used throughout the Stitch exports. */
 export function Icon({ name, className = '', fill = false }: { name: string; className?: string; fill?: boolean }) {
@@ -40,7 +40,7 @@ export function DoctorAvatar({
 }) {
   if (doctor.photo_url) {
     // eslint-disable-next-line @next/next/no-img-element
-    return <img alt={doctor.name} src={doctor.photo_url} className={`${size} rounded-full object-cover flex-shrink-0`} />;
+    return <img alt={doctor.name} src={fileUrl(doctor.photo_url)} className={`${size} rounded-full object-cover flex-shrink-0`} />;
   }
   return (
     <div

@@ -1,5 +1,6 @@
 import { ImageResponse } from 'next/og';
 import QRCode from 'qrcode';
+import { fileUrl as absoluteUrl } from '@/lib/api';
 
 // The patient's token as a picture (PNG) — used by the "Download my token" button (works on iPhone, where drawing the
 // page into an image is unreliable) and as the header image of the WhatsApp token confirmation. Public like the
@@ -69,7 +70,7 @@ export async function GET(_req: Request, { params }: { params: { tokenId: string
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '40px 60px 0', textAlign: 'center' }}>
           {v.doctor.photo_url ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={v.doctor.photo_url} width={140} height={140} alt="" style={{ borderRadius: '50%', objectFit: 'cover', border: '4px solid #cfe9e5' }} />
+            <img src={absoluteUrl(v.doctor.photo_url)} width={140} height={140} alt="" style={{ borderRadius: '50%', objectFit: 'cover', border: '4px solid #cfe9e5' }} />
           ) : (
             <div
               style={{

@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import type { DirectoryClinicProfile, DirectoryDoctorProfile } from '@/lib/api';
+import { fileUrl, type DirectoryClinicProfile, type DirectoryDoctorProfile } from '@/lib/api';
 import { ClinicLanding } from '@/components/landing/ClinicLanding';
 import { BrandLogo } from '@/components/brand/BrandLogo';
 
@@ -66,7 +66,7 @@ export default async function DoctorProfilePage({ params }: { params: { slug: st
           <div className="flex items-start gap-4">
             {doctor.photo_url ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={doctor.photo_url} alt={doctor.name} className="w-16 h-16 rounded-full object-cover shrink-0" />
+              <img src={fileUrl(doctor.photo_url)} alt={doctor.name} className="w-16 h-16 rounded-full object-cover shrink-0" />
             ) : (
               <div className="w-16 h-16 rounded-full bg-primary-fixed text-primary font-bold flex items-center justify-center shrink-0 font-headline-sm text-headline-sm">
                 {doctor.name
