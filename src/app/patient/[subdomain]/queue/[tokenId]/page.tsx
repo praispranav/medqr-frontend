@@ -243,6 +243,24 @@ export default function LiveQueuePage() {
         {header}
         <main className="min-h-screen w-full max-w-[480px] mx-auto pt-20 pb-10 bg-surface">
           <div className="flex flex-col w-full px-gutter space-y-space-md">
+            {showDownloadPrompt && (
+              <div className="w-full bg-primary-container text-on-primary-container p-space-sm px-space-md rounded-xl flex items-center gap-space-sm shadow-sm">
+                <Icon name="download" className="text-[22px] flex-shrink-0" />
+                <p className="font-body-sm text-body-sm leading-tight flex-1">{t('save_token_prompt')}</p>
+                <button
+                  onClick={() => {
+                    downloadToken();
+                    setShowDownloadPrompt(false);
+                  }}
+                  className="shrink-0 h-9 px-3 rounded-lg bg-primary text-on-primary font-label-sm text-label-sm"
+                >
+                  {t('download_token')}
+                </button>
+                <button aria-label={t('cancel')} onClick={() => setShowDownloadPrompt(false)} className="shrink-0 w-8 h-8 rounded-full flex items-center justify-center">
+                  <Icon name="close" className="text-[18px]" />
+                </button>
+              </div>
+            )}
             <div className="w-full bg-surface-container-lowest rounded-2xl p-space-lg shadow-sm flex flex-col items-center text-center gap-2 relative overflow-hidden">
               <div className="absolute -top-12 -right-12 w-36 h-36 bg-primary-fixed/20 rounded-full blur-2xl pointer-events-none" />
               <Icon name="event_available" className="text-primary text-[36px]" />
@@ -262,6 +280,14 @@ export default function LiveQueuePage() {
             <p className="text-center font-body-sm text-body-sm text-on-surface-variant px-4">
               {t('come_back_on_day')}
             </p>
+            <button
+              onClick={downloadToken}
+              disabled={!tokenImage && !imageFailed}
+              className="w-full h-12 bg-primary text-on-primary rounded-xl font-label-lg text-label-lg flex items-center justify-center gap-2 hover:opacity-90 transition-colors disabled:opacity-60"
+            >
+              <Icon name={!tokenImage && !imageFailed ? 'progress_activity' : 'download'} className={`text-[20px] ${!tokenImage && !imageFailed ? 'animate-spin' : ''}`} />
+              {t('download_token')}
+            </button>
           </div>
         </main>
       </>

@@ -31,6 +31,9 @@ function ProfileForm({ doctor, tenant, onSaved }: { doctor: DoctorToday; tenant:
   const [qualification, setQualification] = useState(doctor.qualification ?? '');
   const [specialty, setSpecialty] = useState(doctor.specialty ?? '');
   const [bio, setBio] = useState(doctor.bio ?? '');
+  const [years, setYears] = useState(doctor.experience_years != null ? String(doctor.experience_years) : '');
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiNote, setAiNote] = useState<string | null>(null);
   const [listed, setListed] = useState(!!doctor.is_publicly_listed);
   const [notifyLocationOverride, setNotifyLocationOverride] = useState(doctor.notify_location_override ?? '');
   const [state, setState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
@@ -41,6 +44,7 @@ function ProfileForm({ doctor, tenant, onSaved }: { doctor: DoctorToday; tenant:
     qualification !== (doctor.qualification ?? '') ||
     specialty !== (doctor.specialty ?? '') ||
     bio !== (doctor.bio ?? '') ||
+    years !== (doctor.experience_years != null ? String(doctor.experience_years) : '') ||
     listed !== !!doctor.is_publicly_listed ||
     notifyLocationOverride !== (doctor.notify_location_override ?? '');
 
@@ -53,6 +57,7 @@ function ProfileForm({ doctor, tenant, onSaved }: { doctor: DoctorToday; tenant:
         qualification, 
         specialty, 
         bio, 
+        experience_years: years.trim() === '' ? null : Number(years),
         is_publicly_listed: listed,
         notify_location_override: notifyLocationOverride,
       });
@@ -164,7 +169,42 @@ function ProfileForm({ doctor, tenant, onSaved }: { doctor: DoctorToday; tenant:
           />
         </label>
         <label className="flex flex-col gap-1">
+          <span className="font-label-sm text-label-sm text-on-surface-variant">Years in practice (optional)</span>
+          <input
+            inputMode="numeric"
+            value={years}
+            onChange={(e) => setYears(e.target.value.replace(/\D/g, '').slice(0, 2))}
+            placeholder="12"
+            className="h-11 w-32 rounded-lg bg-surface-container-low px-3 font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-primary/30"
+          />
+          <span className="font-body-sm text-body-sm text-on-surface-variant">Shown on your public page only if you fill it in.</span>
+        </label>
+        <div className="flex items-center justify-between gap-3 flex-wrap">
           <span className="font-label-sm text-label-sm text-on-surface-variant">Short bio</span>
+          <button
+            type="button"
+            disabled={aiBusy}
+            onClick={async () => {
+              setAiBusy(true);
+              setAiNote(null);
+              try {
+                // The draft uses what is already saved (name, qualification, specialty, years) — save first if you just changed them.
+                setBio((await api.landingDoctorBio(doctor.id)).bio);
+                setAiNote('Draft written — read it, change anything that is not right, then save.');
+              } catch (e) {
+                setAiNote(e instanceof ApiError ? e.message : 'Could not write a draft right now.');
+              } finally {
+                setAiBusy(false);
+              }
+            }}
+            className="h-9 px-3 rounded-full bg-primary-fixed/50 text-on-primary-fixed-variant font-label-md text-label-md flex items-center gap-1.5 disabled:opacity-60"
+          >
+            <Icon name={aiBusy ? 'progress_activity' : 'auto_awesome'} className={`text-[18px] ${aiBusy ? 'animate-spin' : ''}`} />
+            {aiBusy ? 'Writing…' : 'Write with AI'}
+          </button>
+        </div>
+        {aiNote && <p className="font-body-sm text-body-sm text-on-surface-variant -mt-2">{aiNote}</p>}
+        <label className="flex flex-col gap-1">
           <textarea
             value={bio}
             onChange={(e) => setBio(e.target.value)}

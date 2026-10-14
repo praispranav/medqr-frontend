@@ -65,7 +65,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
         <link
           rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@400;600;700;800&family=Newsreader:ital,wght@0,400;0,500;0,600;1,500&display=swap"
         />
         {/* Icon font: only the axes we use (24px, weight 400, outlined + filled) — ~460 KB instead of the
             ~4 MB full variable font, which made icons appear late on mobile data. */}

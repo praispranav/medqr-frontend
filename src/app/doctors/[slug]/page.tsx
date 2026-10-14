@@ -1,7 +1,9 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import type { DirectoryDoctorProfile } from '@/lib/api';
+import type { DirectoryClinicProfile, DirectoryDoctorProfile } from '@/lib/api';
+import { ClinicLanding } from '@/components/landing/ClinicLanding';
+import { BrandLogo } from '@/components/brand/BrandLogo';
 
 // Public, server-rendered doctor profile — the actual target of clinicq.in/doctors search results and
 // of Google search. Deliberately a server component (not 'use client' like the rest of the app) so
@@ -10,9 +12,14 @@ import type { DirectoryDoctorProfile } from '@/lib/api';
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:4000';
 
 async function getDoctor(slug: string): Promise<DirectoryDoctorProfile | null> {
-  const res = await fetch(`${API_BASE}/directory/doctors/${encodeURIComponent(slug)}`, { next: { revalidate: 3600 } });
+  const res = await fetch(`${API_BASE}/directory/doctors/${encodeURIComponent(slug)}`, { next: { revalidate: 60 } });
   if (!res.ok) return null;
   return res.json();
+}
+
+async function getClinic(slug: string): Promise<DirectoryClinicProfile | null> {
+  const res = await fetch(`${API_BASE}/directory/clinics/${encodeURIComponent(slug)}`, { next: { revalidate: 60 } });
+  return res.ok ? res.json() : null;
 }
 
 export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
@@ -27,6 +34,10 @@ export async function generateMetadata({ params }: { params: { slug: string } })
 export default async function DoctorProfilePage({ params }: { params: { slug: string } }) {
   const doctor = await getDoctor(params.slug);
   if (!doctor) notFound();
+
+  // Decision 50: when the doctor's clinic is listed, the doctor's page is the clinic's landing page with this doctor first.
+  const clinic = doctor.clinic_public_slug ? await getClinic(doctor.clinic_public_slug) : null;
+  if (clinic) return <ClinicLanding clinic={clinic} focusSlug={doctor.slug} />;
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -43,7 +54,7 @@ export default async function DoctorProfilePage({ params }: { params: { slug: st
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <header className="border-b border-surface-container">
         <div className="max-w-3xl mx-auto px-4 h-16 flex items-center">
-          <span className="font-headline-sm text-headline-sm text-primary">ClinicQ</span>
+          <BrandLogo />
           <Link href="/doctors" className="ml-auto font-label-md text-label-md text-on-surface-variant hover:text-on-surface">
             ← All doctors
           </Link>

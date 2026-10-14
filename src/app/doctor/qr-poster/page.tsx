@@ -75,6 +75,9 @@ function QrSuite({ tenant, doctor }: { tenant: Tenant; doctor: DoctorToday }) {
     url: clinicUrl,
     title: doctor.name,
     subtitle: [doctor.specialty, clinicName].filter(Boolean).join(' · '),
+    cabinLabel: doctor.cabin_label ?? null,
+    roleBadge: 'OPD Desk · Live Queue Check-In',
+    fallbackDomain: base.replace(/^https?:\/\//, ''),
   };
   const isLocal = /localhost|127\.0\.0\.1/.test(base);
   const open = mine?.find((q) => q.id === openId) ?? null;

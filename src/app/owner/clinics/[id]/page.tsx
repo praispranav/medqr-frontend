@@ -130,6 +130,7 @@ function ClinicDetail({ api, referrer }: { api: AdminApi; referrer: boolean }) {
             canEdit
             onSaved={async () => setTenant(await api.tenant(tenant.id))}
             save={(patch) => api.updateTenant(tenant.id, patch)}
+            aiDraft={() => api.landingDraft(tenant.id)}
           />
           <TenantQrStandees api={api} tenantId={tenant.id} />
           <ArrivalQrCard load={() => api.arrivalQr(tenant.id)} regenerate={() => api.regenerateArrivalQr(tenant.id)} rulesHint="Queue Rules below" />

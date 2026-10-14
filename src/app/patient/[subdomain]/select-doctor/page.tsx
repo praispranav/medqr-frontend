@@ -205,6 +205,11 @@ export default function SelectDoctorPage() {
     </div>
   ) : null;
 
+  // The backend's day list always includes today itself (so clinics with a 0-day advance window still
+  // show it) — the dedicated "Today" button below already covers that date, so skip it here or it's
+  // shown twice ("Today" and e.g. "Wed, 14 Oct" as separate chips for the same day).
+  const futureDays = advanceDays.filter((d) => d.date !== clinicToday());
+
   const dateStrip = advanceDays.length > 0 && (
     <div className="flex items-center gap-2 overflow-x-auto no-scrollbar -mx-1 px-1">
       <button
@@ -218,7 +223,7 @@ export default function SelectDoctorPage() {
       >
         {t('sd_today')}
       </button>
-      {advanceDays.map((d) => (
+      {futureDays.map((d) => (
         <button
           key={d.date}
           onClick={() => {

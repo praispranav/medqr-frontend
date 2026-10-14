@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { BrandLogo } from '@/components/brand/BrandLogo';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { api, ApiError } from '@/lib/api';
@@ -149,12 +150,7 @@ export default function LandingPage() {
       {/* Nav */}
       <header className="sticky top-0 z-40 bg-surface/85 backdrop-blur-xl border-b border-surface-container">
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center gap-4">
-          <Link href="/" className="flex items-center gap-2">
-            <span className="w-9 h-9 rounded-lg bg-primary-container text-on-primary flex items-center justify-center">
-              <Icon name="qr_code_2" className="text-[22px]" />
-            </span>
-            <span className="font-headline-sm text-headline-sm text-primary">ClinicQ</span>
-          </Link>
+          <BrandLogo />
           <nav className="hidden md:flex items-center gap-6 ml-6 font-label-md text-label-md text-on-surface-variant">
             <Link href="/doctors" className="hover:text-on-surface">Find a doctor</Link>
             <a href="#features" className="hover:text-on-surface">Features</a>

@@ -33,10 +33,12 @@ export function ArrivalQrCard({
     url: qr.url,
     title: qr.clinic_name,
     subtitle: 'Arrival check-in',
-    headline: 'Scan when you arrive',
+    headline: 'Scan When You Arrive',
     tagline: 'Any phone camera · tells the doctor you’re here',
     codeLabel: 'ARRIVAL · one QR for all doctors',
     steps: ['Scan', 'Checked in', 'Wait for call'],
+    roleBadge: 'Live Arrival Check-In',
+    fallbackDomain: qr.url.replace(/^https?:\/\//, '').split('/')[0],
   };
 
   return (

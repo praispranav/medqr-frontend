@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { BrandLogo } from '@/components/brand/BrandLogo';
 
 // Shared chrome for /terms and /privacy — same header/footer language as the landing page,
 // kept separate from the app's staff/patient shells since these are public, unauthenticated pages.
@@ -21,14 +22,7 @@ export function LegalLayout({
     <div className="min-h-screen bg-surface text-on-surface">
       <header className="sticky top-0 z-40 bg-surface/85 backdrop-blur-xl border-b border-surface-container">
         <div className={`${width} mx-auto px-4 h-16 flex items-center gap-4`}>
-          <Link href="/" className="flex items-center gap-2">
-            <span className="w-9 h-9 rounded-lg bg-primary-container text-on-primary flex items-center justify-center">
-              <span aria-hidden className="material-symbols-outlined leading-none text-[22px]">
-                qr_code_2
-              </span>
-            </span>
-            <span className="font-headline-sm text-headline-sm text-primary">ClinicQ</span>
-          </Link>
+          <BrandLogo />
           <nav className="ml-auto flex items-center gap-4 font-label-md text-label-md text-on-surface-variant">
             <Link href="/terms" className="hover:text-on-surface">Terms</Link>
             <Link href="/privacy" className="hover:text-on-surface">Privacy</Link>

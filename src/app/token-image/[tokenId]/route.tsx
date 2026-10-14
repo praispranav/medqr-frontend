@@ -19,6 +19,7 @@ interface View {
   arrival_scan: boolean;
   is_future_booking: boolean;
   booking_date: string | null;
+  token_date: string;
 }
 
 const initialsOf = (name: string) =>
@@ -55,6 +56,7 @@ export async function GET(_req: Request, { params }: { params: { tokenId: string
   const svg = await QRCode.toString(id, { type: 'svg', margin: 0, errorCorrectionLevel: 'M', color: { dark: '#00201d', light: '#ffffff' } });
   const qr = `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
   const specialty = [v.doctor.qualification, v.doctor.specialty].filter(Boolean).join(' · ');
+  const dateLabel = new Date(`${v.token_date}T00:00:00`).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
   const stroke = { WebkitTextStroke: '5px #005c55' } as const; // the bundled font has no bold: thicken the big number
 
   return new ImageResponse(
@@ -82,6 +84,14 @@ export async function GET(_req: Request, { params }: { params: { tokenId: string
           {specialty && <div style={{ display: 'flex', fontSize: 24, color: '#3e4947', marginTop: 6 }}>{specialty}</div>}
           <div style={{ display: 'flex', fontSize: 26, color: '#3e4947', marginTop: 10 }}>
             {[v.clinic.name, v.doctor.cabin_label].filter(Boolean).join(' · ')}
+          </div>
+          <div
+            style={{
+              display: 'flex', marginTop: 16, padding: '6px 18px', borderRadius: 999, background: '#f0fdfa',
+              color: '#0f766e', fontSize: 20, fontWeight: 700,
+            }}
+          >
+            {dateLabel}
           </div>
         </div>
         <div style={{ display: 'flex', fontSize: 26, color: '#0f766e', letterSpacing: 4, marginTop: 36 }}>YOUR TOKEN</div>

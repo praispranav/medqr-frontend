@@ -34,6 +34,12 @@ export interface PosterContent {
   headline?: string;
   /** Small line under the headline. */
   tagline?: string;
+  /** Small pill under the name, e.g. "Cabin 3" or "Front desk". */
+  cabinLabel?: string | null;
+  /** Second small pill, under the main hero card — e.g. "Live OPD queue". */
+  roleBadge?: string;
+  /** Printed small at the very bottom as a typed-URL fallback if the camera won't scan. */
+  fallbackDomain?: string | null;
 }
 
 export const patientBaseUrl = () =>
@@ -54,6 +60,9 @@ export function posterContentFor(q: QrCodeView): PosterContent {
     title: q.doctor?.name ?? q.clinic?.name ?? 'Digital Queue',
     subtitle: q.doctor ? [q.doctor.specialty, q.clinic?.name].filter(Boolean).join(' · ') : q.clinic ? 'Live OPD digital queue' : 'Scan to check in with your doctor',
     codeLabel: `MQ-${q.code}`,
+    cabinLabel: q.doctor?.cabin_label ?? null,
+    roleBadge: q.doctor ? 'OPD Desk · Live Queue Check-In' : 'Live OPD Digital Queue',
+    fallbackDomain: base.replace(/^https?:\/\//, ''),
   };
 }
 
@@ -137,29 +146,82 @@ export const PosterArtboard = forwardRef<HTMLDivElement, { kind: PosterKind; con
     );
   }
 
+  const steps = content.steps ?? STEPS;
   return (
     <div ref={ref} style={{ ...base, color: '#131b2e' }} className="flex items-center justify-center">
-      <div style={{ width: w - 48, border: '2px solid #cfe9e5', borderRadius: 22 }} className="flex flex-col items-center text-center overflow-hidden">
-        <div style={{ width: '100%', background: '#f0fdfa', padding: '18px 22px' }} className="flex items-center gap-3 text-left">
+      <div style={{ width: w - 36, border: '2px solid #cfe9e5', borderRadius: 26 }} className="flex flex-col items-center text-center overflow-hidden">
+        {/* ---- Identity: avatar, certified-facility line, name, specialty ---- */}
+        <div style={{ width: '100%', background: '#f0fdfa', padding: '28px 22px 20px' }} className="flex flex-col items-center">
           <div
-            style={{ width: 52, height: 52, borderRadius: 999, background: '#0f766e', color: '#fff', fontSize: 20, fontWeight: 800, flexShrink: 0 }}
+            style={{ width: 68, height: 68, borderRadius: 999, background: '#0f766e', color: '#fff', fontSize: 24, fontWeight: 800, border: '3px solid #fff', boxShadow: '0 0 0 3px #cfe9e5' }}
             className="flex items-center justify-center"
           >
             {initialsOf(content.title)}
           </div>
-          <div style={{ minWidth: 0 }}>
-            <p style={{ fontSize: 22, fontWeight: 800, lineHeight: 1.15 }}>{content.title}</p>
-            <p style={{ fontSize: 13, color: '#3e4947', marginTop: 2 }}>{content.subtitle || 'Live OPD digital queue'}</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 10, fontSize: 10, fontWeight: 800, color: '#0f766e', letterSpacing: '0.1em' }}>
+            <span>✓ CERTIFIED OPD FACILITY</span>
+            {content.cabinLabel && <span style={{ color: '#6f7977' }}>· {content.cabinLabel}</span>}
+          </div>
+          <p style={{ fontSize: 24, fontWeight: 800, lineHeight: 1.2, marginTop: 6 }}>{content.title}</p>
+          {content.subtitle && <p style={{ fontSize: 13, color: '#3e4947', marginTop: 3 }}>{content.subtitle}</p>}
+          <p
+            style={{
+              marginTop: 12, padding: '6px 14px', borderRadius: 999, background: '#ffffff', border: '1px solid #cfe9e5',
+              fontSize: 11, fontWeight: 700, color: '#0f766e',
+            }}
+          >
+            {content.roleBadge ?? 'Live OPD Digital Queue'}
+          </p>
+        </div>
+
+        {/* ---- Scan call-to-action bar ---- */}
+        <div style={{ width: '100%', background: '#0f766e', color: '#fff', padding: '12px 0', fontSize: 15, fontWeight: 800, letterSpacing: '0.02em' }}>
+          {content.headline ?? 'Scan to Get Your OPD Token'}
+        </div>
+
+        {/* ---- QR, with a small centred mark (the QR still scans fine with a center logo at this error-correction level) ---- */}
+        <div style={{ position: 'relative', margin: '20px 0 8px', padding: 12, border: '1px solid #e2e7ff', borderRadius: 18 }}>
+          <QRCodeSVG value={content.url} size={240} level="H" marginSize={2} fgColor="#00201d" bgColor="#ffffff" />
+          <div
+            style={{
+              position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+              width: 36, height: 36, borderRadius: 10, background: '#0f766e', border: '3px solid #fff',
+              color: '#fff', fontSize: 18, fontWeight: 800,
+            }}
+            className="flex items-center justify-center"
+          >
+            +
           </div>
         </div>
-        <p style={{ fontSize: 30, fontWeight: 800, color: '#005c55', lineHeight: 1.1, marginTop: 20 }}>{content.headline ?? 'Scan for your OPD token'}</p>
-        <p style={{ fontSize: 14, color: '#3e4947', marginTop: 6 }}>{content.tagline ?? 'Point your phone camera · see your live queue position'}</p>
-        <div style={{ margin: '16px 0 10px', padding: 10, border: '1px solid #e2e7ff', borderRadius: 16 }}>
-          <QRCodeSVG value={content.url} size={240} level="M" marginSize={2} fgColor="#00201d" bgColor="#ffffff" />
+        <p style={{ fontSize: 12, fontWeight: 700, color: '#3e4947', letterSpacing: '0.06em' }}>{content.codeLabel ?? ' '}</p>
+
+        {/* ---- Reassurance pill + 3-step cards ---- */}
+        <p
+          style={{
+            margin: '16px 20px 0', padding: '8px 16px', borderRadius: 999, background: '#f0fdfa', border: '1px solid #cfe9e5',
+            fontSize: 11, fontWeight: 700, color: '#005c55',
+          }}
+        >
+          No app required · Works with any phone camera · 10-second token
+        </p>
+        <div style={{ width: '100%', display: 'flex', gap: 8, padding: '16px 20px 0' }}>
+          {steps.map((s, i) => (
+            <div key={s} style={{ flex: 1, background: '#f0fdfa', borderRadius: 14, padding: '10px 6px' }} className="flex flex-col items-center">
+              <span style={{ width: 22, height: 22, borderRadius: 999, background: '#0f766e', color: '#fff', fontSize: 11, fontWeight: 800 }} className="flex items-center justify-center">
+                {i + 1}
+              </span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#131b2e', marginTop: 6, lineHeight: 1.2 }}>{s}</span>
+            </div>
+          ))}
         </div>
-        <StepsRow color="#005c55" muted="#3e4947" size={13} steps={content.steps} />
-        <p style={{ fontSize: 11, fontWeight: 700, color: '#3e4947', margin: '10px 0 4px', letterSpacing: '0.08em' }}>{content.codeLabel ?? ' '}</p>
-        <p style={{ fontSize: 9, fontWeight: 700, color: '#8a938f', margin: '0 0 14px', letterSpacing: '0.1em' }}>ClinicQ</p>
+
+        {/* ---- Typed-URL fallback + brand ---- */}
+        {content.fallbackDomain && (
+          <p style={{ fontSize: 10, color: '#6f7977', marginTop: 18, padding: '0 20px' }}>
+            Camera not working? Visit directly: <span style={{ fontWeight: 700, color: '#131b2e' }}>{content.fallbackDomain}</span>
+          </p>
+        )}
+        <p style={{ fontSize: 9, fontWeight: 700, color: '#8a938f', margin: '10px 0 16px', letterSpacing: '0.1em' }}>ClinicQ</p>
       </div>
     </div>
   );

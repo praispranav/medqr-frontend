@@ -140,6 +140,11 @@ export interface Tenant {
   public_slug?: string | null;
   /** Decision 41 — a pasted Google Maps link to the clinic's exact pin; opened as-is for "Get Directions". */
   maps_url?: string | null;
+  /** Decision 50 — public landing page content. */
+  landing_template?: LandingTemplate;
+  landing_tagline?: string | null;
+  landing_about?: string | null;
+  landing_highlights?: string[];
   /** Decision 42 — super admin only: custom monthly base-plan price for this clinic; null = normal tier price. */
   base_plan_override_inr?: number | null;
 }
@@ -165,6 +170,8 @@ export interface DoctorToday {
   /** Decision 6 (amended): off-today doctors only — their next planned session; bookable only inside the advance-booking window. */
   next_session?: NextSession | null;
   bio?: string | null;
+  /** Years in practice (optional, shown on the public page only when set). */
+  experience_years?: number | null;
   is_publicly_listed?: boolean;
   intake_schema?: any;
   public_slug?: string | null;
@@ -512,10 +519,29 @@ export interface DirectoryDoctorSummary {
 
 export interface DirectoryDoctorProfile extends DirectoryDoctorSummary {
   id: string;
+  clinic_public_slug: string | null;
+  experience_years: number | null;
   bio: string | null;
   clinic_subdomain: string;
   address: string | null;
   public_phone: string | null;
+}
+
+export type LandingTemplate = 'editorial' | 'playful';
+
+/** One doctor on a clinic's public landing page. fee_inr / hours / experience_years are only present when really set. */
+export interface DirectoryLandingDoctor {
+  id: string;
+  slug: string;
+  name: string;
+  qualification: string | null;
+  specialty: string | null;
+  photo_url: string | null;
+  bio: string | null;
+  cabin_label: string | null;
+  experience_years: number | null;
+  fee_inr: number | null;
+  hours: string | null;
 }
 
 export interface DirectoryClinicProfile {
@@ -524,7 +550,13 @@ export interface DirectoryClinicProfile {
   city: string | null;
   address: string | null;
   public_phone: string | null;
-  doctors: { id: string; slug: string; name: string; qualification: string | null; specialty: string | null; photo_url: string | null; bio: string | null }[];
+  /** Decision 50 — the page the clinic designed: which look, and the words it wrote. */
+  landing_template: LandingTemplate;
+  tagline: string | null;
+  about: string | null;
+  highlights: string[];
+  maps_url: string | null;
+  doctors: DirectoryLandingDoctor[];
 }
 
 export interface SubscriptionStatus {
@@ -845,12 +877,15 @@ export const api = {
   // Public doctor/clinic directory (clinicq.in/doctors) — clinic-wide fields: doctor/owner self-service (Decision 14).
   updateTenantPublicProfile: (
     tenantId: string,
-    patch: { is_publicly_listed?: boolean; city?: string | null; address?: string | null; public_phone?: string | null; maps_url?: string | null },
+    patch: { is_publicly_listed?: boolean; city?: string | null; address?: string | null; public_phone?: string | null; maps_url?: string | null; landing_template?: LandingTemplate; landing_tagline?: string | null; landing_about?: string | null; landing_highlights?: string[] },
   ) => request<Tenant>(`/tenants/${tenantId}/public-profile`, { method: 'PATCH', body: JSON.stringify(patch) }),
+  /** Decision 50 — AI drafts for the landing page (they only propose text; nothing is saved). */
+  landingClinicDraft: () => request<{ tagline: string; about: string; highlights: string[] }>('/landing/clinic-draft', { method: 'POST' }),
+  landingDoctorBio: (doctorId: string) => request<{ bio: string }>('/landing/doctor-bio', { method: 'POST', body: JSON.stringify({ doctor_id: doctorId }) }),
   // Per-doctor fields: the doctor's own login, or the clinic admin editing any doctor.
   updateDoctorPublicProfile: (
     doctorId: string,
-    patch: { qualification?: string; specialty?: string; photo_url?: string; bio?: string; is_publicly_listed?: boolean; intake_schema?: any; notify_token_confirmed?: boolean; notify_you_are_next?: boolean; notify_your_turn?: boolean; notify_location_override?: string; shift_alert_before?: boolean; shift_alert_minutes?: number; shift_alert_at_start?: boolean; patient_language?: string | null },
+    patch: { qualification?: string; specialty?: string; photo_url?: string; bio?: string; experience_years?: number | null; is_publicly_listed?: boolean; intake_schema?: any; notify_token_confirmed?: boolean; notify_you_are_next?: boolean; notify_your_turn?: boolean; notify_location_override?: string; shift_alert_before?: boolean; shift_alert_minutes?: number; shift_alert_at_start?: boolean; patient_language?: string | null },
   ) => request<DoctorToday & { bio: string | null; public_slug: string | null }>(`/doctors/${doctorId}/public-profile`, { method: 'PATCH', body: JSON.stringify(patch) }),
   // Doctor portal "My Hours"
   listSessions: (doctorId: string, date: string) => request<DoctorSession[]>(`/doctors/${doctorId}/sessions?date=${date}`),

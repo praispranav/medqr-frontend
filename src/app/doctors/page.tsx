@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { DoctorsSearch } from './DoctorsSearch';
+import { BrandLogo } from '@/components/brand/BrandLogo';
 
 export async function generateMetadata({ searchParams }: { searchParams: { q?: string; city?: string } }): Promise<Metadata> {
   const specialty = searchParams.q ? searchParams.q.charAt(0).toUpperCase() + searchParams.q.slice(1) : 'Doctors';
@@ -40,7 +41,7 @@ export default function DoctorsIndexPage({ searchParams }: { searchParams: { q?:
       />
       <header className="border-b border-surface-container">
         <div className="max-w-5xl mx-auto px-4 h-16 flex items-center">
-          <span className="font-headline-sm text-headline-sm text-primary">ClinicQ</span>
+          <BrandLogo />
         </div>
       </header>
       <div className="max-w-5xl mx-auto px-4 py-10 flex flex-col gap-6">
