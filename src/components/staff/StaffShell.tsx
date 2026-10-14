@@ -29,7 +29,7 @@ export interface StaffContext {
 }
 
 type Variant = 'reception' | 'doctor' | 'manage';
-type NavItem = { href?: string; label: string; icon?: string; managersOnly?: boolean; isCategory?: boolean };
+type NavItem = { href?: string; label: string; icon?: string; managersOnly?: boolean; isCategory?: boolean; /** A category whose items fold away under its heading. */ collapsible?: boolean };
 
 const NAV: Record<Variant, NavItem[]> = {
   doctor: [
@@ -39,13 +39,15 @@ const NAV: Record<Variant, NavItem[]> = {
     { label: 'Doctor', isCategory: true },
     { href: '/doctor/hours', label: 'My Hours', icon: 'schedule' },
     { href: '/doctor/profile', label: 'Public Profile', icon: 'badge' },
-    { label: 'Settings', isCategory: true },
+    // Every setting lives under one fold-away heading, so the sidebar stays short and the daily screens are easy to find.
+    { label: 'Settings', isCategory: true, collapsible: true },
     { href: '/doctor/settings', label: 'Queue Rules', icon: 'tune', managersOnly: true },
     { href: '/doctor/notifications', label: 'Patient Notifications', icon: 'notifications_active' },
     { href: '/doctor/intake-form', label: 'Intake Form', icon: 'assignment' },
     { href: '/doctor/qr-poster', label: 'QR Standee', icon: 'qr_code_2' },
     { href: '/doctor/online-payments', label: 'Online payment setup', icon: 'account_balance', managersOnly: true },
     { href: '/doctor/billing', label: 'Billing & Add-ons', icon: 'account_balance_wallet', managersOnly: true },
+    { label: 'Help', isCategory: true },
     { href: '/doctor/support', label: 'Help & support', icon: 'support_agent' },
   ],
   reception: [
@@ -54,18 +56,36 @@ const NAV: Record<Variant, NavItem[]> = {
     { href: '/reception/support', label: 'Help & support', icon: 'support_agent' },
   ],
   manage: [
+    { label: 'Overview', isCategory: true },
     { href: '/manage', label: 'Today', icon: 'monitoring' },
     { href: '/manage/money', label: 'Money', icon: 'currency_rupee' },
     { href: '/manage/activity', label: 'Activity', icon: 'history' },
+    { label: 'Clinic', isCategory: true },
     { href: '/manage/team', label: 'Doctors & Staff', icon: 'group' },
-    { href: '/manage/qr', label: 'QR Standees', icon: 'qr_code_2' },
     { href: '/manage/clinic', label: 'Clinic Profile', icon: 'apartment' },
+    { label: 'Settings', isCategory: true, collapsible: true },
     { href: '/manage/settings', label: 'Queue Rules', icon: 'tune' },
+    { href: '/manage/qr', label: 'QR Standees', icon: 'qr_code_2' },
     { href: '/manage/online-payments', label: 'Online payment setup', icon: 'account_balance' },
     { href: '/manage/billing', label: 'Billing & Add-ons', icon: 'account_balance_wallet' },
+    { label: 'Help', isCategory: true },
     { href: '/manage/support', label: 'Help & support', icon: 'support_agent' },
   ],
 };
+
+/** Splits the flat nav into headed sections: loose items first (no heading), then each category with its items. */
+type NavSection = { label: string | null; collapsible: boolean; items: NavItem[] };
+function sectionsOf(nav: NavItem[]): NavSection[] {
+  const out: NavSection[] = [];
+  for (const item of nav) {
+    if (item.isCategory) out.push({ label: item.label, collapsible: !!item.collapsible, items: [] });
+    else {
+      if (!out.length) out.push({ label: null, collapsible: false, items: [] });
+      out[out.length - 1].items.push(item);
+    }
+  }
+  return out.filter((sec) => sec.items.length > 0); // a heading with nothing under it (e.g. hidden in the demo) disappears
+}
 
 const ROLE_LABEL: Record<Me['user']['role'], string> = { doctor: 'Doctor', reception: 'Reception', owner: 'Clinic admin' };
 
@@ -78,9 +98,12 @@ function navFor(variant: Variant, me: Me, isDemo: boolean): NavItem[] {
     // In a multi-doctor clinic, a doctor with owner access finds these under Clinic admin instead.
     const soloDoctor = me.doctor_count <= 1;
     items = NAV.doctor.filter((i) => !i.managersOnly || soloDoctor);
-    if (me.user.is_owner && !soloDoctor) items.push({ href: '/manage', label: 'Clinic admin', icon: 'admin_panel_settings' });
+    if (me.user.is_owner && !soloDoctor) {
+      const at = items.findIndex((i) => i.isCategory && i.label === 'Settings');
+      items.splice(at === -1 ? items.length : at, 0, { label: 'Clinic', isCategory: true }, { href: '/manage', label: 'Clinic admin', icon: 'admin_panel_settings' });
+    }
   } else if (variant === 'manage' && me.user.role === 'doctor') {
-    items = [...NAV.manage, { href: '/doctor/dashboard', label: 'My queue', icon: 'space_dashboard' }];
+    items = [{ href: '/doctor/dashboard', label: 'My queue', icon: 'space_dashboard' }, ...NAV.manage];
   } else {
     items = NAV[variant];
   }
@@ -108,6 +131,9 @@ export function StaffShell({
   const [doctors, setDoctors] = useState<DoctorToday[] | null>(null);
   const [failed, setFailed] = useState(false);
   const [sub, setSub] = useState<SubscriptionStatus | null>(null);
+  // Fold-away sidebar sections (Settings): closed by default, opened by tapping the heading or by being on a page inside it.
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
+  const [mobileSettingsOpen, setMobileSettingsOpen] = useState(false);
 
   const load = useCallback(async () => {
     const who = await api.me();
@@ -210,6 +236,7 @@ export function StaffShell({
 
   const clinicName = tenant.display_name ?? tenant.subdomain;
   const nav = navFor(variant, me, !!tenant.is_demo);
+  const sections = sectionsOf(nav);
   const suiteLabel = variant === 'doctor' ? 'Doctor Suite' : variant === 'manage' ? 'Clinic Admin' : 'Front Desk';
   const deskLabel = variant === 'manage' ? 'Clinic admin' : 'Reception desk';
 
@@ -249,28 +276,41 @@ export function StaffShell({
           </div>
         )}
 
-        <nav className="flex flex-col gap-1">
-          {nav.map((item) => {
-            if (item.isCategory) {
-              return (
-                <div key={`cat-${item.label}`} className="mt-4 mb-1 px-3">
-                  <span className="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">{item.label}</span>
-                </div>
-              );
-            }
+        <nav className="flex flex-col gap-1 overflow-y-auto">
+          {sections.map((sec) => {
+            const hasActive = sec.items.some((i) => i.href === active);
+            const open = !sec.collapsible || (openSections[sec.label ?? ''] ?? hasActive);
             return (
-              <Link
-                key={item.href}
-                href={item.href!}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl font-label-lg text-label-lg transition-colors ${
-                  active === item.href
-                    ? 'bg-primary-container text-on-primary'
-                    : 'text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface'
-                }`}
-              >
-                <Icon name={item.icon!} className="text-[20px]" />
-                {item.label}
-              </Link>
+              <div key={sec.label ?? 'top'} className="flex flex-col gap-1">
+                {sec.label &&
+                  (sec.collapsible ? (
+                    <button
+                      onClick={() => setOpenSections((o) => ({ ...o, [sec.label!]: !open }))}
+                      aria-expanded={open}
+                      className="mt-4 mb-1 px-3 flex items-center justify-between rounded-lg hover:bg-surface-container-low py-1.5"
+                    >
+                      <span className="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">{sec.label}</span>
+                      <Icon name={open ? 'expand_less' : 'expand_more'} className="text-[20px] text-on-surface-variant" />
+                    </button>
+                  ) : (
+                    <div className="mt-4 mb-1 px-3">
+                      <span className="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">{sec.label}</span>
+                    </div>
+                  ))}
+                {open &&
+                  sec.items.map((item) => (
+                    <Link
+                      key={item.href}
+                      href={item.href!}
+                      className={`flex items-center gap-3 px-3 py-2.5 rounded-xl font-label-lg text-label-lg transition-colors ${
+                        active === item.href ? 'bg-primary-container text-on-primary' : 'text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface'
+                      }`}
+                    >
+                      <Icon name={item.icon!} className="text-[20px]" />
+                      {item.label}
+                    </Link>
+                  ))}
+              </div>
             );
           })}
         </nav>
@@ -330,19 +370,54 @@ export function StaffShell({
             </button>
           </div>
           {nav.length > 1 && (
-            <nav className="lg:hidden flex gap-1.5 overflow-x-auto no-scrollbar px-4 pb-2">
-              {nav.filter(i => !i.isCategory).map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href!}
-                  className={`whitespace-nowrap px-3 py-1.5 rounded-full font-label-md text-label-md ${
-                    active === item.href ? 'bg-primary text-on-primary' : 'bg-surface-container text-on-surface-variant'
-                  }`}
-                >
-                  {item.label}
-                </Link>
-              ))}
-            </nav>
+            <>
+              <nav className="lg:hidden flex gap-1.5 overflow-x-auto no-scrollbar px-4 pb-2">
+                {sections.map((sec) =>
+                  sec.collapsible ? (
+                    <button
+                      key={sec.label}
+                      onClick={() => setMobileSettingsOpen((o) => !o)}
+                      aria-expanded={mobileSettingsOpen}
+                      className={`whitespace-nowrap px-3 py-1.5 rounded-full font-label-md text-label-md flex items-center gap-1 ${
+                        sec.items.some((i) => i.href === active) ? 'bg-primary text-on-primary' : 'bg-surface-container text-on-surface-variant'
+                      }`}
+                    >
+                      {sec.label} <Icon name={mobileSettingsOpen ? 'expand_less' : 'expand_more'} className="text-[18px]" />
+                    </button>
+                  ) : (
+                    sec.items.map((item) => (
+                      <Link
+                        key={item.href}
+                        href={item.href!}
+                        className={`whitespace-nowrap px-3 py-1.5 rounded-full font-label-md text-label-md ${
+                          active === item.href ? 'bg-primary text-on-primary' : 'bg-surface-container text-on-surface-variant'
+                        }`}
+                      >
+                        {item.label}
+                      </Link>
+                    ))
+                  ),
+                )}
+              </nav>
+              {(mobileSettingsOpen || sections.some((sec) => sec.collapsible && sec.items.some((i) => i.href === active))) && (
+                <nav className="lg:hidden flex gap-1.5 overflow-x-auto no-scrollbar px-4 pb-2">
+                  {sections
+                    .filter((sec) => sec.collapsible)
+                    .flatMap((sec) => sec.items)
+                    .map((item) => (
+                      <Link
+                        key={item.href}
+                        href={item.href!}
+                        className={`whitespace-nowrap px-3 py-1.5 rounded-full font-label-md text-label-md ${
+                          active === item.href ? 'bg-primary-container text-on-primary' : 'bg-surface-container-low text-on-surface-variant'
+                        }`}
+                      >
+                        {item.label}
+                      </Link>
+                    ))}
+                </nav>
+              )}
+            </>
           )}
         </header>
 
