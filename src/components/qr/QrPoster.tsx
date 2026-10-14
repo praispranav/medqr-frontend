@@ -112,7 +112,8 @@ export const PosterArtboard = forwardRef<HTMLDivElement, { kind: PosterKind; con
             <QRCodeSVG value={content.url} size={250} level="Q" marginSize={2} fgColor="#000000" bgColor="#ffffff" />
           </div>
           <StepsRow color="#000" muted="#000" size={14} steps={content.steps} />
-          <p style={{ fontSize: 12, fontWeight: 700, margin: '10px 0 16px', letterSpacing: '0.08em' }}>{content.codeLabel ?? ' '}</p>
+          <p style={{ fontSize: 12, fontWeight: 700, margin: '10px 0 4px', letterSpacing: '0.08em' }}>{content.codeLabel ?? ' '}</p>
+          <p style={{ fontSize: 9, fontWeight: 700, margin: '0 0 14px', letterSpacing: '0.1em' }}>ClinicQ</p>
         </div>
       </div>
     );
@@ -131,6 +132,7 @@ export const PosterArtboard = forwardRef<HTMLDivElement, { kind: PosterKind; con
         </div>
         <StepsRow color="#005c55" muted="#3e4947" size={11} steps={content.steps} />
         {content.codeLabel && <p style={{ fontSize: 10, fontWeight: 700, color: '#3e4947', marginTop: 8, letterSpacing: '0.08em' }}>{content.codeLabel}</p>}
+        <p style={{ fontSize: 8, fontWeight: 700, color: '#8a938f', marginTop: 4, marginBottom: 10, letterSpacing: '0.1em' }}>ClinicQ</p>
       </div>
     );
   }
@@ -156,7 +158,8 @@ export const PosterArtboard = forwardRef<HTMLDivElement, { kind: PosterKind; con
           <QRCodeSVG value={content.url} size={240} level="M" marginSize={2} fgColor="#00201d" bgColor="#ffffff" />
         </div>
         <StepsRow color="#005c55" muted="#3e4947" size={13} steps={content.steps} />
-        <p style={{ fontSize: 11, fontWeight: 700, color: '#3e4947', margin: '10px 0 16px', letterSpacing: '0.08em' }}>{content.codeLabel ?? ' '}</p>
+        <p style={{ fontSize: 11, fontWeight: 700, color: '#3e4947', margin: '10px 0 4px', letterSpacing: '0.08em' }}>{content.codeLabel ?? ' '}</p>
+        <p style={{ fontSize: 9, fontWeight: 700, color: '#8a938f', margin: '0 0 14px', letterSpacing: '0.1em' }}>ClinicQ</p>
       </div>
     </div>
   );
