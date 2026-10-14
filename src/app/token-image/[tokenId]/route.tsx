@@ -13,13 +13,22 @@ const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:4000'
 interface View {
   token_number: number;
   status: string;
-  doctor: { name: string; cabin_label: string | null };
+  doctor: { name: string; cabin_label: string | null; qualification: string | null; specialty: string | null; photo_url: string | null };
   clinic: { name: string };
   front_desk: boolean;
   arrival_scan: boolean;
   is_future_booking: boolean;
   booking_date: string | null;
 }
+
+const initialsOf = (name: string) =>
+  name
+    .replace(/^Dr\.?\s+/i, '')
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0]!.toUpperCase())
+    .join('') || 'Dr';
 
 export async function GET(_req: Request, { params }: { params: { tokenId: string } }) {
   const id = params.tokenId.replace(/\.png$/i, '');
@@ -45,7 +54,7 @@ export async function GET(_req: Request, { params }: { params: { tokenId: string
 
   const svg = await QRCode.toString(id, { type: 'svg', margin: 0, errorCorrectionLevel: 'M', color: { dark: '#00201d', light: '#ffffff' } });
   const qr = `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
-  const place = [v.doctor.name, v.doctor.cabin_label].filter(Boolean).join(' · ');
+  const specialty = [v.doctor.qualification, v.doctor.specialty].filter(Boolean).join(' · ');
   const stroke = { WebkitTextStroke: '5px #005c55' } as const; // the bundled font has no bold: thicken the big number
 
   return new ImageResponse(
@@ -54,22 +63,39 @@ export async function GET(_req: Request, { params }: { params: { tokenId: string
         <div style={{ display: 'flex', width: '100%', height: 96, background: '#0f766e', color: '#ffffff', alignItems: 'center', justifyContent: 'center', fontSize: 38, letterSpacing: 2 }}>
           ClinicQ
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '44px 60px 0', textAlign: 'center' }}>
-          <div style={{ display: 'flex', fontSize: 46, color: '#131b2e', ...({ WebkitTextStroke: '1.5px #131b2e' }) }}>{v.clinic.name}</div>
-          <div style={{ display: 'flex', fontSize: 30, color: '#3e4947', marginTop: 12 }}>{place}</div>
+        {/* Doctor first — their photo and name is what the patient recognises; the clinic is the subtitle. */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '40px 60px 0', textAlign: 'center' }}>
+          {v.doctor.photo_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={v.doctor.photo_url} width={140} height={140} alt="" style={{ borderRadius: '50%', objectFit: 'cover', border: '4px solid #cfe9e5' }} />
+          ) : (
+            <div
+              style={{
+                display: 'flex', width: 140, height: 140, borderRadius: '50%', background: '#f0fdfa', color: '#0f766e',
+                alignItems: 'center', justifyContent: 'center', fontSize: 52, border: '4px solid #cfe9e5',
+              }}
+            >
+              {initialsOf(v.doctor.name)}
+            </div>
+          )}
+          <div style={{ display: 'flex', fontSize: 44, color: '#131b2e', marginTop: 20, ...({ WebkitTextStroke: '1.5px #131b2e' }) }}>{v.doctor.name}</div>
+          {specialty && <div style={{ display: 'flex', fontSize: 24, color: '#3e4947', marginTop: 6 }}>{specialty}</div>}
+          <div style={{ display: 'flex', fontSize: 26, color: '#3e4947', marginTop: 10 }}>
+            {[v.clinic.name, v.doctor.cabin_label].filter(Boolean).join(' · ')}
+          </div>
         </div>
-        <div style={{ display: 'flex', fontSize: 28, color: '#0f766e', letterSpacing: 4, marginTop: 52 }}>YOUR TOKEN</div>
-        <div style={{ display: 'flex', fontSize: 230, color: '#005c55', lineHeight: 1, marginTop: 6, ...stroke }}>{`#${v.token_number}`}</div>
-        <div style={{ display: 'flex', marginTop: 50, padding: 22, border: '4px solid #cfe9e5', borderRadius: 28 }}>
+        <div style={{ display: 'flex', fontSize: 26, color: '#0f766e', letterSpacing: 4, marginTop: 36 }}>YOUR TOKEN</div>
+        <div style={{ display: 'flex', fontSize: 210, color: '#005c55', lineHeight: 1, marginTop: 4, ...stroke }}>{`#${v.token_number}`}</div>
+        <div style={{ display: 'flex', marginTop: 40, padding: 22, border: '4px solid #cfe9e5', borderRadius: 28 }}>
           {arrived ? (
-            <div style={{ display: 'flex', width: 300, height: 300, alignItems: 'center', justifyContent: 'center', fontSize: 230, color: '#0f766e' }}>✓</div>
+            <div style={{ display: 'flex', width: 280, height: 280, alignItems: 'center', justifyContent: 'center', fontSize: 210, color: '#0f766e' }}>✓</div>
           ) : (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={qr} width={300} height={300} alt="" />
+            <img src={qr} width={280} height={280} alt="" />
           )}
         </div>
-        <div style={{ display: 'flex', fontSize: 30, color: '#0f766e', marginTop: 40, padding: '0 70px', textAlign: 'center' }}>{caption}</div>
-        <div style={{ display: 'flex', fontSize: 22, color: '#6f7977', marginTop: 22 }}>{`ID: ${id.split('-')[0].toUpperCase()}`}</div>
+        <div style={{ display: 'flex', fontSize: 28, color: '#0f766e', marginTop: 34, padding: '0 70px', textAlign: 'center' }}>{caption}</div>
+        <div style={{ display: 'flex', fontSize: 20, color: '#6f7977', marginTop: 18 }}>{`ID: ${id.split('-')[0].toUpperCase()}`}</div>
       </div>
     ),
     { width: 900, height: 1220, headers: { 'Cache-Control': 'no-store' } },

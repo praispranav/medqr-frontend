@@ -732,6 +732,28 @@ export const api = {
   verifyOtp: (mobile_number: string, code: string) =>
     request<{ patient_token: string; mobile_number: string }>('/patients/otp/verify', { method: 'POST', body: JSON.stringify({ mobile_number, code }) }),
   myProfiles: () => request<{ mobile_number: string; verified: boolean; profiles: Patient[] }>('/patients/me'),
+  // patient.clinicq.in home: live tokens to regain + doctors previously visited, for "book again".
+  myTokens: () =>
+    request<{
+      live: {
+        token_id: string;
+        token_number: number;
+        status: TokenStatus;
+        booking_date: string;
+        patient_name: string | null;
+        doctor_name: string;
+        clinic_subdomain: string;
+        clinic_name: string;
+      }[];
+      visited: {
+        doctor_id: string;
+        doctor_name: string;
+        specialty: string | null;
+        clinic_subdomain: string;
+        clinic_name: string;
+        last_visit_date: string;
+      }[];
+    }>('/patients/me/tokens'),
   findOrCreatePatient: (body: {
     tenantId?: string;
     mobile_number: string;

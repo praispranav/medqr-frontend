@@ -98,6 +98,22 @@ export default function LiveQueuePage() {
     // re-draw when the card changes (e.g. checked in → the QR becomes a tick)
   }, [tokenImageUrl, tokenNumber, tokenStatus]);
 
+  // Decision (patient home) — the first time this token's picture is ready, offer to save it once
+  // (not a silent auto-download: iOS/Chrome both need a real tap for the share-sheet/download to
+  // fire, and an uninvited download is bad UX anyway) — remembered per token so it never nags twice.
+  const [showDownloadPrompt, setShowDownloadPrompt] = useState(false);
+  useEffect(() => {
+    if (!tokenImage) return;
+    const key = `medqr_token_dl_prompted_${tokenId}`;
+    try {
+      if (localStorage.getItem(key)) return;
+      localStorage.setItem(key, '1');
+    } catch {
+      /* private mode: just prompt this once per load */
+    }
+    setShowDownloadPrompt(true);
+  }, [tokenImage, tokenId]);
+
   const downloadToken = () => {
     if (!tokenImage) {
       window.open(tokenImageUrl, '_blank'); // couldn't preload: show the picture, long-press to save
@@ -341,6 +357,24 @@ export default function LiveQueuePage() {
       <AddToHomeScreen active />
       <main className="min-h-screen w-full max-w-[480px] mx-auto pt-20 pb-10 bg-surface">
         <div className="flex flex-col w-full px-gutter space-y-space-md">
+          {showDownloadPrompt && (
+            <div className="w-full bg-primary-container text-on-primary-container p-space-sm px-space-md rounded-xl flex items-center gap-space-sm shadow-sm">
+              <Icon name="download" className="text-[22px] flex-shrink-0" />
+              <p className="font-body-sm text-body-sm leading-tight flex-1">{t('save_token_prompt')}</p>
+              <button
+                onClick={() => {
+                  downloadToken();
+                  setShowDownloadPrompt(false);
+                }}
+                className="shrink-0 h-9 px-3 rounded-lg bg-primary text-on-primary font-label-sm text-label-sm"
+              >
+                {t('download_token')}
+              </button>
+              <button aria-label={t('cancel')} onClick={() => setShowDownloadPrompt(false)} className="shrink-0 w-8 h-8 rounded-full flex items-center justify-center">
+                <Icon name="close" className="text-[18px]" />
+              </button>
+            </div>
+          )}
           {preSession && (
             <div className="w-full bg-surface-container-low text-on-surface p-space-sm px-space-md rounded-xl flex items-center gap-space-sm shadow-sm">
               <Icon name="info" className="text-primary text-[22px] flex-shrink-0" />

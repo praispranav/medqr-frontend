@@ -341,6 +341,21 @@ export const en = {
   "ar_wait": "Please wait nearby. The doctor will call your token number.",
   "ar_unreach": "Could not reach ClinicQ",
   "otp_second_token": "To get another token on this number, please confirm it on WhatsApp once. You'll stay verified on this phone.",
+
+  // Patient home (patient.clinicq.in) — regain a lost token, see visit history, book again
+  "ph_title": "Your ClinicQ tokens",
+  "ph_subtitle": "Enter your mobile number to see your active tokens and past visits.",
+  "ph_change_number": "Not your number? Change it",
+  "ph_live_tokens": "Active tokens",
+  "ph_no_live_tokens": "No active tokens right now.",
+  "ph_visited": "Doctors you've visited",
+  "ph_no_visited": "No visits yet — once you check in somewhere, it'll show up here.",
+  "ph_book_again": "Book again",
+  "ph_view_token": "View token",
+  "ph_last_visit": "Last visit {date}",
+  "ph_scan_instead": "Have a clinic's QR code? Scan that instead to check in.",
+  "ph_mobile_invalid": "Enter a 10-digit mobile number",
+  "save_token_prompt": "Save your token to this phone, in case you lose the page.",
 };
 
 export type TranslationKey = keyof typeof en;
