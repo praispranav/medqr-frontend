@@ -67,7 +67,15 @@ export async function GET(_req: Request, { params }: { params: { tokenId: string
           ClinicQ
         </div>
         {/* Doctor first — their photo and name is what the patient recognises; the clinic is the subtitle. */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '40px 60px 0', textAlign: 'center' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '32px 60px 0', textAlign: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 18, fontWeight: 700, color: '#0f766e', letterSpacing: 2, marginBottom: 16 }}>
+            {/* next/og's Satori renderer has no glyph for "✓" (shows as a tofu box) — an inline SVG always works. */}
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+              <circle cx="10" cy="10" r="10" fill="#0f766e" />
+              <path d="M5.5 10.5L8.5 13.5L14.5 7" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            CERTIFIED OPD FACILITY
+          </div>
           {v.doctor.photo_url ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={absoluteUrl(v.doctor.photo_url)} width={140} height={140} alt="" style={{ borderRadius: '50%', objectFit: 'cover', border: '4px solid #cfe9e5' }} />
@@ -99,7 +107,11 @@ export async function GET(_req: Request, { params }: { params: { tokenId: string
         <div style={{ display: 'flex', fontSize: 210, color: '#005c55', lineHeight: 1, marginTop: 4, ...stroke }}>{`#${v.token_number}`}</div>
         <div style={{ display: 'flex', marginTop: 40, padding: 22, border: '4px solid #cfe9e5', borderRadius: 28 }}>
           {arrived ? (
-            <div style={{ display: 'flex', width: 280, height: 280, alignItems: 'center', justifyContent: 'center', fontSize: 210, color: '#0f766e' }}>✓</div>
+            <div style={{ display: 'flex', width: 280, height: 280, alignItems: 'center', justifyContent: 'center' }}>
+              <svg width="180" height="180" viewBox="0 0 20 20" fill="none">
+                <path d="M3 10.5L8 15.5L17 5" stroke="#0f766e" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </div>
           ) : (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={qr} width={280} height={280} alt="" />
