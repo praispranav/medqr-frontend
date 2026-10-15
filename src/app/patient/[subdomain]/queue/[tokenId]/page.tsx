@@ -381,7 +381,7 @@ export default function LiveQueuePage() {
   return (
     <>
       {header}
-      <AddToHomeScreen active />
+      <AddToHomeScreen />
       <main className="min-h-screen w-full max-w-[480px] mx-auto pt-20 pb-10 bg-surface">
         <div className="flex flex-col w-full px-gutter space-y-space-md">
           {showDownloadPrompt && (

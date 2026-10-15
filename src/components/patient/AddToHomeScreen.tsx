@@ -16,7 +16,6 @@ import {
   isStandalone,
   markDismissed,
   promptInstall,
-  recentlyDismissed,
   redeemHandoff,
 } from '@/lib/homeScreen';
 
@@ -55,12 +54,12 @@ export function HomeScreenBridge() {
 }
 
 /**
- * "Add ClinicQ to your Home Screen" popup on the live token page. Opens by itself once (not again for
- * 3 days after closing) and whenever something fires OPEN_A2HS_EVENT (the iPhone alerts hint).
+ * "Add ClinicQ to your Home Screen" popup on the live token page. Never opens by itself (it nagged
+ * patients): only when the patient taps something that fires OPEN_A2HS_EVENT (the iPhone alerts hint).
  * iPhone: Share → Add to Home Screen steps, with the hand-off code put in the address meanwhile.
  * Android: Chrome's own install prompt when it offers one, otherwise the ⋮ menu steps.
  */
-export function AddToHomeScreen({ active }: { active: boolean }) {
+export function AddToHomeScreen() {
   const { t: tr } = useT();
   const [open, setOpen] = useState(false);
   const [platform, setPlatform] = useState<'ios' | 'android' | null>(null);
@@ -73,12 +72,8 @@ export function AddToHomeScreen({ active }: { active: boolean }) {
     if (!p) return;
     const show = () => setOpen(true);
     window.addEventListener(OPEN_A2HS_EVENT, show);
-    const t = active && !recentlyDismissed() ? setTimeout(show, 2000) : undefined;
-    return () => {
-      window.removeEventListener(OPEN_A2HS_EVENT, show);
-      clearTimeout(t);
-    };
-  }, [active]);
+    return () => window.removeEventListener(OPEN_A2HS_EVENT, show);
+  }, []);
 
   // iPhone: while the popup is open, the address carries the one-time code iOS will save.
   useEffect(() => {
