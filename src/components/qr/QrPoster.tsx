@@ -250,11 +250,33 @@ async function renderPng(node: HTMLElement, pixelRatio: number = EXPORT_SCALE) {
   return toPng(node, { pixelRatio, cacheBust: true, backgroundColor: '#ffffff' });
 }
 
-function saveDataUrl(dataUrl: string, filename: string) {
+/**
+ * iOS Safari (and macOS Safari, less reliably) doesn't treat `<a download>` pointing at a `data:` URI
+ * as an actual download — it just opens/displays the content, and the only way to keep it is the
+ * share sheet's "Save Image"/"Copy", which is what was happening here. The fix is the same one the
+ * patient's own "Download my token" button already uses: offer the real OS share sheet first (its
+ * Save to Files / Save Image always works), and only fall back to an anchor click — with a Blob URL,
+ * not a raw data: URI, since Safari handles those as real downloads far more reliably.
+ */
+async function saveOrShare(dataUrl: string, filename: string, mimeType: string) {
+  const blob = await (await fetch(dataUrl)).blob();
+  const file = new File([blob], filename, { type: mimeType });
+  if (navigator.canShare?.({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file] });
+      return;
+    } catch {
+      // Cancelled or unsupported mid-flow — fall through to a direct download instead.
+    }
+  }
+  const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = dataUrl;
+  a.href = url;
   a.download = filename;
+  document.body.appendChild(a);
   a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }
 
 /** One PDF, one poster per page — for a whole onboarding batch. */
@@ -266,7 +288,8 @@ export async function downloadPostersPdf(nodes: HTMLElement[], kind: PosterKind,
     if (i > 0) pdf.addPage([mw, mh], 'portrait');
     pdf.addImage(await renderPng(nodes[i]), 'PNG', 0, 0, mw, mh);
   }
-  pdf.save(filename);
+  const blob = pdf.output('blob') as Blob;
+  await saveOrShare(URL.createObjectURL(blob), filename, 'application/pdf');
 }
 
 /** Preview scaled to its column + Download PDF / PNG. */
@@ -307,7 +330,7 @@ export function PosterCard({
     try {
       if (type === 'png') {
         const ratio = PNG_SIZES.find((s) => s.key === pngSize)!.pixelRatio;
-        saveDataUrl(await renderPng(posterRef.current, ratio), `${fileBase}-${kind}.png`);
+        await saveOrShare(await renderPng(posterRef.current, ratio), `${fileBase}-${kind}.png`, 'image/png');
       } else await downloadPostersPdf([posterRef.current], kind, `${fileBase}-${kind}.pdf`);
     } catch (e) {
       const reason = e instanceof Error && e.message ? e.message : 'likely a photo from a different domain — try again, or remove the doctor photo';
