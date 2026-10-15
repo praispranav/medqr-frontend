@@ -8,7 +8,7 @@ import { Icon } from '@/components/patient/ui';
 import { StaffShell } from '@/components/staff/StaffShell';
 import { useLiveQueue } from '@/components/staff/useLiveQueue';
 import { QrScanner } from '@/components/staff/QrScanner';
-import { inr, minutesSince, PaidBadge, StatusPill, VitalsChips } from '@/components/staff/bits';
+import { formatMinutesAgo, inr, minutesSince, PaidBadge, StatusPill, VitalsChips } from '@/components/staff/bits';
 import { clinicToday } from '@/lib/clinicTime';
 import { doctorSettings } from '@/lib/doctorSettings';
 import { PatientSearchAction } from '@/components/staff/PatientSearch';
@@ -483,7 +483,7 @@ function ReceptionDesk({ tenant, doctors, walkInPreFill, setWalkInPreFill }: { t
                     </span>
                     <span className="block font-body-sm text-body-sm text-on-surface-variant truncate">
                       {multiDoctor ? `${r.doctor.name} · ` : ''}
-                      {r.visit?.chief_complaint || `joined ${minutesSince(r.joined_at)}m ago`}
+                      {r.visit?.chief_complaint || `joined ${formatMinutesAgo(minutesSince(r.joined_at) ?? 0)} ago`}
                     </span>
                     <span className="flex items-center gap-2 flex-wrap">
                       <PaidBadge row={r} showDue={owes(r, qsFor(r.doctor.id))} />

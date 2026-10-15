@@ -105,3 +105,11 @@ export function minutesSince(iso: string | null, now = Date.now()) {
   }
   return Math.max(0, diff);
 }
+
+/** "12m" under an hour, "3h 5m" (or "3h" on the hour) beyond that — a raw "840m ago" is unreadable. */
+export function formatMinutesAgo(minutes: number): string {
+  if (minutes < 60) return `${minutes}m`;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return m === 0 ? `${h}h` : `${h}h ${m}m`;
+}

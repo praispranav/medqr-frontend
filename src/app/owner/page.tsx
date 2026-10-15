@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from 'react';
 import type { Activity, AdminApi } from '@/lib/adminApi';
 import { Icon } from '@/components/patient/ui';
 import { AdminShell } from '@/components/admin/AdminShell';
-import { minutesSince, StatusPill } from '@/components/staff/bits';
+import { formatMinutesAgo, minutesSince, StatusPill } from '@/components/staff/bits';
 
 // Platform activity: today's tokens across every clinic, refreshed every 15 s.
 export default function AdminActivityPage() {
@@ -94,7 +94,7 @@ function ActivityView({ api }: { api: AdminApi }) {
                 <div className="flex-1 min-w-0">
                   <p className="font-label-lg text-label-lg truncate">{r.patient}</p>
                   <p className="font-body-sm text-body-sm text-on-surface-variant truncate">
-                    {r.clinic} · {r.doctor} · {minutesSince(r.joined_at)}m ago
+                    {r.clinic} · {r.doctor} · {formatMinutesAgo(minutesSince(r.joined_at) ?? 0)} ago
                   </p>
                 </div>
                 <StatusPill status={r.status} />

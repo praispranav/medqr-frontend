@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { api, ApiError, type LandingTemplate, type Tenant } from '@/lib/api';
 import { Icon } from '@/components/patient/ui';
 
@@ -52,6 +52,9 @@ export function ClinicDetails({
   const [aiNote, setAiNote] = useState<string | null>(null);
   const [state, setState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [error, setError] = useState<string | null>(null);
+  const [origin, setOrigin] = useState('');
+  const [copied, setCopied] = useState(false);
+  useEffect(() => setOrigin(window.location.origin), []);
 
   const dirty =
     listed !== !!tenant.is_publicly_listed ||
@@ -255,9 +258,40 @@ export function ClinicDetails({
         </div>
 
         {tenant.public_slug && listed && (
-          <Link href={`/clinics/${tenant.public_slug}`} target="_blank" className="font-label-md text-label-md text-primary flex items-center gap-1.5 self-start">
-            <Icon name="open_in_new" className="text-[18px]" /> View your clinic&apos;s live page
-          </Link>
+          <div className="flex flex-col gap-2">
+            <span className="font-label-sm text-label-sm text-on-surface-variant">Your clinic&apos;s shareable link</span>
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex-1 min-w-0 h-11 rounded-lg bg-surface-container-low px-3 flex items-center">
+                <span className="font-body-sm text-body-sm text-on-surface truncate">{origin || '…'}/clinics/{tenant.public_slug}</span>
+              </div>
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(`${origin}/clinics/${tenant.public_slug}`);
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                  } catch {
+                    /* clipboard blocked — the text is still right there to select */
+                  }
+                }}
+                className="h-11 px-4 rounded-lg bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-1.5 shrink-0"
+              >
+                <Icon name={copied ? 'check' : 'content_copy'} className="text-[18px]" /> {copied ? 'Copied' : 'Copy'}
+              </button>
+              <a
+                href={`https://wa.me/?text=${encodeURIComponent(`Book a digital queue token at ${tenant.display_name ?? 'our clinic'} on ClinicQ: ${origin}/clinics/${tenant.public_slug}`)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="h-11 px-4 rounded-lg bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-1.5 shrink-0"
+              >
+                <Icon name="share" className="text-[18px]" /> Share
+              </a>
+              <Link href={`/clinics/${tenant.public_slug}`} target="_blank" className="font-label-md text-label-md text-primary flex items-center gap-1.5">
+                <Icon name="open_in_new" className="text-[18px]" /> View
+              </Link>
+            </div>
+          </div>
         )}
         {error && <p className="font-body-sm text-body-sm text-error">{error}</p>}
         <div className="flex items-center gap-3">

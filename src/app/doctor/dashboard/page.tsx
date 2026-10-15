@@ -8,7 +8,7 @@ import { HoursReminderBanner } from '@/components/staff/HoursReminderBanner';
 import { Icon } from '@/components/patient/ui';
 import { StaffShell } from '@/components/staff/StaffShell';
 import { useLiveQueue } from '@/components/staff/useLiveQueue';
-import { minutesSince, PaidBadge, STATUS_LABEL, StatusPill, VitalsChips } from '@/components/staff/bits';
+import { formatMinutesAgo, minutesSince, PaidBadge, STATUS_LABEL, StatusPill, VitalsChips } from '@/components/staff/bits';
 import { clinicToday } from '@/lib/clinicTime';
 import { doctorSettings } from '@/lib/doctorSettings';
 import { PatientSearchAction } from '@/components/staff/PatientSearch';
@@ -161,7 +161,7 @@ function CommandCenter({ tenant, doctor }: { tenant: Tenant; doctor: DoctorToday
             {current?.called_at && (
               <span className="flex items-center gap-1.5 font-label-md text-label-md text-on-surface-variant">
                 <Icon name="schedule" className="text-[18px]" />
-                Called {minutesSince(current.called_at, now)}m ago
+                Called {formatMinutesAgo(minutesSince(current.called_at, now) ?? 0)} ago
               </span>
             )}
           </div>
@@ -504,7 +504,7 @@ function QueueItem({ row, now, muted = false, doctor, expanded = false, onToggle
             {row.patient?.age ? <span className="text-on-surface-variant font-normal"> · {row.patient.age}y</span> : null}
           </p>
           <p className="font-body-sm text-body-sm text-on-surface-variant truncate">
-            {[waited !== null ? `joined ${waited}m ago` : null, row.visit?.chief_complaint].filter(Boolean).join(' · ')}
+            {[waited !== null ? `joined ${formatMinutesAgo(waited)} ago` : null, row.visit?.chief_complaint].filter(Boolean).join(' · ')}
           </p>
         </div>
         {onToggle && <Icon name={expanded ? 'expand_less' : 'expand_more'} className="text-[22px] text-on-surface-variant shrink-0 mt-1" />}

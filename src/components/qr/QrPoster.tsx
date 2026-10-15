@@ -149,25 +149,25 @@ export const PosterArtboard = forwardRef<HTMLDivElement, { kind: PosterKind; con
   const steps = content.steps ?? STEPS;
   return (
     <div ref={ref} style={{ ...base, color: '#131b2e' }}>
-      <FitToHeight maxH={h - 12}>
-      <div style={{ width: w - 36, border: '2px solid #cfe9e5', borderRadius: 26 }} className="flex flex-col items-center text-center overflow-hidden">
+      <FitToHeight maxH={h - 4}>
+      <div style={{ width: w - 12, border: '2px solid #cfe9e5', borderRadius: 22 }} className="flex flex-col items-center text-center overflow-hidden">
         {/* ---- Identity: avatar, certified-facility line, name, specialty ---- */}
-        <div style={{ width: '100%', background: '#f0fdfa', padding: '28px 22px 20px' }} className="flex flex-col items-center">
+        <div style={{ width: '100%', background: '#f0fdfa', padding: '18px 20px 14px' }} className="flex flex-col items-center">
           <div
-            style={{ width: 68, height: 68, borderRadius: 999, background: '#0f766e', color: '#fff', fontSize: 24, fontWeight: 800, border: '3px solid #fff', boxShadow: '0 0 0 3px #cfe9e5' }}
+            style={{ width: 60, height: 60, borderRadius: 999, background: '#0f766e', color: '#fff', fontSize: 22, fontWeight: 800, border: '3px solid #fff', boxShadow: '0 0 0 3px #cfe9e5' }}
             className="flex items-center justify-center"
           >
             {initialsOf(content.title)}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 10, fontSize: 10, fontWeight: 800, color: '#0f766e', letterSpacing: '0.1em' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8, fontSize: 10, fontWeight: 800, color: '#0f766e', letterSpacing: '0.1em' }}>
             <span>✓ CERTIFIED OPD FACILITY</span>
             {content.cabinLabel && <span style={{ color: '#6f7977' }}>· {content.cabinLabel}</span>}
           </div>
-          <p style={{ fontSize: 24, fontWeight: 800, lineHeight: 1.2, marginTop: 6 }}>{content.title}</p>
-          {content.subtitle && <p style={{ fontSize: 13, color: '#3e4947', marginTop: 3 }}>{content.subtitle}</p>}
+          <p style={{ fontSize: 22, fontWeight: 800, lineHeight: 1.2, marginTop: 5 }}>{content.title}</p>
+          {content.subtitle && <p style={{ fontSize: 13, color: '#3e4947', marginTop: 2 }}>{content.subtitle}</p>}
           <p
             style={{
-              marginTop: 12, padding: '6px 14px', borderRadius: 999, background: '#ffffff', border: '1px solid #cfe9e5',
+              marginTop: 10, padding: '5px 14px', borderRadius: 999, background: '#ffffff', border: '1px solid #cfe9e5',
               fontSize: 11, fontWeight: 700, color: '#0f766e',
             }}
           >
@@ -176,12 +176,12 @@ export const PosterArtboard = forwardRef<HTMLDivElement, { kind: PosterKind; con
         </div>
 
         {/* ---- Scan call-to-action bar ---- */}
-        <div style={{ width: '100%', background: '#0f766e', color: '#fff', padding: '12px 0', fontSize: 15, fontWeight: 800, letterSpacing: '0.02em' }}>
+        <div style={{ width: '100%', background: '#0f766e', color: '#fff', padding: '10px 0', fontSize: 15, fontWeight: 800, letterSpacing: '0.02em' }}>
           {content.headline ?? 'Scan to Get Your OPD Token'}
         </div>
 
         {/* ---- QR, with a small centred mark (the QR still scans fine with a center logo at this error-correction level) ---- */}
-        <div style={{ position: 'relative', margin: '20px 0 8px', padding: 12, border: '1px solid #e2e7ff', borderRadius: 18 }}>
+        <div style={{ position: 'relative', margin: '14px 0 6px', padding: 10, border: '1px solid #e2e7ff', borderRadius: 16 }}>
           <QRCodeSVG value={content.url} size={240} level="H" marginSize={2} fgColor="#00201d" bgColor="#ffffff" />
           <div
             style={{
@@ -199,30 +199,30 @@ export const PosterArtboard = forwardRef<HTMLDivElement, { kind: PosterKind; con
         {/* ---- Reassurance pill + 3-step cards ---- */}
         <p
           style={{
-            margin: '16px 20px 0', padding: '8px 16px', borderRadius: 999, background: '#f0fdfa', border: '1px solid #cfe9e5',
+            margin: '12px 16px 0', padding: '7px 16px', borderRadius: 999, background: '#f0fdfa', border: '1px solid #cfe9e5',
             fontSize: 11, fontWeight: 700, color: '#005c55',
           }}
         >
           No app required · Works with any phone camera · 10-second token
         </p>
-        <div style={{ width: '100%', display: 'flex', gap: 8, padding: '16px 20px 0' }}>
+        <div style={{ width: '100%', display: 'flex', gap: 8, padding: '12px 16px 0' }}>
           {steps.map((s, i) => (
-            <div key={s} style={{ flex: 1, background: '#f0fdfa', borderRadius: 14, padding: '10px 6px' }} className="flex flex-col items-center">
+            <div key={s} style={{ flex: 1, background: '#f0fdfa', borderRadius: 14, padding: '8px 6px' }} className="flex flex-col items-center">
               <span style={{ width: 22, height: 22, borderRadius: 999, background: '#0f766e', color: '#fff', fontSize: 11, fontWeight: 800 }} className="flex items-center justify-center">
                 {i + 1}
               </span>
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#131b2e', marginTop: 6, lineHeight: 1.2 }}>{s}</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#131b2e', marginTop: 5, lineHeight: 1.2 }}>{s}</span>
             </div>
           ))}
         </div>
 
         {/* ---- Typed-URL fallback + brand ---- */}
         {content.fallbackDomain && (
-          <p style={{ fontSize: 10, color: '#6f7977', marginTop: 18, padding: '0 20px' }}>
+          <p style={{ fontSize: 10, color: '#6f7977', marginTop: 14, padding: '0 20px' }}>
             Camera not working? Visit directly: <span style={{ fontWeight: 700, color: '#131b2e' }}>{content.fallbackDomain}</span>
           </p>
         )}
-        <p style={{ fontSize: 9, fontWeight: 700, color: '#8a938f', margin: '10px 0 16px', letterSpacing: '0.1em' }}>ClinicQ</p>
+        <p style={{ fontSize: 9, fontWeight: 700, color: '#8a938f', margin: '8px 0 12px', letterSpacing: '0.1em' }}>ClinicQ</p>
       </div>
       </FitToHeight>
     </div>
@@ -254,9 +254,16 @@ function FitToHeight({ maxH, children }: { maxH: number; children: React.ReactNo
   );
 }
 
-async function renderPng(node: HTMLElement) {
+export const PNG_SIZES = [
+  { key: 'web', label: 'Web / WhatsApp (72 dpi)', pixelRatio: 1 },
+  { key: 'standard', label: 'Standard print (150 dpi)', pixelRatio: 2 },
+  { key: 'print', label: 'High-quality print (300 dpi)', pixelRatio: 4 },
+] as const;
+export type PngSizeKey = (typeof PNG_SIZES)[number]['key'];
+
+async function renderPng(node: HTMLElement, pixelRatio: number = EXPORT_SCALE) {
   const { toPng } = await import('html-to-image');
-  return toPng(node, { pixelRatio: EXPORT_SCALE, cacheBust: true, backgroundColor: '#ffffff' });
+  return toPng(node, { pixelRatio, cacheBust: true, backgroundColor: '#ffffff' });
 }
 
 function saveDataUrl(dataUrl: string, filename: string) {
@@ -297,6 +304,7 @@ export function PosterCard({
   const [scale, setScale] = useState(0.6);
   const [busy, setBusy] = useState<'pdf' | 'png' | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [pngSize, setPngSize] = useState<PngSizeKey>('print');
 
   useEffect(() => {
     const box = boxRef.current;
@@ -313,8 +321,10 @@ export function PosterCard({
     setBusy(type);
     setError(null);
     try {
-      if (type === 'png') saveDataUrl(await renderPng(posterRef.current), `${fileBase}-${kind}.png`);
-      else await downloadPostersPdf([posterRef.current], kind, `${fileBase}-${kind}.pdf`);
+      if (type === 'png') {
+        const ratio = PNG_SIZES.find((s) => s.key === pngSize)!.pixelRatio;
+        saveDataUrl(await renderPng(posterRef.current, ratio), `${fileBase}-${kind}.png`);
+      } else await downloadPostersPdf([posterRef.current], kind, `${fileBase}-${kind}.pdf`);
     } catch (e) {
       setError(`Couldn't create the file: ${(e as Error).message}`);
     } finally {
@@ -355,6 +365,20 @@ export function PosterCard({
           Download PNG
         </button>
       </div>
+      <label className="flex items-center gap-2 -mt-1">
+        <span className="font-body-sm text-body-sm text-on-surface-variant shrink-0">PNG size</span>
+        <select
+          value={pngSize}
+          onChange={(e) => setPngSize(e.target.value as PngSizeKey)}
+          className="flex-1 h-9 rounded-lg bg-surface-container-low px-2 font-body-sm text-body-sm focus:outline-none"
+        >
+          {PNG_SIZES.map((s) => (
+            <option key={s.key} value={s.key}>
+              {s.label}
+            </option>
+          ))}
+        </select>
+      </label>
       {error && <p className="font-body-sm text-body-sm text-error">{error}</p>}
     </div>
   );

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { StaffShell } from '@/components/staff/StaffShell';
 import { api, ApiError, type DoctorToday, type Tenant } from '@/lib/api';
@@ -38,6 +38,9 @@ function ProfileForm({ doctor, tenant, onSaved }: { doctor: DoctorToday; tenant:
   const [notifyLocationOverride, setNotifyLocationOverride] = useState(doctor.notify_location_override ?? '');
   const [state, setState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [error, setError] = useState<string | null>(null);
+  const [origin, setOrigin] = useState('');
+  const [copied, setCopied] = useState(false);
+  useEffect(() => setOrigin(window.location.origin), []);
 
   const dirty =
     photoUrl !== (doctor.photo_url ?? '') ||
@@ -215,9 +218,40 @@ function ProfileForm({ doctor, tenant, onSaved }: { doctor: DoctorToday; tenant:
         </label>
 
         {doctor.public_slug && listed && tenant.is_publicly_listed && (
-          <Link href={`/doctors/${doctor.public_slug}`} target="_blank" className="font-label-md text-label-md text-primary flex items-center gap-1.5 self-start">
-            <Icon name="open_in_new" className="text-[18px]" /> View my live public page
-          </Link>
+          <div className="flex flex-col gap-2">
+            <span className="font-label-sm text-label-sm text-on-surface-variant">Your shareable link</span>
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex-1 min-w-0 h-11 rounded-lg bg-surface-container-low px-3 flex items-center">
+                <span className="font-body-sm text-body-sm text-on-surface truncate">{origin || '…'}/doctors/{doctor.public_slug}</span>
+              </div>
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(`${origin}/doctors/${doctor.public_slug}`);
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                  } catch {
+                    /* clipboard blocked — the text is still right there to select */
+                  }
+                }}
+                className="h-11 px-4 rounded-lg bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-1.5 shrink-0"
+              >
+                <Icon name={copied ? 'check' : 'content_copy'} className="text-[18px]" /> {copied ? 'Copied' : 'Copy'}
+              </button>
+              <a
+                href={`https://wa.me/?text=${encodeURIComponent(`Book a digital queue token with me on ClinicQ: ${origin}/doctors/${doctor.public_slug}`)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="h-11 px-4 rounded-lg bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-1.5 shrink-0"
+              >
+                <Icon name="share" className="text-[18px]" /> Share
+              </a>
+              <Link href={`/doctors/${doctor.public_slug}`} target="_blank" className="font-label-md text-label-md text-primary flex items-center gap-1.5">
+                <Icon name="open_in_new" className="text-[18px]" /> View
+              </Link>
+            </div>
+          </div>
         )}
 
         <label className="flex flex-col gap-1">
