@@ -152,7 +152,7 @@ export const PosterArtboard = forwardRef<HTMLDivElement, { kind: PosterKind; con
   return (
     <div ref={ref} style={{ ...base, color: '#131b2e' }}>
       <FitToHeight maxH={h - 4}>
-      <div style={{ width: w - 24, border: '2px solid #cfe9e5', borderRadius: 22 }} className="flex flex-col items-center text-center overflow-hidden">
+      <div style={{ width: w - 16, border: '2px solid #cfe9e5', borderRadius: 22 }} className="flex flex-col items-center text-center overflow-hidden">
         <div style={{ width: '100%', background: '#f0fdfa', padding: '28px 22px' }} className="flex items-center gap-3 text-left">
           {content.photoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
