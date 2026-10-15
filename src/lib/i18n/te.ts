@@ -133,6 +133,8 @@ export const te: Partial<Record<TranslationKey, string>> = {
   "in_yrs": "{n} సం.",
   "in_add_family": "కుటుంబ సభ్యుడిని జోడించండి",
   "in_not_you_other": "మీరు కాదా? మరో నంబర్ వాడండి",
+  "in_saved_numbers": "ఈ పరికరంలో సేవ్ చేసిన నంబర్లు",
+  "in_back_to_family": "కుటుంబ సభ్యుల జాబితాకు తిరిగి వెళ్లండి",
   "in_full_name": "రోగి పూర్తి పేరు",
   "in_name_eg": "ఉదా. ప్రియ శర్మ",
   "in_mobile_verified": "మొబైల్ · WhatsApp లో ధృవీకరించబడింది",
@@ -325,4 +327,5 @@ export const te: Partial<Record<TranslationKey, string>> = {
   "ed_error": "సేవ్ చేయలేకపోయాం. దయచేసి మళ్లీ ప్రయత్నించండి.",
   "ed_remove": "తొలగించు",
   "otp_second_token": "ఈ నంబర్‌పై మరో టోకెన్ తీసుకోవడానికి, దయచేసి WhatsAppలో ఒకసారి నంబర్‌ను నిర్ధారించండి. ఈ ఫోన్‌లో మీరు ధృవీకరించబడి ఉంటారు.",
+  "otp_booking_verify": "బుకింగ్ పూర్తి చేయడానికి WhatsAppలో మీ నంబర్‌ను నిర్ధారించండి. మీరు నమోదు చేసిన వివరాలు అలాగే ఉంటాయి; ఈ ఫోన్ ధృవీకరణను గుర్తుంచుకుంటుంది.",
 };

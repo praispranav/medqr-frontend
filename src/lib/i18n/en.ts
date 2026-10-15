@@ -149,6 +149,8 @@ export const en = {
   "in_yrs": "{n} yrs",
   "in_add_family": "Add family member",
   "in_not_you_other": "Not you? Use another number",
+  "in_saved_numbers": "Saved numbers on this device",
+  "in_back_to_family": "Back to family members",
   "in_full_name": "Patient full name",
   "in_name_eg": "e.g. Priya Sharma",
   "in_mobile_verified": "Mobile · verified on WhatsApp",
@@ -342,6 +344,7 @@ export const en = {
   "ar_wait": "Please wait nearby. The doctor will call your token number.",
   "ar_unreach": "Could not reach ClinicQ",
   "otp_second_token": "To get another token on this number, please confirm it on WhatsApp once. You'll stay verified on this phone.",
+  "otp_booking_verify": "Confirm your number on WhatsApp to finish booking. Your details are kept, and this phone will remember your verification.",
 
   // Patient home (patient.clinicq.in) — regain a lost token, see visit history, book again
   "ph_title": "Your ClinicQ tokens",

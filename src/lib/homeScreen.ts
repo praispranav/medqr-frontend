@@ -6,7 +6,7 @@ import { api } from '@/lib/api';
 // in the page address — iOS saves the address as the icon's link. First launch redeems it.
 // Android/Chrome shares storage with the browser, so it needs none of this.
 
-const KEYS = ['medqr_patient_tokens', 'medqr:patient-token', 'medqr:mobile'] as const;
+const KEYS = ['medqr_patient_tokens', 'medqr:patient-token', 'medqr:mobile', 'medqr:saved-patient-devices'] as const;
 const DISMISSED_KEY = 'medqr:a2hs-dismissed';
 export const HANDOFF_PARAM = 'h';
 export const OPEN_A2HS_EVENT = 'medqr:add-to-home-screen';

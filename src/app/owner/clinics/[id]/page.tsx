@@ -366,7 +366,7 @@ function SubscriptionCard({ api, tenantId }: { api: AdminApi; tenantId: string }
         </p>
       )}
       {sub.status === 'read_only' && (
-        <p className="font-body-md text-body-md text-error">Staff can view but not change anything for this clinic until it's marked active or given a grace period.</p>
+        <p className="font-body-md text-body-md text-error">Staff can view but not change anything for this clinic until it&apos;s marked active or given a grace period.</p>
       )}
 
       <div className="flex flex-wrap items-end gap-2 pt-1">
@@ -479,8 +479,8 @@ function ModulesTab({ api, tenant, onSaved }: { api: AdminApi; tenant: Tenant; o
         <div>
           <h2 className="font-headline-sm text-headline-sm">WhatsApp OTP at patient check-in</h2>
           <p className="font-body-sm text-body-sm text-on-surface-variant">
-            Off (default) = fastest check-in. On = patients confirm their number with a WhatsApp code first. The clinic&apos;s
-            doctor can also change this in Queue Rules.
+            Off (default) = patients type their details. On = WhatsApp verification is required when they submit the
+            completed form. Verified numbers are remembered for 90 days. The doctor can change this in Queue Rules.
           </p>
         </div>
         <button

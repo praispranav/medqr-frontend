@@ -262,8 +262,8 @@ export const QueueRules = forwardRef<QueueRulesHandle, {
           <div>
             <p className="font-label-lg text-label-lg text-on-surface">Verify patients&apos; mobile with a WhatsApp code</p>
             <p className="font-body-sm text-body-sm text-on-surface-variant">
-              Off = fastest: patients just type name and number. On = they confirm a 6-digit code on WhatsApp first
-              (stops fake numbers; needs WhatsApp connected).
+              Off = patients type their details. On = they fill the form, then confirm a 6-digit WhatsApp code
+              when joining. Verified numbers are remembered on that device for 90 days.
             </p>
           </div>
           <Toggle checked={!!s.require_whatsapp_otp} onChange={(v) => set('require_whatsapp_otp', v)} />

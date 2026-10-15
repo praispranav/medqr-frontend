@@ -133,6 +133,8 @@ export const hi: Partial<Record<TranslationKey, string>> = {
   "in_yrs": "{n} वर्ष",
   "in_add_family": "परिवार का सदस्य जोड़ें",
   "in_not_you_other": "आप नहीं? दूसरा नंबर डालें",
+  "in_saved_numbers": "इस डिवाइस पर सहेजे गए नंबर",
+  "in_back_to_family": "परिवार के सदस्यों पर वापस जाएँ",
   "in_full_name": "मरीज़ का पूरा नाम",
   "in_name_eg": "जैसे: प्रिया शर्मा",
   "in_mobile_verified": "मोबाइल · WhatsApp पर सत्यापित",
@@ -326,4 +328,5 @@ export const hi: Partial<Record<TranslationKey, string>> = {
   "ar_wait": "कृपया पास में प्रतीक्षा करें। डॉक्टर आपका टोकन नंबर बुलाएँगे।",
   "ar_unreach": "ClinicQ तक नहीं पहुँच सके",
   "otp_second_token": "इस नंबर पर एक और टोकन लेने के लिए, कृपया WhatsApp पर एक बार नंबर की पुष्टि करें। इस फ़ोन पर आप सत्यापित रहेंगे।",
+  "otp_booking_verify": "बुकिंग पूरी करने के लिए WhatsApp पर अपना नंबर सत्यापित करें। आपकी भरी हुई जानकारी बनी रहेगी और यह फ़ोन सत्यापन याद रखेगा।",
 };

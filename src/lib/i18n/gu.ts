@@ -133,6 +133,8 @@ export const gu: Partial<Record<TranslationKey, string>> = {
   "in_yrs": "{n} વર્ષ",
   "in_add_family": "પરિવારના સભ્ય ઉમેરો",
   "in_not_you_other": "તમે નથી? બીજો નંબર વાપરો",
+  "in_saved_numbers": "આ ઉપકરણ પર સાચવેલા નંબર",
+  "in_back_to_family": "પરિવારના સભ્યો પર પાછા જાઓ",
   "in_full_name": "દર્દીનું પૂરું નામ",
   "in_name_eg": "દા.ત. પ્રિયા શર્મા",
   "in_mobile_verified": "મોબાઇલ · WhatsApp પર ચકાસાયેલ",
@@ -325,4 +327,5 @@ export const gu: Partial<Record<TranslationKey, string>> = {
   "ed_error": "સાચવી શકાયું નથી. કૃપા કરીને ફરી પ્રયાસ કરો.",
   "ed_remove": "દૂર કરો",
   "otp_second_token": "આ નંબર પર બીજું ટોકન લેવા માટે, કૃપા કરીને WhatsApp પર એકવાર નંબરની પુષ્ટિ કરો. આ ફોનમાં તમે ચકાસાયેલા રહેશો.",
+  "otp_booking_verify": "બુકિંગ પૂરું કરવા WhatsApp પર તમારો નંબર ચકાસો. તમારી ભરેલી વિગતો રહેશે અને આ ફોન ચકાસણી યાદ રાખશે.",
 };

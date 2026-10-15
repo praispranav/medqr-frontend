@@ -26,9 +26,11 @@ function loadTs(filename) {
   loaded.filename = filename;
   loaded.paths = Module._nodeModulePaths(path.dirname(filename));
   const originalRequire = loaded.require.bind(loaded);
-  loaded.require = (name) => name.startsWith('@/')
-    ? loadTs(path.join(root, 'src', `${name.slice(2)}.ts`))
-    : originalRequire(name);
+  loaded.require = (name) => {
+    if (name.startsWith('@/')) return loadTs(path.join(root, 'src', `${name.slice(2)}.ts`));
+    const relative = path.resolve(path.dirname(filename), `${name}.ts`);
+    return name.startsWith('.') && fs.existsSync(relative) ? loadTs(relative) : originalRequire(name);
+  };
   modules.set(filename, loaded);
   loaded._compile(compiled, filename);
   return loaded.exports;

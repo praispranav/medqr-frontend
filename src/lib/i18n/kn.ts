@@ -133,6 +133,8 @@ export const kn: Partial<Record<TranslationKey, string>> = {
   "in_yrs": "{n} ವರ್ಷ",
   "in_add_family": "ಕುಟುಂಬದ ಸದಸ್ಯರನ್ನು ಸೇರಿಸಿ",
   "in_not_you_other": "ನೀವಲ್ಲವೇ? ಬೇರೆ ಸಂಖ್ಯೆ ಬಳಸಿ",
+  "in_saved_numbers": "ಈ ಸಾಧನದಲ್ಲಿ ಉಳಿಸಿದ ಸಂಖ್ಯೆಗಳು",
+  "in_back_to_family": "ಕುಟುಂಬ ಸದಸ್ಯರ ಪಟ್ಟಿಗೆ ಹಿಂತಿರುಗಿ",
   "in_full_name": "ರೋಗಿಯ ಪೂರ್ಣ ಹೆಸರು",
   "in_name_eg": "ಉದಾ. ಪ್ರಿಯಾ ಶರ್ಮಾ",
   "in_mobile_verified": "ಮೊಬೈಲ್ · WhatsApp ನಲ್ಲಿ ಪರಿಶೀಲಿಸಲಾಗಿದೆ",
@@ -325,4 +327,5 @@ export const kn: Partial<Record<TranslationKey, string>> = {
   "ed_error": "ಉಳಿಸಲು ಆಗಲಿಲ್ಲ. ದಯವಿಟ್ಟು ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.",
   "ed_remove": "ತೆಗೆದುಹಾಕಿ",
   "otp_second_token": "ಈ ಸಂಖ್ಯೆಯಲ್ಲಿ ಇನ್ನೊಂದು ಟೋಕನ್ ಪಡೆಯಲು, ದಯವಿಟ್ಟು WhatsApp ನಲ್ಲಿ ಒಮ್ಮೆ ಸಂಖ್ಯೆಯನ್ನು ದೃಢೀಕರಿಸಿ. ಈ ಫೋನ್‌ನಲ್ಲಿ ನೀವು ಪರಿಶೀಲಿತರಾಗಿಯೇ ಇರುತ್ತೀರಿ.",
+  "otp_booking_verify": "ಬುಕಿಂಗ್ ಪೂರ್ಣಗೊಳಿಸಲು WhatsApp ಮೂಲಕ ನಿಮ್ಮ ಸಂಖ್ಯೆಯನ್ನು ದೃಢೀಕರಿಸಿ. ನೀವು ನಮೂದಿಸಿದ ವಿವರಗಳು ಉಳಿಯುತ್ತವೆ; ಈ ಫೋನ್ ಪರಿಶೀಲನೆಯನ್ನು ನೆನಪಿಟ್ಟುಕೊಳ್ಳುತ್ತದೆ.",
 };

@@ -133,6 +133,8 @@ export const ml: Partial<Record<TranslationKey, string>> = {
   "in_yrs": "{n} വയസ്സ്",
   "in_add_family": "കുടുംബാംഗത്തെ ചേർക്കുക",
   "in_not_you_other": "നിങ്ങളല്ലേ? മറ്റൊരു നമ്പർ ഉപയോഗിക്കുക",
+  "in_saved_numbers": "ഈ ഉപകരണത്തിൽ സൂക്ഷിച്ച നമ്പറുകൾ",
+  "in_back_to_family": "കുടുംബാംഗങ്ങളുടെ പട്ടികയിലേക്ക് മടങ്ങുക",
   "in_full_name": "രോഗിയുടെ മുഴുവൻ പേര്",
   "in_name_eg": "ഉദാ. പ്രിയ ശർമ്മ",
   "in_mobile_verified": "മൊബൈൽ · WhatsApp-ൽ സ്ഥിരീകരിച്ചു",
@@ -325,4 +327,5 @@ export const ml: Partial<Record<TranslationKey, string>> = {
   "ed_error": "സേവ് ചെയ്യാനായില്ല. ദയവായി വീണ്ടും ശ്രമിക്കുക.",
   "ed_remove": "നീക്കം ചെയ്യുക",
   "otp_second_token": "ഈ നമ്പറിൽ മറ്റൊരു ടോക്കൺ എടുക്കാൻ, ദയവായി WhatsApp-ൽ ഒരിക്കൽ നമ്പർ സ്ഥിരീകരിക്കുക. ഈ ഫോണിൽ നിങ്ങൾ പരിശോധിച്ചവരായി തുടരും.",
+  "otp_booking_verify": "ബുക്കിംഗ് പൂർത്തിയാക്കാൻ WhatsApp വഴി നമ്പർ സ്ഥിരീകരിക്കുക. നൽകിയ വിവരങ്ങൾ നിലനിൽക്കും; ഈ ഫോൺ സ്ഥിരീകരണം ഓർത്തുവയ്ക്കും.",
 };

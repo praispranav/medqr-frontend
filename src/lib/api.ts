@@ -1,3 +1,6 @@
+import { patientDevice } from './patientDevice';
+export { patientDevice } from './patientDevice';
+
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:4000';
 
 export class ApiError extends Error {
@@ -8,38 +11,6 @@ export class ApiError extends Error {
     super(message);
   }
 }
-
-// ---- Patient phone verification (WhatsApp OTP): the device keeps a signed token for 90 days ----
-const PATIENT_TOKEN_KEY = 'medqr:patient-token';
-const PATIENT_MOBILE_KEY = 'medqr:mobile';
-
-export const patientDevice = {
-  get(): { token: string; mobile: string } | null {
-    try {
-      const token = localStorage.getItem(PATIENT_TOKEN_KEY);
-      const mobile = localStorage.getItem(PATIENT_MOBILE_KEY);
-      return token && mobile ? { token, mobile } : null;
-    } catch {
-      return null;
-    }
-  },
-  set(token: string, mobile: string) {
-    try {
-      localStorage.setItem(PATIENT_TOKEN_KEY, token);
-      localStorage.setItem(PATIENT_MOBILE_KEY, mobile);
-    } catch {
-      /* private mode: verified for this visit only */
-    }
-  },
-  clear() {
-    try {
-      localStorage.removeItem(PATIENT_TOKEN_KEY);
-      localStorage.removeItem(PATIENT_MOBILE_KEY);
-    } catch {
-      /* ignore */
-    }
-  },
-};
 
 function toQuery(params: Record<string, string | undefined>): string {
   const qs = new URLSearchParams(Object.entries(params).filter((e): e is [string, string] => !!e[1])).toString();

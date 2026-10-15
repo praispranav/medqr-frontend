@@ -31,6 +31,7 @@ const FINISHED_TOKEN = new Set(['done', 'no_show', 'expired', 'cancelled']);
 const sameName = (a?: string | null, b?: string | null) => (a ?? '').trim().toLowerCase() === (b ?? '').trim().toLowerCase();
 /** A token this phone already holds for the doctor being checked into (and not finished). */
 type MyToken = { id: string; number: number; patient_name: string };
+type PersonDraft = { name: string; age: number | null; gender: string };
 
 // Decision 17 — human-readable label for a bookingDate (YYYY-MM-DD) query param, in the patient's language.
 const formatBookingDate = (iso: string, opts: Intl.DateTimeFormatOptions, locale = 'en-IN') =>
@@ -76,7 +77,8 @@ function IntakeForm() {
   const [gender, setGender] = useState('');
   const [remember, setRemember] = useState(true);
   const [phoneState, setPhoneState] = useState<'checking' | 'needed' | 'ready'>('checking');
-  // Decision 48: a 2nd token on the same mobile asks for a WhatsApp code first (once per phone), then continues by itself.
+  // OTP is deferred until Join queue: clinic-required verification or the second-token
+  // rule (Decision 48). A valid saved verification continues without another code.
   const [joinNeedsOtp, setJoinNeedsOtp] = useState(false);
   const [autoSubmit, setAutoSubmit] = useState(false);
   const submitRef = useRef<() => void>();
@@ -88,6 +90,9 @@ function IntakeForm() {
   }, [autoSubmit, phoneState]);
   const [otpRequired, setOtpRequired] = useState(false);
   const [verified, setVerified] = useState(false);
+  const [savedNumbers, setSavedNumbers] = useState<string[]>([]);
+  const personDrafts = useRef(new Map<string, PersonDraft>());
+  const profileLoad = useRef(0);
   const [whatsappUpdates, setWhatsappUpdates] = useState(true);
 
   // Visit details — all optional
@@ -183,7 +188,7 @@ function IntakeForm() {
 
         const rules = await api.checkInRules(clinic.id).catch(() => ({ require_whatsapp_otp: false }));
         setOtpRequired(rules.require_whatsapp_otp);
-        await loadDeviceProfiles(rules.require_whatsapp_otp);
+        await loadDeviceProfiles();
       } catch {
         setLoadError(true);
       }
@@ -198,37 +203,76 @@ function IntakeForm() {
     api.getReasonSuggestions(doctor.id).then((r) => setReasonSuggestions(r.reasons)).catch(() => setReasonSuggestions([]));
   }, [doctor?.id]);
 
-  /** Saved check-in on this phone → 1-tap. Ask for WhatsApp OTP only if the clinic requires it. */
-  async function loadDeviceProfiles(required: boolean) {
-    if (!patientDevice.get()) {
+  /** Restore saved profiles first; ask for any required OTP only after the form is filled. */
+  async function loadDeviceProfiles(keepDraft = false) {
+    const requestId = ++profileLoad.current;
+    const device = patientDevice.get();
+    setSavedNumbers(patientDevice.savedNumbers());
+    setProfiles([]);
+    setSelectedProfileId(null);
+    setVerified(false);
+    if (!device) {
       setVerified(false);
       setMode('new');
-      return setPhoneState(required ? 'needed' : 'ready');
+      return setPhoneState('ready');
     }
+    setMobile(device.mobile);
     try {
       const me = await api.myProfiles();
-      if (required && !me.verified) {
-        setMobile(me.mobile_number);
-        return setPhoneState('needed');
-      }
+      if (requestId !== profileLoad.current || patientDevice.get()?.token !== device.token) return;
       setVerified(me.verified);
       setMobile(me.mobile_number);
       if (me.profiles.length > 0) {
         const self = me.profiles.find((p) => p.relation === 'self') ?? me.profiles[0];
         setProfiles(me.profiles);
         setSelectedProfileId(self.id);
-        setMode('returning');
+        setMode(keepDraft ? 'new' : 'returning');
       } else {
         setProfiles([]);
         setMode('new');
       }
       setPhoneState('ready');
     } catch (e) {
+      if (requestId !== profileLoad.current || patientDevice.get()?.token !== device.token) return;
       if (e instanceof ApiError && e.status === 401) patientDevice.clear();
+      setSavedNumbers(patientDevice.savedNumbers());
       setMode('new');
-      setPhoneState(required ? 'needed' : 'ready');
+      setPhoneState('ready');
     }
   }
+
+  function savePersonDraft() {
+    const digits = mobileDigitsForOtp(mobile);
+    if (mode === 'new' && digits.length === 10 && (name.trim() || age !== null || gender)) {
+      personDrafts.current.set(digits, { name, age, gender });
+    }
+  }
+
+  async function restoreSavedNumber(number: string) {
+    savePersonDraft();
+    if (!patientDevice.useSaved(number)) return;
+    const draft = personDrafts.current.get(mobileDigitsForOtp(number));
+    setName(draft?.name ?? '');
+    setAge(draft?.age ?? null);
+    setGender(draft?.gender ?? '');
+    setJoinNeedsOtp(false);
+    setErrors({});
+    setSubmitError(null);
+    setPhoneState('checking');
+    await loadDeviceProfiles(!!draft);
+  }
+
+  // Typing a number already remembered on this browser restores its signed session,
+  // then fetches only the profiles that session is allowed to see.
+  useEffect(() => {
+    const digits = mobileDigitsForOtp(mobile);
+    if (phoneState === 'ready' && mode === 'new' && !verified && profiles.length === 0
+      && digits.length === 10 && patientDevice.get()?.mobile !== digits
+      && patientDevice.savedNumbers().includes(digits)) {
+      void restoreSavedNumber(digits);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mobile, phoneState, mode, verified, profiles.length]);
 
   if (loadError)
     return (
@@ -287,11 +331,13 @@ function IntakeForm() {
         clinicName={tenant.display_name ?? subdomain}
         doctorName={doctor.name}
         onBack={joinNeedsOtp ? () => { setJoinNeedsOtp(false); setPhoneState('ready'); } : goBack}
-        initialMobile={joinNeedsOtp ? mobileDigitsForOtp(mobile) : undefined}
-        reason={joinNeedsOtp ? 'second' : undefined}
+        initialMobile={mobileDigitsForOtp(mobile) || undefined}
+        savedNumbers={savedNumbers}
+        onUseSaved={restoreSavedNumber}
+        reason={joinNeedsOtp ? 'booking' : undefined}
         onVerified={async (token, verifiedMobile) => {
           patientDevice.set(token, verifiedMobile);
-          if (joinNeedsOtp) {
+          if (joinNeedsOtp && mobileDigitsForOtp(verifiedMobile) === mobileDigitsForOtp(mobile)) {
             // Keep everything the patient filled in; the verified phone is remembered for 90 days.
             setVerified(true);
             setJoinNeedsOtp(false);
@@ -299,8 +345,9 @@ function IntakeForm() {
             setAutoSubmit(true);
             return;
           }
+          setJoinNeedsOtp(false);
           setPhoneState('checking');
-          await loadDeviceProfiles(otpRequired);
+          await loadDeviceProfiles(mode === 'new' && !!name.trim());
         }}
       />
     );
@@ -322,35 +369,48 @@ function IntakeForm() {
   };
 
   const startNewPerson = (keepMobile: boolean) => {
+    savePersonDraft();
+    const draft = keepMobile ? personDrafts.current.get(mobileDigitsForOtp(mobile)) : null;
     setMode('new');
     setSelectedProfileId(null);
-    setName('');
-    setAge(null);
-    setGender('');
+    setName(draft?.name ?? '');
+    setAge(draft?.age ?? null);
+    setGender(draft?.gender ?? '');
+    setErrors({});
+    setSubmitError(null);
     if (!keepMobile) {
-      // Different number: forget this phone's saved check-in (and verify the new one if the clinic requires OTP).
-      patientDevice.clear();
+      // Switching is not forgetting: retain the signed session so this family can return.
+      ++profileLoad.current;
+      patientDevice.switchNumber();
+      setSavedNumbers(patientDevice.savedNumbers());
       setVerified(false);
       setMobile('');
       setProfiles([]);
-      setPhoneState(otpRequired ? 'needed' : 'ready');
+      setPhoneState('ready');
     }
   };
 
   const handleSubmit = async () => {
     if (selectedActive) return router.push(`/patient/${subdomain}/queue/${selectedActive.id}`);
     setSubmitError(null);
+    if (mode === 'new' || !selectedProfile) {
+      const nextErrors = { name: !name.trim(), mobile: mobileDigits.length !== 10 };
+      setErrors(nextErrors);
+      if (nextErrors.name || nextErrors.mobile) {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
+    }
+    if (otpRequired && (!verified || patientDevice.get()?.mobile !== mobileDigits)) {
+      setJoinNeedsOtp(true);
+      setPhoneState('needed');
+      return;
+    }
     let patientId: string;
     try {
       if (mode === 'returning' && selectedProfile) {
         patientId = selectedProfile.id;
       } else {
-        const nextErrors = { name: !name.trim(), mobile: mobileDigits.length !== 10 };
-        setErrors(nextErrors);
-        if (nextErrors.name || nextErrors.mobile) {
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-          return;
-        }
         setSubmitting(true);
         const patient = await api.findOrCreatePatient({
           tenantId: tenant.id,
@@ -581,6 +641,7 @@ function IntakeForm() {
             // Anyone already queued today (shown once, above) drops out of this list — picking them
             // again to "join" would just be a confusing duplicate of the button they already have.
             <div className="bg-surface-container-lowest rounded-2xl p-4 shadow-sm">
+              <p className="font-body-sm text-body-sm text-on-surface-variant mb-3">+91 {mobile}</p>
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-label-lg text-label-lg text-on-surface">
                   {selectableProfiles.length > 0 ? t('in_who_seeing') : t('in_add_someone_else')}
@@ -644,6 +705,13 @@ function IntakeForm() {
             </div>
           ) : (
             <>
+              {profiles.length > 0 ? (
+                <button type="button" onClick={() => { savePersonDraft(); setMode('returning'); setSelectedProfileId(profiles.find((p) => p.relation === 'self')?.id ?? profiles[0]?.id ?? null); setErrors({}); }} className="text-primary font-label-md text-label-md flex items-center gap-2 self-start">
+                  <Icon name="arrow_back" className="text-[18px]" /> {t('in_back_to_family')}
+                </button>
+              ) : (
+                <SavedPhoneNumbers numbers={savedNumbers} onSelect={restoreSavedNumber} />
+              )}
               {/* ---- New patient: name + mobile (required), age + gender (optional) ---- */}
               <div className={`p-4 rounded-2xl shadow-sm ${errors.name ? 'bg-error-container/30' : 'bg-surface-container-lowest'}`}>
                 <div className="flex items-center justify-between mb-2">
@@ -668,9 +736,9 @@ function IntakeForm() {
                 />
               </div>
 
-              {verified ? (
+              {verified || profiles.length > 0 ? (
                 <div className="p-4 rounded-2xl shadow-sm bg-surface-container-lowest flex items-center gap-3">
-                  <Icon name="verified" className="text-tertiary text-[22px]" />
+                  <Icon name={verified ? 'verified' : 'family_restroom'} className="text-tertiary text-[22px]" />
                   <div className="flex-1 min-w-0">
                     <p className="text-label-sm font-label-sm text-on-surface-variant">
                       {profiles.length > 0 ? t('in_family_same_number') : t('in_mobile_verified')}
@@ -1003,6 +1071,19 @@ function IntakeForm() {
 
 const mobileDigitsForOtp = (m: string) => m.replace(/\D/g, '').slice(-10);
 
+function SavedPhoneNumbers({ numbers, onSelect }: { numbers: string[]; onSelect: (number: string) => Promise<void> }) {
+  const { t } = useT();
+  if (!numbers.length) return null;
+  return (
+    <div className="rounded-2xl bg-surface-container-lowest p-4 shadow-sm">
+      <p className="font-label-md text-label-md text-on-surface-variant mb-2">{t('in_saved_numbers')}</p>
+      <div className="flex flex-wrap gap-2">
+        {numbers.map((number) => <button key={number} type="button" onClick={() => void onSelect(number)} className="min-h-[44px] rounded-xl bg-surface-container-low px-3 text-primary font-label-md text-label-md">+91 {number}</button>)}
+      </div>
+    </div>
+  );
+}
+
 /** WhatsApp OTP step (Telnyx). The code arrives as a WhatsApp message with a copy-code button. */
 function VerifyPhone({
   clinicName,
@@ -1010,6 +1091,8 @@ function VerifyPhone({
   onBack,
   onVerified,
   initialMobile,
+  savedNumbers,
+  onUseSaved,
   reason,
 }: {
   clinicName: string;
@@ -1018,7 +1101,9 @@ function VerifyPhone({
   onVerified: (token: string, mobile: string) => Promise<void>;
   /** The number the patient already typed (a 2nd token on it needs the code). */
   initialMobile?: string;
-  reason?: 'second';
+  savedNumbers: string[];
+  onUseSaved: (number: string) => Promise<void>;
+  reason?: 'booking';
 }) {
   const { subdomain } = useParams<{ subdomain: string }>();
   const { t } = useT(); // same language as the form (Decision 35)
@@ -1091,9 +1176,10 @@ function VerifyPhone({
           <p className="font-body-md text-body-md text-on-surface-variant mt-1">
             {sentTo ? t('otp_sent_to', { number: sentTo }) : t('otp_will_send')}
           </p>
-          {reason === 'second' && !sentTo && <p className="font-body-sm text-body-sm text-primary mt-2">{t('otp_second_token')}</p>}
+          {reason === 'booking' && !sentTo && <p className="font-body-sm text-body-sm text-primary mt-2">{t('otp_booking_verify')}</p>}
         </div>
 
+        {!sentTo && <SavedPhoneNumbers numbers={savedNumbers} onSelect={onUseSaved} />}
         {!sentTo ? (
           <form
             onSubmit={(e) => {

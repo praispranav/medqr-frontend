@@ -133,6 +133,8 @@ export const mr: Partial<Record<TranslationKey, string>> = {
   "in_yrs": "{n} वर्षे",
   "in_add_family": "कुटुंबातील सदस्य जोडा",
   "in_not_you_other": "तुम्ही नाही? दुसरा नंबर वापरा",
+  "in_saved_numbers": "या डिव्हाइसवर जतन केलेले नंबर",
+  "in_back_to_family": "कुटुंबातील सदस्यांकडे परत जा",
   "in_full_name": "रुग्णाचे पूर्ण नाव",
   "in_name_eg": "उदा. प्रिया शर्मा",
   "in_mobile_verified": "मोबाईल · WhatsApp वर पडताळलेला",
@@ -325,4 +327,5 @@ export const mr: Partial<Record<TranslationKey, string>> = {
   "ed_error": "जतन करता आले नाही. कृपया पुन्हा प्रयत्न करा.",
   "ed_remove": "काढा",
   "otp_second_token": "या नंबरवर आणखी एक टोकन घेण्यासाठी, कृपया WhatsApp वर एकदा नंबर निश्चित करा. या फोनवर तुम्ही पडताळलेले राहाल.",
+  "otp_booking_verify": "बुकिंग पूर्ण करण्यासाठी WhatsApp वर तुमचा नंबर सत्यापित करा. भरलेली माहिती तशीच राहील आणि हा फोन सत्यापन लक्षात ठेवेल.",
 };
