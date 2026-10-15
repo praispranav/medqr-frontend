@@ -2,6 +2,7 @@ import { ImageResponse } from 'next/og';
 import QRCode from 'qrcode';
 import { fileUrl as absoluteUrl } from '@/lib/api';
 import { CLINIC_TZ } from '@/lib/clinicTime';
+import { tokenArrivalState } from '@/lib/tokenCard';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
@@ -52,13 +53,13 @@ export async function GET(_req: Request, { params }: { params: { tokenId: string
   if (!res.ok) return new Response('Not found', { status: 404 });
   const v = (await res.json()) as View;
 
-  const verified = v.status === 'waiting_in_clinic' || v.status === 'checked_in_early';
-  const noDesk = !v.front_desk;
+  const { verified, noDesk, arrivalScan, arrived } = tokenArrivalState(v);
   const future = v.is_future_booking;
-  const arrivalScan = noDesk && v.arrival_scan;
   const closed = ['done', 'cancelled', 'expired', 'no_show'].includes(v.status);
   const consulting = v.status === 'in_consultation';
-  const showQr = !closed && !consulting && !verified && !noDesk;
+  // Keep the same per-token QR as the screen until arrival is confirmed, including
+  // clinics without reception that require an arrival scan.
+  const showQr = !closed && !consulting && !arrived;
   const status = closed
     ? ({ done: 'Visit completed', cancelled: 'Token cancelled', expired: 'Token expired', no_show: 'Missed turn' }[v.status] ?? 'Visit closed')
     : consulting ? 'Your turn'

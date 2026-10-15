@@ -12,6 +12,7 @@ import { EditMyDetails } from '@/components/patient/EditMyDetails';
 import { AddToHomeScreen } from '@/components/patient/AddToHomeScreen';
 import { FullPageMessage, Icon, LoadingPage, PatientHeader } from '@/components/patient/ui';
 import { dateLocale, localizeStatusDetail, useT } from '@/lib/i18n';
+import { tokenArrivalState } from '@/lib/tokenCard';
 
 // Screen #3 — Live Queue / Token Tracking. Ported from
 // stitch_medqr_clinic_suite_ui_design/patient_live_queue_tracking/code.html.
@@ -85,7 +86,12 @@ export default function LiveQueuePage() {
   const [imageFailed, setImageFailed] = useState(false);
   const tokenNumber = view?.token_number;
   const tokenStatus = view?.status;
+  const frontDesk = view?.front_desk;
+  const arrivalScanRequired = view?.arrival_scan;
+  const futureBooking = view?.is_future_booking;
   useEffect(() => {
+    setTokenImage(null);
+    setImageFailed(false);
     if (tokenNumber === undefined) return;
     let cancelled = false;
     fetch(tokenImageUrl, { cache: 'no-store' })
@@ -96,7 +102,7 @@ export default function LiveQueuePage() {
       cancelled = true;
     };
     // re-draw when the card changes (e.g. checked in → the QR becomes a tick)
-  }, [tokenImageUrl, tokenNumber, tokenStatus]);
+  }, [tokenImageUrl, tokenNumber, tokenStatus, frontDesk, arrivalScanRequired, futureBooking]);
 
   // Decision (patient home) — the first time this token's picture is ready, offer to save it once
   // (not a silent auto-download: iOS/Chrome both need a real tap for the share-sheet/download to
@@ -355,12 +361,7 @@ export default function LiveQueuePage() {
     );
   }
 
-  const verified = view.status === 'waiting_in_clinic' || view.status === 'checked_in_early';
-  // Decision 19: no reception desk → nobody verifies arrival; the doctor calls patients directly.
-  const noDesk = !view.front_desk;
-  // Decision 21: no desk, but the patient confirms arrival by scanning the clinic's arrival QR.
-  const arrivalScan = noDesk && view.arrival_scan && !view.is_future_booking;
-  const arrived = verified || (noDesk && !arrivalScan);
+  const { verified, noDesk, arrivalScan, arrived } = tokenArrivalState(view);
   // Pre-session = the doctor hasn't actually started (Start shift, or hours in auto mode) — Decision 7.
   const preSession = view.doctor_state.state === 'not_started';
   const plannedStart = view.session_starts_at;

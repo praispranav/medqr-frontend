@@ -17,6 +17,13 @@ export function middleware(req: NextRequest) {
   if (host.split('.')[0] !== PATIENT_SUBDOMAIN) return NextResponse.next();
 
   const { pathname } = req.nextUrl;
+  // The token screen fetches this shared image endpoint on the same host. It must
+  // reach /token-image directly, rather than /patient/token-image (which is a 404).
+  if (pathname.startsWith('/token-image/')) {
+    const res = NextResponse.next();
+    res.headers.set('X-Robots-Tag', 'noindex, nofollow');
+    return res;
+  }
   const url = req.nextUrl.clone();
   url.pathname = `/patient${pathname === '/' ? '' : pathname}`;
   const res = NextResponse.rewrite(url);
