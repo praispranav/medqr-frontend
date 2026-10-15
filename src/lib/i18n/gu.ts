@@ -227,6 +227,7 @@ export const gu: Partial<Record<TranslationKey, string>> = {
   "sd_get_directions": "દિશા મેળવો",
   "sd_not_today": "આજે ઉપલબ્ધ નથી",
   "sd_wrong_clinic": "ખોટું ક્લિનિક? QR કોડ ફરી સ્કેન કરો.",
+  "sd_clinic_page": "ક્લિનિક પેજ જુઓ",
   "sd_which": "તમે કયા ડૉક્ટરને મળવા આવ્યા છો?",
   "sd_count_date": "{date} ના રોજ {n} ઉપલબ્ધ · પસંદ કરવા ટેપ કરો",
   "sd_count_today": "આજે {m} માંથી {n} ડૉક્ટર ઉપલબ્ધ · પસંદ કરવા ટેપ કરો",

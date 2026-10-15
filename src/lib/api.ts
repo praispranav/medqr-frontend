@@ -210,6 +210,48 @@ export interface PatientSearchResult {
   last_doctor_name: string | null;
 }
 
+export interface DailyPatientRow {
+  visit_id: string;
+  token_id: string | null;
+  token_number: number;
+  status: 'booked' | 'waiting_in_clinic' | 'checked_in_early' | 'in_consultation' | 'done' | 'no_show' | 'expired' | 'cancelled';
+  patient: {
+    id: string;
+    name: string;
+    mobile_number: string;
+    age: number | null;
+    gender: string | null;
+  };
+  chief_complaint: string | null;
+  intake_answers: Record<string, any> | null;
+  vitals: Vitals | null;
+  note: string | null;
+  attachments_count: number;
+  consultation_fee_inr: number;
+  is_paid: boolean;
+  payment_method: 'cash' | 'upi_counter' | 'upi_online' | null;
+  joined_at: string;
+  called_at: string | null;
+  doctor_id: string;
+  doctor_name: string;
+}
+
+export interface DailyPatientsSummary {
+  total: number;
+  done: number;
+  in_consultation: number;
+  waiting: number;
+  cancelled_or_no_show: number;
+  total_fee_inr: number;
+}
+
+export interface DailyPatientsResponse {
+  date: string;
+  summary: DailyPatientsSummary;
+  patients: DailyPatientRow[];
+}
+
+
 export type PaymentMethod = 'cash' | 'upi_counter' | 'upi_online';
 export type PaymentChoice = 'online' | 'cash';
 
@@ -872,6 +914,8 @@ export const api = {
     request<Visit[]>(`/patients/${patientId}/history?tenantId=${tenantId}`),
   patientSearch: (q: string) =>
     request<PatientSearchResult[]>(`/patients/search?q=${encodeURIComponent(q)}`),
+  dailyPatients: (date?: string, doctorId?: string) =>
+    request<DailyPatientsResponse>(`/patients/daily-log${toQuery({ date, doctorId })}`),
   saveVitals: (visitId: string, vitals: Vitals) =>
     request<Visit>(`/patients/visits/${visitId}/vitals`, { method: 'POST', body: JSON.stringify(vitals) }),
   saveNote: (visitId: string, note: string | null) =>

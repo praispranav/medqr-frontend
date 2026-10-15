@@ -227,6 +227,7 @@ export const te: Partial<Record<TranslationKey, string>> = {
   "sd_get_directions": "దారి పొందండి",
   "sd_not_today": "ఈ రోజు అందుబాటులో లేరు",
   "sd_wrong_clinic": "తప్పు క్లినిక్? QR కోడ్‌ను మళ్లీ స్కాన్ చేయండి.",
+  "sd_clinic_page": "క్లినిక్ పేజీని చూడండి",
   "sd_which": "మీరు ఏ డాక్టర్‌ని చూడటానికి వచ్చారు?",
   "sd_count_date": "{date} న {n} అందుబాటులో · ఎంచుకోడానికి తాకండి",
   "sd_count_today": "ఈ రోజు {m} లో {n} డాక్టర్లు అందుబాటులో · ఎంచుకోడానికి తాకండి",

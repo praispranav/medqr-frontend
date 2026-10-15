@@ -12,6 +12,8 @@ import { formatMinutesAgo, inr, minutesSince, PaidBadge, StatusPill, VitalsChips
 import { clinicToday } from '@/lib/clinicTime';
 import { doctorSettings } from '@/lib/doctorSettings';
 import { PatientSearchAction } from '@/components/staff/PatientSearch';
+import { QRCodeSVG } from 'qrcode.react';
+import { patientBaseUrl } from '@/components/qr/QrPoster';
 
 // Screen #4 — Reception Verifier. Ported from
 // stitch_medqr_clinic_suite_ui_design/reception_verifier_portal/code.html (desktop) with the
@@ -83,6 +85,7 @@ function ReceptionDesk({ tenant, doctors, walkInPreFill, setWalkInPreFill }: { t
   const [scanError, setScanError] = useState<string | null>(null);
   const [doctorFilter, setDoctorFilter] = useState<string>('all');
   const [walkInOpen, setWalkInOpen] = useState(false);
+  const [showQrOpen, setShowQrOpen] = useState(false);
   const [unpaidOnly, setUnpaidOnly] = useState(false);
   const [payConfig, setPayConfig] = useState<PayConfig | null>(null);
   const [shifts, setShifts] = useState<(ShiftView & { doctor_name: string })[]>([]);
@@ -239,7 +242,7 @@ function ReceptionDesk({ tenant, doctors, walkInPreFill, setWalkInPreFill }: { t
                 <Icon name="keyboard" className="text-primary text-[22px]" />
                 <h2 className="font-headline-sm text-headline-sm text-on-surface">Verify arrival</h2>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 flex-wrap">
                 <PatientSearchAction label="Search patients" onWalkIn={(p) => setWalkInPreFill(p)} />
                 <button
                   type="button"
@@ -251,6 +254,14 @@ function ReceptionDesk({ tenant, doctors, walkInPreFill, setWalkInPreFill }: { t
                 >
                   <Icon name="qr_code_scanner" className="text-[18px]" />
                   Scan QR
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowQrOpen(true)}
+                  className="h-9 px-3 rounded-lg bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-1.5 hover:bg-surface-container-highest transition-colors"
+                >
+                  <Icon name="qr_code_2" className="text-[18px]" />
+                  Show QR
                 </button>
                 <span className={`flex items-center gap-1.5 font-label-sm text-label-sm ${connected ? 'text-tertiary' : 'text-outline'}`}>
                   <span className={`w-2 h-2 rounded-full ${connected ? 'bg-tertiary' : 'bg-outline'}`} />
@@ -515,13 +526,24 @@ function ReceptionDesk({ tenant, doctors, walkInPreFill, setWalkInPreFill }: { t
             )}
           </div>
 
-          <button
-            onClick={() => setWalkInOpen(true)}
-            className="h-12 bg-primary text-on-primary rounded-xl font-label-lg text-label-lg flex items-center justify-center gap-2 mt-auto"
-          >
-            <Icon name="person_add" className="text-[20px]" />
-            Add walk-in
-          </button>
+          <div className="flex gap-2 mt-auto">
+            <button
+              onClick={() => setWalkInOpen(true)}
+              className="flex-1 h-12 bg-primary text-on-primary rounded-xl font-label-lg text-label-lg flex items-center justify-center gap-2"
+            >
+              <Icon name="person_add" className="text-[20px]" />
+              Add walk-in
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowQrOpen(true)}
+              title="Show check-in QR to patient"
+              className="h-12 px-4 bg-surface-container-high text-on-surface rounded-xl font-label-lg text-label-lg flex items-center justify-center gap-2 hover:bg-surface-container-highest transition-colors"
+            >
+              <Icon name="qr_code_2" className="text-[20px]" />
+              Show QR
+            </button>
+          </div>
         </section>
       </div>
 
@@ -542,6 +564,14 @@ function ReceptionDesk({ tenant, doctors, walkInPreFill, setWalkInPreFill }: { t
             setSelectedId(tokenId);
             setFlash({ tokenId, kind: 'verified' });
           }}
+        />
+      )}
+
+      {showQrOpen && (
+        <ShowQrModal
+          tenant={tenant}
+          doctors={doctors}
+          onClose={() => setShowQrOpen(false)}
         />
       )}
 
@@ -1505,4 +1535,137 @@ function downloadTodayPatientsCsv(rows: QueueRow[]) {
   a.download = `Reception_Patients_${clinicToday()}.csv`;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+/**
+ * Modal for reception to show a large QR code on their screen for walking-in or arriving patients to scan.
+ */
+function ShowQrModal({
+  tenant,
+  doctors,
+  onClose,
+}: {
+  tenant: Tenant;
+  doctors: DoctorToday[];
+  onClose: () => void;
+}) {
+  const [mode, setMode] = useState<'checkin' | 'arrival'>('checkin');
+  const [doctorId, setDoctorId] = useState<string>('all');
+  const [arrivalQr, setArrivalQr] = useState<string | null>(null);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  useEffect(() => {
+    api.arrivalQr(tenant.id).then((q) => setArrivalQr(q.url)).catch(() => undefined);
+  }, [tenant.id]);
+
+  const base = patientBaseUrl();
+  const clinicUrl = `${base}/patient/${tenant.subdomain}`;
+
+  const targetUrl = useMemo(() => {
+    if (mode === 'arrival') {
+      return arrivalQr || `${clinicUrl}/arrive`;
+    }
+    if (doctorId !== 'all' && doctors.length > 1) {
+      return `${clinicUrl}/intake?doctorId=${doctorId}`;
+    }
+    return doctors.length === 1 ? `${clinicUrl}/intake?doctorId=${doctors[0].id}` : `${clinicUrl}/select-doctor`;
+  }, [mode, arrivalQr, clinicUrl, doctorId, doctors]);
+
+  const selectedDoctor = doctors.find((d) => d.id === doctorId);
+  const title = mode === 'arrival' ? 'Confirm Arrival' : (selectedDoctor ? `Check in with ${selectedDoctor.name}` : (tenant.display_name ?? 'Clinic Check-In'));
+
+  return (
+    <div className="fixed inset-0 z-50 bg-inverse-surface/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={onClose}>
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-sm bg-surface-container-lowest rounded-3xl p-6 shadow-2xl flex flex-col items-center text-center gap-4 border border-surface-container-high"
+      >
+        <div className="w-full flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="w-9 h-9 rounded-xl bg-primary-fixed text-primary flex items-center justify-center">
+              <Icon name="qr_code_2" className="text-[22px]" />
+            </span>
+            <div className="text-left">
+              <h2 className="font-headline-sm text-headline-sm text-on-surface leading-tight">Show QR</h2>
+              <p className="font-body-sm text-body-sm text-on-surface-variant">Hold up to patient to scan</p>
+            </div>
+          </div>
+          <button type="button" onClick={onClose} aria-label="Close" className="w-9 h-9 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container-low transition-colors">
+            <Icon name="close" className="text-[20px]" />
+          </button>
+        </div>
+
+        {/* Tab switch: New check-in vs Confirm arrival */}
+        <div className="w-full grid grid-cols-2 p-1 bg-surface-container-low rounded-xl text-center">
+          <button
+            type="button"
+            onClick={() => setMode('checkin')}
+            className={`py-2 rounded-lg font-label-md text-label-md transition-all ${
+              mode === 'checkin' ? 'bg-surface-container-lowest text-primary shadow-sm font-bold' : 'text-on-surface-variant hover:text-on-surface'
+            }`}
+          >
+            Get token
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode('arrival')}
+            className={`py-2 rounded-lg font-label-md text-label-md transition-all ${
+              mode === 'arrival' ? 'bg-surface-container-lowest text-primary shadow-sm font-bold' : 'text-on-surface-variant hover:text-on-surface'
+            }`}
+          >
+            Confirm arrival
+          </button>
+        </div>
+
+        {/* Multi-doctor selector when in check-in mode */}
+        {mode === 'checkin' && doctors.length > 1 && (
+          <div className="w-full flex flex-col gap-1 text-left">
+            <label className="font-label-sm text-label-sm text-on-surface-variant">Which doctor?</label>
+            <select
+              value={doctorId}
+              onChange={(e) => setDoctorId(e.target.value)}
+              className="h-10 rounded-xl bg-surface-container-low px-3 font-body-sm text-body-sm text-on-surface focus:outline-none w-full"
+            >
+              <option value="all">Whole clinic (Patient selects)</option>
+              {doctors.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name} {d.specialty ? `(${d.specialty})` : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {/* QR Code Container */}
+        <div className="p-4 bg-white rounded-2xl shadow-sm border border-surface-container-low flex flex-col items-center">
+          <QRCodeSVG value={targetUrl} size={220} level="Q" marginSize={2} fgColor="#00201d" bgColor="#ffffff" />
+        </div>
+
+        <div className="flex flex-col items-center gap-1">
+          <p className="font-label-lg text-label-lg text-on-surface font-bold">{title}</p>
+          <p className="font-body-sm text-body-sm text-on-surface-variant">
+            {mode === 'arrival'
+              ? 'Scan to confirm arrival at the clinic'
+              : 'Scan with phone camera or Google Lens · No app needed'}
+          </p>
+        </div>
+
+        <div className="w-full pt-1 border-t border-surface-container-low flex justify-between items-center text-[11px] text-on-surface-variant break-all">
+          <span className="truncate max-w-[240px]">{targetUrl.replace(/^https?:\/\//, '')}</span>
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-3 py-1.5 rounded-lg bg-surface-container-high text-on-surface font-label-md text-label-md hover:bg-surface-container-highest shrink-0 ml-2"
+          >
+            Done
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }

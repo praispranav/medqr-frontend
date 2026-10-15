@@ -257,6 +257,7 @@ export const en = {
   "sd_get_directions": "Get Directions",
   "sd_not_today": "Not consulting today",
   "sd_wrong_clinic": "Wrong clinic? Scan the QR code again.",
+  "sd_clinic_page": "View clinic page",
   "sd_which": "Which doctor are you here to see?",
   "sd_count_date": "{n} consulting on {date} · Tap to select",
   "sd_count_today": "{n} of {m} doctors consulting today · Tap to select",

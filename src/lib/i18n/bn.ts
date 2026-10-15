@@ -227,6 +227,7 @@ export const bn: Partial<Record<TranslationKey, string>> = {
   "sd_get_directions": "দিক নির্দেশনা পান",
   "sd_not_today": "আজ বসছেন না",
   "sd_wrong_clinic": "ভুল ক্লিনিক? QR কোড আবার স্ক্যান করুন।",
+  "sd_clinic_page": "ক্লিনিক পেজ দেখুন",
   "sd_which": "আপনি কোন ডাক্তারকে দেখাতে এসেছেন?",
   "sd_count_date": "{date} তারিখে {n} জন আছেন · বাছতে ট্যাপ করুন",
   "sd_count_today": "আজ {m} জনের মধ্যে {n} জন ডাক্তার আছেন · বাছতে ট্যাপ করুন",

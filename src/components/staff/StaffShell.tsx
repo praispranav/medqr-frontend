@@ -35,6 +35,7 @@ const NAV: Record<Variant, NavItem[]> = {
   doctor: [
     { label: 'Patient', isCategory: true },
     { href: '/doctor/dashboard', label: 'My Queue', icon: 'space_dashboard' },
+    { href: '/doctor/patients', label: 'Patients', icon: 'group' },
     { href: '/doctor/payments', label: 'Payments', icon: 'currency_rupee' },
     { label: 'Doctor', isCategory: true },
     { href: '/doctor/hours', label: 'My Hours', icon: 'schedule' },

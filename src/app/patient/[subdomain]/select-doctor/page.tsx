@@ -173,6 +173,15 @@ export default function SelectDoctorPage() {
   if (!tenant || !doctors) return <LoadingPage />;
 
   const clinicName = tenant.display_name ?? subdomain;
+  // The public clinic landing page (Decision 50) lives on the main domain, not the shared `patient.*`
+  // subdomain this screen runs on (Decision 42 — every clinic's booking flow shares one subdomain,
+  // routed by path) — so a plain relative link would 404. Strip the "patient." label from whatever
+  // host actually served this page to get back to the main domain, same self-referencing-host pattern
+  // used by robots.ts/sitemap.ts, instead of hard-coding a domain that may not match this deployment.
+  const clinicPageHref =
+    tenant.is_publicly_listed && tenant.public_slug && typeof window !== 'undefined'
+      ? `${window.location.protocol}//${window.location.host.replace(/^patient\./, '')}/clinics/${tenant.public_slug}`
+      : null;
   const goToIntake = (doctorId: string) =>
     router.push(`/patient/${subdomain}/intake?doctorId=${doctorId}${selectedDate ? `&date=${selectedDate}` : ''}`);
 
@@ -256,6 +265,17 @@ export default function SelectDoctorPage() {
               <p className="font-body-md text-body-md text-on-surface-variant">{t('sd_check_reception', { clinic: clinicName })}</p>
             </div>
             {activeTokensWidget}
+            {clinicPageHref && (
+              <a
+                href={clinicPageHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full h-12 flex items-center justify-center gap-1.5 text-primary font-label-md text-label-md active:opacity-70"
+              >
+                <Icon name="storefront" className="text-[18px]" />
+                {t('sd_clinic_page')}
+              </a>
+            )}
           </div>
         </main>
       </>
@@ -361,6 +381,17 @@ export default function SelectDoctorPage() {
               </p>
             </div>
             {activeTokensWidget}
+            {clinicPageHref && (
+              <a
+                href={clinicPageHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full h-12 flex items-center justify-center gap-1.5 text-primary font-label-md text-label-md active:opacity-70"
+              >
+                <Icon name="storefront" className="text-[18px]" />
+                {t('sd_clinic_page')}
+              </a>
+            )}
           </div>
         </main>
       </>
@@ -479,6 +510,17 @@ export default function SelectDoctorPage() {
           <p className="py-2 text-center font-label-md text-label-md text-on-surface-variant">
             {tenant?.queue_settings?.front_desk_verifies_arrivals === false ? t('sd_help_staff') : t('sd_help_desk')}
           </p>
+          {clinicPageHref && (
+            <a
+              href={clinicPageHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full h-12 flex items-center justify-center gap-1.5 text-primary font-label-md text-label-md active:opacity-70"
+            >
+              <Icon name="storefront" className="text-[18px]" />
+              {t('sd_clinic_page')}
+            </a>
+          )}
         </div>
       </main>
 

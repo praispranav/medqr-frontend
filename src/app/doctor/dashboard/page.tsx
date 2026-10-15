@@ -330,6 +330,13 @@ function CommandCenter({ tenant, doctor }: { tenant: Tenant; doctor: DoctorToday
                 <Icon name="notifications_active" className="text-[16px]" /> Get ready
               </button>
             )}
+            <Link
+              href="/doctor/patients"
+              title="All Patients & Past Days"
+              className="h-8 px-2.5 rounded-lg bg-surface-container-low text-primary font-label-sm text-label-sm flex items-center gap-1 hover:bg-surface-container"
+            >
+              <Icon name="group" className="text-[16px]" /> Patients
+            </Link>
             <button
               onClick={() => downloadTodayPatientsCsv(rows ?? [], doctor.name)}
               disabled={!rows?.length}
