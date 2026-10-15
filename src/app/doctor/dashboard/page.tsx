@@ -361,7 +361,7 @@ function CommandCenter({ tenant, doctor }: { tenant: Tenant; doctor: DoctorToday
           />
         </div>
 
-        <div className="flex flex-col gap-2 overflow-y-auto -mx-1 px-1">
+        <div className="flex flex-col gap-2 overflow-y-auto -mx-1 px-1 min-h-0 flex-1">
           {rows === null && <p className="font-body-md text-body-md text-on-surface-variant">Loading…</p>}
           {filter(callable).map((r, i) => (
             <QueueItem key={r.id} row={r} now={now} doctor={doctor} expanded={expandedId === r.id} onToggle={() => setExpandedId(expandedId === r.id ? null : r.id)}>
@@ -499,7 +499,7 @@ function downloadTodayPatientsCsv(rows: QueueRow[], doctorName: string) {
 function QueueItem({ row, now, muted = false, doctor, expanded = false, onToggle, children }: { row: QueueRow; now: number; muted?: boolean; doctor?: DoctorToday; expanded?: boolean; onToggle?: () => void; children: React.ReactNode }) {
   const waited = minutesSince(row.joined_at, now);
   return (
-    <div className={`flex flex-col p-3 rounded-xl overflow-hidden transition-colors bg-surface-container-low ${muted ? 'opacity-80' : ''} ${onToggle ? 'hover:bg-surface-container cursor-pointer' : ''}`} onClick={(e) => {
+    <div className={`flex flex-col shrink-0 p-3 rounded-xl overflow-hidden transition-colors bg-surface-container-low ${muted ? 'opacity-80' : ''} ${onToggle ? 'hover:bg-surface-container cursor-pointer' : ''}`} onClick={(e) => {
       if ((e.target as HTMLElement).closest('button, a')) return;
       onToggle?.(); // every row opens its details — also "not arrived" and finished ones
     }}>
