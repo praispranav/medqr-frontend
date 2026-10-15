@@ -24,9 +24,12 @@ export default function PatientHomePage() {
   const [error, setError] = useState<string | null>(null);
   const [devCode, setDevCode] = useState<string | null>(null);
   const [resendIn, setResendIn] = useState(0);
-  const [verified, setVerified] = useState(!!patientDevice.get());
+  const [verified, setVerified] = useState(false);
   const [summary, setSummary] = useState<Awaited<ReturnType<typeof api.myTokens>> | null>(null);
   const codeRef = useRef<HTMLInputElement>(null);
+
+  // Browser-only saved sessions must be read after hydration, not during the server render.
+  useEffect(() => { setVerified(!!patientDevice.get()); }, []);
 
   useEffect(() => {
     if (resendIn <= 0) return;

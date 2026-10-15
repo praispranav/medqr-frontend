@@ -134,6 +134,7 @@ export const kn: Partial<Record<TranslationKey, string>> = {
   "in_add_family": "ಕುಟುಂಬದ ಸದಸ್ಯರನ್ನು ಸೇರಿಸಿ",
   "in_not_you_other": "ನೀವಲ್ಲವೇ? ಬೇರೆ ಸಂಖ್ಯೆ ಬಳಸಿ",
   "in_saved_numbers": "ಈ ಸಾಧನದಲ್ಲಿ ಉಳಿಸಿದ ಸಂಖ್ಯೆಗಳು",
+  "patient_logout": "ಲಾಗ್ ಔಟ್",
   "in_back_to_family": "ಕುಟುಂಬ ಸದಸ್ಯರ ಪಟ್ಟಿಗೆ ಹಿಂತಿರುಗಿ",
   "in_full_name": "ರೋಗಿಯ ಪೂರ್ಣ ಹೆಸರು",
   "in_name_eg": "ಉದಾ. ಪ್ರಿಯಾ ಶರ್ಮಾ",

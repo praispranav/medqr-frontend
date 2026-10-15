@@ -9,6 +9,7 @@ import { dateLocale, localizeStatusDetail, useT } from '@/lib/i18n';
 import { doctorSettings } from '@/lib/doctorSettings';
 import { CustomIntakeForm } from '@/components/patient/CustomIntakeForm';
 import { clinicToday } from '@/lib/clinicTime';
+import { PatientLogout } from '@/components/patient/PatientLogout';
 
 // Screen #1 (returning 1-tap / new patient) + Screen #2 (intake details), on one page. Ported from
 // stitch_medqr_clinic_suite_ui_design/patient_qr_landing_check_in/code.html and
@@ -612,9 +613,12 @@ function IntakeForm() {
             );
           })()}
 
-          <h1 className="text-headline-sm font-headline-sm text-on-surface tracking-tight font-bold mt-3">
+          <div className="flex items-center justify-between gap-3 mt-3">
+          <h1 className="text-headline-sm font-headline-sm text-on-surface tracking-tight font-bold">
             {mode === 'returning' && selectedProfile ? t('in_welcome_back') : t('in_quick_details')}
           </h1>
+          <PatientLogout />
+          </div>
 
           {(errors.name || errors.mobile) && (
             <div className="mt-3 p-3.5 bg-error-container text-on-error-container rounded-xl shadow-sm">

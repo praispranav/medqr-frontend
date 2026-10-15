@@ -134,6 +134,7 @@ export const ta: Partial<Record<TranslationKey, string>> = {
   "in_add_family": "குடும்ப உறுப்பினரைச் சேர்க்கவும்",
   "in_not_you_other": "நீங்கள் இல்லையா? வேறு எண்ணைப் பயன்படுத்துங்கள்",
   "in_saved_numbers": "இந்தச் சாதனத்தில் சேமித்த எண்கள்",
+  "patient_logout": "வெளியேறு",
   "in_back_to_family": "குடும்ப உறுப்பினர்களுக்குத் திரும்பு",
   "in_full_name": "நோயாளியின் முழுப் பெயர்",
   "in_name_eg": "எ.கா. பிரியா ஷர்மா",

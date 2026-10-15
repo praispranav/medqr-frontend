@@ -134,6 +134,7 @@ export const bn: Partial<Record<TranslationKey, string>> = {
   "in_add_family": "পরিবারের সদস্য যোগ করুন",
   "in_not_you_other": "আপনি নন? অন্য নম্বর দিন",
   "in_saved_numbers": "এই ডিভাইসে সংরক্ষিত নম্বর",
+  "patient_logout": "লগ আউট",
   "in_back_to_family": "পরিবারের সদস্যদের তালিকায় ফিরুন",
   "in_full_name": "রোগীর পুরো নাম",
   "in_name_eg": "যেমন: প্রিয়া শর্মা",

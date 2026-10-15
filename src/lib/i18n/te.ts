@@ -134,6 +134,7 @@ export const te: Partial<Record<TranslationKey, string>> = {
   "in_add_family": "కుటుంబ సభ్యుడిని జోడించండి",
   "in_not_you_other": "మీరు కాదా? మరో నంబర్ వాడండి",
   "in_saved_numbers": "ఈ పరికరంలో సేవ్ చేసిన నంబర్లు",
+  "patient_logout": "లాగ్ అవుట్",
   "in_back_to_family": "కుటుంబ సభ్యుల జాబితాకు తిరిగి వెళ్లండి",
   "in_full_name": "రోగి పూర్తి పేరు",
   "in_name_eg": "ఉదా. ప్రియ శర్మ",

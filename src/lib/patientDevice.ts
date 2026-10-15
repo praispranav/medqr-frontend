@@ -3,6 +3,12 @@
 const TOKEN_KEY = 'medqr:patient-token';
 const MOBILE_KEY = 'medqr:mobile';
 const SAVED_KEY = 'medqr:saved-patient-devices';
+export const PATIENT_DEVICE_EVENT = 'medqr:patient-device-change';
+export const PATIENT_LOGOUT_KEY = 'medqr:patient-logout-at';
+export const patientLogoutPath = (hostname: string) => hostname.toLowerCase().split('.')[0] === 'patient' ? '/' : '/patient';
+function notify() {
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event(PATIENT_DEVICE_EVENT));
+}
 type Device = { token: string; mobile: string };
 const digits = (mobile: string) => mobile.replace(/\D/g, '').slice(-10);
 
@@ -34,6 +40,9 @@ function store(devices: Device[]) {
 
 export const patientDevice = {
   get: active,
+  logoutStamp(): string | null {
+    try { return localStorage.getItem(PATIENT_LOGOUT_KEY); } catch { return null; }
+  },
   set(token: string, mobile: string) {
     const normalized = digits(mobile);
     store([{ token, mobile: normalized }, ...saved().filter((d) => d.mobile !== normalized)]);
@@ -41,6 +50,7 @@ export const patientDevice = {
       localStorage.setItem(TOKEN_KEY, token);
       localStorage.setItem(MOBILE_KEY, normalized);
     } catch { /* Private storage: the browser may not remember this visit. */ }
+    notify();
   },
   savedNumbers(): string[] {
     return saved().map((d) => d.mobile);
@@ -57,6 +67,7 @@ export const patientDevice = {
       localStorage.removeItem(TOKEN_KEY);
       localStorage.removeItem(MOBILE_KEY);
     } catch { /* ignore */ }
+    notify();
   },
   // Expired credentials and "don't remember" really forget this number. Other
   // remembered numbers remain separate; no profile is fetched by mobile alone.
@@ -67,5 +78,15 @@ export const patientDevice = {
       localStorage.removeItem(TOKEN_KEY);
       localStorage.removeItem(MOBILE_KEY);
     } catch { /* ignore */ }
+    notify();
+  },
+  // Explicit logout forgets every remembered phone on this browser, including
+  // local token shortcuts. Bookings and server-side patient records are untouched.
+  logout() {
+    for (const key of [TOKEN_KEY, MOBILE_KEY, SAVED_KEY, 'medqr_patient_tokens']) {
+      try { localStorage.removeItem(key); } catch { /* Storage may be unavailable. */ }
+    }
+    try { localStorage.setItem(PATIENT_LOGOUT_KEY, String(Date.now())); } catch { /* ignore */ }
+    notify();
   },
 };

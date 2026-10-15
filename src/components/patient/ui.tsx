@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { createPortal } from 'react-dom';
 import { useState } from 'react';
+import { PatientLogout } from './PatientLogout';
 import { useT, dateLocale, localizeStatusDetail, LANG_NAMES, PATIENT_LANGUAGES_READY, type LangCode } from '@/lib/i18n';
 
 import { fileUrl, type DoctorToday, type DoctorTodayStatus, type NextSession } from '@/lib/api';
@@ -133,6 +134,7 @@ export function PatientHeader({ eyebrow, title, onBack, homeUrl }: { eyebrow: st
           </div>
         </div>
         <div className="flex items-center">
+          <PatientLogout />
 <LanguageButton />
           {homeUrl && (
             <Link

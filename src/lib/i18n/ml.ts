@@ -134,6 +134,7 @@ export const ml: Partial<Record<TranslationKey, string>> = {
   "in_add_family": "കുടുംബാംഗത്തെ ചേർക്കുക",
   "in_not_you_other": "നിങ്ങളല്ലേ? മറ്റൊരു നമ്പർ ഉപയോഗിക്കുക",
   "in_saved_numbers": "ഈ ഉപകരണത്തിൽ സൂക്ഷിച്ച നമ്പറുകൾ",
+  "patient_logout": "ലോഗ് ഔട്ട്",
   "in_back_to_family": "കുടുംബാംഗങ്ങളുടെ പട്ടികയിലേക്ക് മടങ്ങുക",
   "in_full_name": "രോഗിയുടെ മുഴുവൻ പേര്",
   "in_name_eg": "ഉദാ. പ്രിയ ശർമ്മ",

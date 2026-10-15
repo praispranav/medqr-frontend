@@ -348,6 +348,7 @@ export const en = {
 
   // Patient home (patient.clinicq.in) — regain a lost token, see visit history, book again
   "ph_title": "Your ClinicQ tokens",
+  "patient_logout": "Log out",
   "ph_subtitle": "Enter your mobile number to see your active tokens and past visits.",
   "ph_change_number": "Not your number? Change it",
   "ph_live_tokens": "Active tokens",

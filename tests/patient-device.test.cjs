@@ -75,5 +75,36 @@ test('invalid or unavailable browser storage does not break intake', () => {
   assert.doesNotThrow(() => patientDevice.set('a', phoneA));
   assert.doesNotThrow(() => patientDevice.switchNumber());
   assert.doesNotThrow(() => patientDevice.clear());
+  assert.doesNotThrow(() => patientDevice.logout());
   assert.equal(patientDevice.get(), null);
+});
+
+test('logout removes every remembered phone and local token shortcut, preserving unrelated settings', () => {
+  patientDevice.set('a', phoneA);
+  patientDevice.set('b', phoneB);
+  localStorage.setItem('medqr_patient_tokens', JSON.stringify([{ id: 'existing-booking-shortcut' }]));
+  localStorage.setItem('medqr:lang', 'hi');
+  patientDevice.logout();
+  assert.equal(patientDevice.get(), null);
+  assert.deepEqual(patientDevice.savedNumbers(), []);
+  assert.equal(patientDevice.useSaved(phoneA), false);
+  assert.equal(patientDevice.useSaved(phoneB), false);
+  assert.equal(localStorage.getItem('medqr_patient_tokens'), null);
+  assert.equal(localStorage.getItem('medqr:lang'), 'hi');
+  assert.ok(patientDevice.logoutStamp());
+});
+
+test('logout clears remembered phones even after selecting another number', () => {
+  patientDevice.set('a', phoneA);
+  patientDevice.switchNumber();
+  patientDevice.logout();
+  assert.equal(patientDevice.useSaved(phoneA), false);
+});
+
+test('logout uses the correct patient home on both supported host styles', () => {
+  const { patientLogoutPath } = loaded.exports;
+  assert.equal(patientLogoutPath('clinicq.in'), '/patient');
+  assert.equal(patientLogoutPath('localhost'), '/patient');
+  assert.equal(patientLogoutPath('patient.clinicq.in'), '/');
+  assert.equal(patientLogoutPath('patient.localhost'), '/');
 });
