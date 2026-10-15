@@ -159,6 +159,9 @@ export const PosterArtboard = forwardRef<HTMLDivElement, { kind: PosterKind; con
             <img
               src={content.photoUrl}
               alt=""
+              // The doctor's photo is served from the API's own origin — without this, drawing it
+              // into the export canvas (html-to-image) taints the canvas and PDF/PNG download fails.
+              crossOrigin="anonymous"
               style={{ width: 80, height: 80, borderRadius: 999, objectFit: 'cover', flexShrink: 0, border: '2px solid #fff', boxShadow: '0 0 0 2px #cfe9e5' }}
             />
           ) : (
@@ -307,7 +310,8 @@ export function PosterCard({
         saveDataUrl(await renderPng(posterRef.current, ratio), `${fileBase}-${kind}.png`);
       } else await downloadPostersPdf([posterRef.current], kind, `${fileBase}-${kind}.pdf`);
     } catch (e) {
-      setError(`Couldn't create the file: ${(e as Error).message}`);
+      const reason = e instanceof Error && e.message ? e.message : 'likely a photo from a different domain — try again, or remove the doctor photo';
+      setError(`Couldn't create the file: ${reason}`);
     } finally {
       setBusy(null);
     }
