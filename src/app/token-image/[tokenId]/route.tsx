@@ -57,9 +57,9 @@ export async function GET(_req: Request, { params }: { params: { tokenId: string
   const future = v.is_future_booking;
   const closed = ['done', 'cancelled', 'expired', 'no_show'].includes(v.status);
   const consulting = v.status === 'in_consultation';
-  // Keep the same per-token QR as the screen until arrival is confirmed, including
-  // clinics without reception that require an arrival scan.
-  const showQr = !closed && !consulting && !arrived;
+  // Future bookings keep their token QR for saving to the gallery, regardless of
+  // reception settings. On the visit day, keep the screen's existing arrival rules.
+  const showQr = !closed && !consulting && !verified && (future || !arrived);
   const status = closed
     ? ({ done: 'Visit completed', cancelled: 'Token cancelled', expired: 'Token expired', no_show: 'Missed turn' }[v.status] ?? 'Visit closed')
     : consulting ? 'Your turn'

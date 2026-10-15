@@ -104,9 +104,25 @@ test('download QR changes with arrival state, without creating a clinic-wide QR'
   assert.equal(await download(ids[0], { ...base, status: 'checked_in_early', front_desk: false, arrival_scan: true }), null);
   assert.equal(await download(ids[0], { ...base, front_desk: false }), null);
   assert.equal(await download(ids[0], { ...base, is_future_booking: true, token_date: '2026-10-20', booking_date: '2026-10-20' }), ids[0]);
-  assert.equal(await download(ids[0], { ...base, front_desk: false, arrival_scan: true, is_future_booking: true }), null);
   for (const status of ['in_consultation', 'done', 'cancelled', 'expired', 'no_show']) {
     assert.equal(await download(ids[0], { ...base, status }), null, status);
+  }
+});
+
+test('future bookings keep a downloadable token QR for every clinic arrival configuration', async () => {
+  for (const id of ids) {
+    for (const front_desk of [true, false]) {
+      for (const arrival_scan of [true, false]) {
+        assert.equal(await download(id, {
+          ...base, front_desk, arrival_scan, is_future_booking: true,
+          booking_date: '2026-10-20', token_date: '2026-10-20',
+        }), id, JSON.stringify({ id, front_desk, arrival_scan }));
+      }
+    }
+  }
+  // A future date must not resurrect a closed or already checked-in token's QR.
+  for (const status of ['waiting_in_clinic', 'checked_in_early', 'in_consultation', 'done', 'cancelled', 'expired', 'no_show']) {
+    assert.equal(await download(ids[0], { ...base, status, is_future_booking: true }), null, status);
   }
 });
 
