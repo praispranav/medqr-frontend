@@ -153,17 +153,17 @@ export const PosterArtboard = forwardRef<HTMLDivElement, { kind: PosterKind; con
     <div ref={ref} style={{ ...base, color: '#131b2e' }}>
       <FitToHeight maxH={h - 4}>
       <div style={{ width: w - 24, border: '2px solid #cfe9e5', borderRadius: 22 }} className="flex flex-col items-center text-center overflow-hidden">
-        <div style={{ width: '100%', background: '#f0fdfa', padding: '20px 22px' }} className="flex items-center gap-3 text-left">
+        <div style={{ width: '100%', background: '#f0fdfa', padding: '28px 22px' }} className="flex items-center gap-3 text-left">
           {content.photoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={content.photoUrl}
               alt=""
-              style={{ width: 68, height: 68, borderRadius: 999, objectFit: 'cover', flexShrink: 0, border: '2px solid #fff', boxShadow: '0 0 0 2px #cfe9e5' }}
+              style={{ width: 80, height: 80, borderRadius: 999, objectFit: 'cover', flexShrink: 0, border: '2px solid #fff', boxShadow: '0 0 0 2px #cfe9e5' }}
             />
           ) : (
             <div
-              style={{ width: 68, height: 68, borderRadius: 999, background: '#0f766e', color: '#fff', fontSize: 24, fontWeight: 800, flexShrink: 0 }}
+              style={{ width: 80, height: 80, borderRadius: 999, background: '#0f766e', color: '#fff', fontSize: 28, fontWeight: 800, flexShrink: 0 }}
               className="flex items-center justify-center"
             >
               {initialsOf(content.title)}
@@ -184,11 +184,11 @@ export const PosterArtboard = forwardRef<HTMLDivElement, { kind: PosterKind; con
             </span>
           )}
         </div>
-        <p style={{ fontSize: 30, fontWeight: 800, color: '#005c55', lineHeight: 1.1, marginTop: 20 }}>{content.headline ?? 'Scan for your OPD token'}</p>
-        <p style={{ fontSize: 14, color: '#3e4947', marginTop: 6 }}>{content.tagline ?? 'Point your phone camera · see your live queue position'}</p>
+        <p style={{ fontSize: 32, fontWeight: 800, color: '#005c55', lineHeight: 1.1, marginTop: 28 }}>{content.headline ?? 'Scan for your OPD token'}</p>
+        <p style={{ fontSize: 15, color: '#3e4947', marginTop: 8 }}>{content.tagline ?? 'Point your phone camera · see your live queue position'}</p>
         {/* Plain QR, no border box around it — just a small checkmark mark at its center. */}
-        <div style={{ position: 'relative', margin: '16px 0 10px' }}>
-          <QRCodeSVG value={content.url} size={240} level="H" marginSize={2} fgColor="#00201d" bgColor="#ffffff" />
+        <div style={{ position: 'relative', margin: '28px 0 20px' }}>
+          <QRCodeSVG value={content.url} size={280} level="H" marginSize={2} fgColor="#00201d" bgColor="#ffffff" />
           <div
             style={{
               position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
@@ -201,9 +201,9 @@ export const PosterArtboard = forwardRef<HTMLDivElement, { kind: PosterKind; con
             </svg>
           </div>
         </div>
-        <StepsRow color="#005c55" muted="#3e4947" size={13} steps={content.steps} />
-        <p style={{ fontSize: 11, fontWeight: 700, color: '#3e4947', margin: '10px 0 4px', letterSpacing: '0.08em' }}>{content.codeLabel ?? ' '}</p>
-        <p style={{ fontSize: 9, fontWeight: 700, color: '#8a938f', margin: '0 0 14px', letterSpacing: '0.1em' }}>ClinicQ</p>
+        <StepsRow color="#005c55" muted="#3e4947" size={14} steps={content.steps} />
+        <p style={{ fontSize: 12, fontWeight: 700, color: '#3e4947', margin: '16px 0 6px', letterSpacing: '0.08em' }}>{content.codeLabel ?? ' '}</p>
+        <p style={{ fontSize: 10, fontWeight: 700, color: '#8a938f', margin: '0 0 22px', letterSpacing: '0.1em' }}>ClinicQ</p>
       </div>
       </FitToHeight>
     </div>
