@@ -150,8 +150,8 @@ export const PosterArtboard = forwardRef<HTMLDivElement, { kind: PosterKind; con
   }
 
   return (
-    <div ref={ref} style={{ ...base, color: '#131b2e' }}>
-      <FitToHeight maxH={h - 4}>
+    <div ref={ref} style={{ ...base, color: '#131b2e', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <FitToHeight maxH={h - 16}>
       <div style={{ width: w - 16, border: '2px solid #cfe9e5', borderRadius: 22 }} className="flex flex-col items-center text-center overflow-hidden">
         <div style={{ width: '100%', background: '#f0fdfa', padding: '28px 22px' }} className="flex items-center gap-3 text-left">
           {content.photoUrl ? (
@@ -187,8 +187,8 @@ export const PosterArtboard = forwardRef<HTMLDivElement, { kind: PosterKind; con
         <p style={{ fontSize: 32, fontWeight: 800, color: '#005c55', lineHeight: 1.1, marginTop: 28 }}>{content.headline ?? 'Scan for your OPD token'}</p>
         <p style={{ fontSize: 15, color: '#3e4947', marginTop: 8 }}>{content.tagline ?? 'Point your phone camera · see your live queue position'}</p>
         {/* Plain QR, no border box around it — just a small checkmark mark at its center. */}
-        <div style={{ position: 'relative', margin: '28px 0 20px' }}>
-          <QRCodeSVG value={content.url} size={280} level="H" marginSize={2} fgColor="#00201d" bgColor="#ffffff" />
+        <div style={{ position: 'relative', margin: '22px 0 16px' }}>
+          <QRCodeSVG value={content.url} size={264} level="H" marginSize={2} fgColor="#00201d" bgColor="#ffffff" />
           <div
             style={{
               position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
@@ -227,7 +227,7 @@ function FitToHeight({ maxH, children }: { maxH: number; children: React.ReactNo
     return () => ro.disconnect();
   }, [maxH]);
   return (
-    <div style={{ height: maxH + 12, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+    <div style={{ height: maxH, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
       <div ref={innerRef} style={{ transform: `scale(${scale})`, transformOrigin: 'center center' }}>
         {children}
       </div>
