@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { api, ApiError, type DoctorToday, type QrCodeView, type Tenant } from '@/lib/api';
+import { api, ApiError, fileUrl, type DoctorToday, type QrCodeView, type Tenant } from '@/lib/api';
 import { Icon } from '@/components/patient/ui';
 import { StaffShell } from '@/components/staff/StaffShell';
 import { patientBaseUrl, PosterCard, posterContentFor, POSTER_FORMATS, type PosterContent } from '@/components/qr/QrPoster';
@@ -78,6 +78,7 @@ function QrSuite({ tenant, doctor }: { tenant: Tenant; doctor: DoctorToday }) {
     cabinLabel: doctor.cabin_label ?? null,
     roleBadge: 'OPD Desk · Live Queue Check-In',
     fallbackDomain: base.replace(/^https?:\/\//, ''),
+    photoUrl: doctor.photo_url ? fileUrl(doctor.photo_url) : null,
   };
   const isLocal = /localhost|127\.0\.0\.1/.test(base);
   const open = mine?.find((q) => q.id === openId) ?? null;

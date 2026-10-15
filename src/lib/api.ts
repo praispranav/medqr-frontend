@@ -715,7 +715,7 @@ export interface QrCodeView {
   created_at: string;
   scan_count?: number;
   last_scanned_at?: string | null;
-  doctor: { id: string; name: string; cabin_label: string | null; specialty: string | null } | null;
+  doctor: { id: string; name: string; cabin_label: string | null; specialty: string | null; photo_url: string | null } | null;
   clinic: { id: string; subdomain: string; name: string } | null;
 }
 

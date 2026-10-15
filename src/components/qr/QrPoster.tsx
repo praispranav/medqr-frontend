@@ -3,7 +3,7 @@
 import { forwardRef, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Icon } from '@/components/patient/ui';
-import type { QrCodeView } from '@/lib/api';
+import { fileUrl, type QrCodeView } from '@/lib/api';
 
 // Printable QR standees (reception_counter_qr_standee_print_suite design), rebuilt as fixed-size
 // artboards (1 mm = 3 px) so the header, headline and QR stay grouped tightly, and exported
@@ -40,6 +40,8 @@ export interface PosterContent {
   roleBadge?: string;
   /** Printed small at the very bottom as a typed-URL fallback if the camera won't scan. */
   fallbackDomain?: string | null;
+  /** Doctor's own photo — shown instead of the initials circle when set. */
+  photoUrl?: string | null;
 }
 
 export const patientBaseUrl = () =>
@@ -63,6 +65,7 @@ export function posterContentFor(q: QrCodeView): PosterContent {
     cabinLabel: q.doctor?.cabin_label ?? null,
     roleBadge: q.doctor ? 'OPD Desk · Live Queue Check-In' : 'Live OPD Digital Queue',
     fallbackDomain: base.replace(/^https?:\/\//, ''),
+    photoUrl: q.doctor?.photo_url ? fileUrl(q.doctor.photo_url) : null,
   };
 }
 
@@ -150,13 +153,22 @@ export const PosterArtboard = forwardRef<HTMLDivElement, { kind: PosterKind; con
     <div ref={ref} style={{ ...base, color: '#131b2e' }}>
       <FitToHeight maxH={h - 4}>
       <div style={{ width: w - 24, border: '2px solid #cfe9e5', borderRadius: 22 }} className="flex flex-col items-center text-center overflow-hidden">
-        <div style={{ width: '100%', background: '#f0fdfa', padding: '18px 22px' }} className="flex items-center gap-3 text-left">
-          <div
-            style={{ width: 52, height: 52, borderRadius: 999, background: '#0f766e', color: '#fff', fontSize: 20, fontWeight: 800, flexShrink: 0 }}
-            className="flex items-center justify-center"
-          >
-            {initialsOf(content.title)}
-          </div>
+        <div style={{ width: '100%', background: '#f0fdfa', padding: '20px 22px' }} className="flex items-center gap-3 text-left">
+          {content.photoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={content.photoUrl}
+              alt=""
+              style={{ width: 68, height: 68, borderRadius: 999, objectFit: 'cover', flexShrink: 0, border: '2px solid #fff', boxShadow: '0 0 0 2px #cfe9e5' }}
+            />
+          ) : (
+            <div
+              style={{ width: 68, height: 68, borderRadius: 999, background: '#0f766e', color: '#fff', fontSize: 24, fontWeight: 800, flexShrink: 0 }}
+              className="flex items-center justify-center"
+            >
+              {initialsOf(content.title)}
+            </div>
+          )}
           <div style={{ minWidth: 0, flex: 1 }}>
             <p style={{ fontSize: 22, fontWeight: 800, lineHeight: 1.15 }}>{content.title}</p>
             <p style={{ fontSize: 13, color: '#3e4947', marginTop: 2 }}>{content.subtitle || 'Live OPD digital queue'}</p>
