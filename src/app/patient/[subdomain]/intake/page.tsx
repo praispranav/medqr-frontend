@@ -29,9 +29,8 @@ const SYMPTOMS = [
 ] as const;
 
 const FINISHED_TOKEN = new Set(['done', 'no_show', 'expired', 'cancelled']);
-const sameName = (a?: string | null, b?: string | null) => (a ?? '').trim().toLowerCase() === (b ?? '').trim().toLowerCase();
 /** A token this phone already holds for the doctor being checked into (and not finished). */
-type MyToken = { id: string; number: number; patient_name: string };
+type MyToken = { id: string; number: number; patient_name: string; patient_id: string };
 type PersonDraft = { name: string; age: number | null; gender: string };
 
 // Decision 17 — human-readable label for a bookingDate (YYYY-MM-DD) query param, in the patient's language.
@@ -122,8 +121,10 @@ function IntakeForm() {
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [removeError, setRemoveError] = useState<string | null>(null);
 
+  const tokenLoad = useRef(0);
   /** This phone's saved tokens for this clinic, re-checked with the server; keep the live ones for this doctor. */
   async function loadMyTokens(forDoctorId: string, forDate: string | null) {
+    const requestId = ++tokenLoad.current;
     try {
       const stored: { id: string; clinic_subdomain?: string }[] = JSON.parse(localStorage.getItem('medqr_patient_tokens') || '[]');
       const mine = stored.filter((x) => x.clinic_subdomain === subdomain).slice(0, 10);
@@ -134,19 +135,20 @@ function IntakeForm() {
             .then((v) => {
               const sameDay = forDate ? v.booking_date === forDate : !v.is_future_booking;
               return v.doctor.id === forDoctorId && !FINISHED_TOKEN.has(v.status) && sameDay
-                ? ({ id: v.id, number: v.token_number, patient_name: v.patient_name ?? '' } as MyToken)
+                ? ({ id: v.id, number: v.token_number, patient_name: v.patient_name ?? '', patient_id: v.patient_id } as MyToken)
                 : null;
             })
             .catch(() => null),
         ),
       );
-      setMyTokens(found.filter((x): x is MyToken => !!x));
+      if (requestId === tokenLoad.current) setMyTokens(found.filter((x): x is MyToken => !!x));
     } catch {
-      setMyTokens([]);
+      if (requestId === tokenLoad.current) setMyTokens([]);
     }
   }
 
   useEffect(() => {
+    let cancelled = false;
     (async () => {
       // A new doctor/date in the URL (e.g. "Book for Mon" on the not-available screen) reloads this page's
       // data in place, so clear the previous result first — otherwise the old screen stays up and looks stuck.
@@ -155,12 +157,15 @@ function IntakeForm() {
       setTenant(null);
       setLoadError(false);
       setLeaving(null);
+      ++tokenLoad.current;
       setMyTokens([]);
       try {
         const clinic = await api.getTenantBySubdomain(subdomain);
+        if (cancelled) return;
         if (!clinic) return setLoadError(true);
 
         const advance = await api.getAdvanceBooking(clinic.id).catch(() => ({ days: [] }));
+        if (cancelled) return;
         setAdvanceDays(advance.days);
 
         let d: DoctorToday | undefined;
@@ -174,6 +179,7 @@ function IntakeForm() {
           setDoctorLang(doctorSettings(clinic, d).patient_language);
         } else {
           const doctors = await api.getDoctorsToday(clinic.id);
+          if (cancelled) return;
           d = doctors.find((x) => x.id === doctorId);
           if (!d) return setLoadError(true);
           setDoctorLang(doctorSettings(clinic, d).patient_language);
@@ -186,19 +192,25 @@ function IntakeForm() {
             });
           }
         }
+        const rules = await api.checkInRules(clinic.id).catch(() => ({ require_whatsapp_otp: false }));
+        if (cancelled) return;
+        setOtpRequired(rules.require_whatsapp_otp);
         setTenant(clinic);
         setDoctor(d);
         if (d) loadMyTokens(d.id, bookingDate);
-
-        const rules = await api.checkInRules(clinic.id).catch(() => ({ require_whatsapp_otp: false }));
-        setOtpRequired(rules.require_whatsapp_otp);
-        await loadDeviceProfiles();
       } catch {
-        setLoadError(true);
+        if (!cancelled) setLoadError(true);
       }
     })();
+    return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [subdomain, doctorId, bookingDate]);
+
+  // Changing the day/doctor is visit state; it must not reset the chosen family member or draft.
+  useEffect(() => {
+    void loadDeviceProfiles();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subdomain]);
 
   // Decision 43 — load this doctor's reason chips once we know who they are; falls back to [] (generic chips) on error.
   useEffect(() => {
@@ -378,10 +390,12 @@ function IntakeForm() {
     }
   };
   // The picked family member already holds a live token with this doctor → the main button opens it instead of joining twice.
-  const selectedActive = mode === 'returning' && selectedProfile ? myTokens.find((tok) => sameName(tok.patient_name, selectedProfile.name)) : undefined;
-  // Anyone already holding an active token today doesn't need to "join" again — they're shown once,
-  // consolidated, above (not repeated per-profile) and dropped out of the pick-a-person list entirely.
-  const selectableProfiles = profiles.filter((p) => !myTokens.some((tok) => sameName(tok.patient_name, p.name)));
+  const selectedActive = mode === 'returning' && selectedProfile ? myTokens.find((tok) => tok.patient_id === selectedProfile.id) : undefined;
+  // Keep everyone selectable; only show token shortcuts belonging to the selected person.
+  const selectableProfiles = profiles;
+  const visibleTokens = mode === 'returning' && selectedProfile
+    ? myTokens.filter((tok) => tok.patient_id === selectedProfile.id)
+    : [];
   const mobileDigits = mobile.replace(/\D/g, '').slice(-10);
 
   const toggleSymptom = (label: string) => {
@@ -546,18 +560,18 @@ function IntakeForm() {
           {/* Already-queued today, shown once here — never repeated per-profile below. One token
               stays a prominent button; several collapse into a compact list so it doesn't turn
               into a wall of big green buttons. */}
-          {myTokens.length === 1 && (
+          {visibleTokens.length === 1 && (
             <Link
-              href={`/patient/${subdomain}/queue/${myTokens[0].id}`}
+              href={`/patient/${subdomain}/queue/${visibleTokens[0].id}`}
               className="mt-3 w-full min-h-[48px] px-4 rounded-xl bg-primary text-on-primary font-label-lg text-label-lg flex items-center justify-center gap-2 touch-manipulation active:scale-[0.99]"
             >
-              <Icon name="confirmation_number" className="text-[20px]" /> {t('in_view_token', { n: myTokens[0].number })}
-              {myTokens[0].patient_name ? ` · ${myTokens[0].patient_name}` : ''}
+              <Icon name="confirmation_number" className="text-[20px]" /> {t('in_view_token', { n: visibleTokens[0].number })}
+              {visibleTokens[0].patient_name ? ` · ${visibleTokens[0].patient_name}` : ''}
             </Link>
           )}
-          {myTokens.length > 1 && (
+          {visibleTokens.length > 1 && (
             <div className="mt-3 bg-surface-container-lowest rounded-2xl shadow-sm divide-y divide-surface-container overflow-hidden">
-              {myTokens.map((tok) => (
+              {visibleTokens.map((tok) => (
                 <Link
                   key={tok.id}
                   href={`/patient/${subdomain}/queue/${tok.id}`}
@@ -596,9 +610,7 @@ function IntakeForm() {
                   const isSelected = bookingDate ? bookingDate === d.date : isToday;
                   const disabled = d.doctor.is_full;
                   const label = isToday ? t('in_today') : formatBookingDate(d.date, { weekday: 'short', day: 'numeric', month: 'short' }, locale);
-                  // Decision 32 amended: the remaining-token count was always showing the unconfigured
-                  // 100-a-day default, which reads as a meaningless number to patients — only flag it
-                  // when the queue is actually full.
+                  // Decision 32: show the real remaining capacity returned by the API.
 
                   return (
                     <button
@@ -622,9 +634,9 @@ function IntakeForm() {
                       }`}
                     >
                       <span className="font-label-md text-label-md font-bold">{label}</span>
-                      {d.doctor.is_full && (
+                      {d.doctor.tokens_left != null && (
                         <span className={`font-label-sm text-[11px] ${isSelected ? 'text-on-primary/80' : 'text-on-surface-variant/80'}`}>
-                          {t('in_full')}
+                          {d.doctor.is_full ? t('in_full') : t('in_left', { n: d.doctor.tokens_left })}
                         </span>
                       )}
                     </button>

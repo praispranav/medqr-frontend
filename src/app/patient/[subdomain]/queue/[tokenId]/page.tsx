@@ -415,7 +415,7 @@ export default function LiveQueuePage() {
               <Icon name="coffee" className="text-secondary text-[22px] flex-shrink-0" />
               <p className="font-body-sm text-body-sm leading-tight flex-1">
                 <strong className="font-label-sm uppercase tracking-wider text-secondary">{t('short_break')}</strong>{' '}
-                {t('doctor_back_shortly', { doctor: doctor.name, detail: localizeStatusDetail(view.doctor_state.detail, t).toLowerCase() })}
+                {t('doctor_back_shortly', { doctor: doctor.name, detail: !view.doctor_state.detail?.trim() || view.doctor_state.detail.trim().toLowerCase() === 'back shortly' ? '' : ` (${localizeStatusDetail(view.doctor_state.detail, t)})` })}
               </p>
             </div>
           )}
@@ -491,7 +491,7 @@ export default function LiveQueuePage() {
                     {view.now_serving ? (
                       t('now_serving', { number: view.now_serving })
                     ) : (
-                      t('doctor_will_call_shortly')
+                      shiftEnded ? t('session_ended') : t('doctor_will_call_shortly')
                     )}
                   </span>
                 </div>
@@ -536,7 +536,7 @@ export default function LiveQueuePage() {
           </div>
 
           {/* Wait metric — live sessions only (Decision 7: no fake math pre-session) */}
-          {!preSession && (
+          {!preSession && !shiftEnded && (
             <div className="w-full bg-surface-container-low rounded-2xl p-space-md flex items-center justify-between shadow-sm gap-3">
               <div className="flex items-center gap-space-sm min-w-0">
                 <div className="w-12 h-12 rounded-xl bg-surface-container-lowest text-primary flex items-center justify-center shadow-sm flex-shrink-0">
@@ -615,7 +615,7 @@ export default function LiveQueuePage() {
             <div className="flex items-center justify-between mb-4">
               <h4 className="font-headline-sm text-headline-sm text-on-surface">{t('visit_progress')}</h4>
               <span className="font-label-sm text-label-sm text-primary font-semibold">
-                {preSession ? t('tk_awaiting') : t('live_tracking')}
+                {shiftEnded ? t('session_ended') : preSession ? t('tk_awaiting') : t('live_tracking')}
               </span>
             </div>
             <div className="relative flex flex-col space-y-5 pl-2">
@@ -644,7 +644,7 @@ export default function LiveQueuePage() {
                 />
               )}
               <Step
-                state={arrived && !preSession ? 'active' : 'upcoming'}
+                state={arrived && !preSession && !shiftEnded ? 'active' : 'upcoming'}
                 icon="stethoscope"
                 title={t('consultation', { cabin: doctor.cabin_label ?? doctor.name })}
                 subtitle={[doctor.name, doctor.qualification].filter(Boolean).join(', ')}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, type QueueRow } from '@/lib/api';
 import { getQueueSocket, keepLive } from '@/lib/socket';
 
@@ -13,9 +13,14 @@ export function useLiveQueue(tenantId: string, doctorIds: string[], onlyDoctorId
   const [connected, setConnected] = useState(false);
   const roomKey = doctorIds.join(',');
 
+  const refreshVersion = useRef(0);
   const refresh = useCallback(async () => {
+    const version = ++refreshVersion.current;
     try {
-      setRows(await api.listQueueToday(tenantId, onlyDoctorId));
+      const next = await api.listQueueToday(tenantId, onlyDoctorId);
+      // A socket refresh started before Call next can finish after its explicit refresh.
+      // Never let the older response put the previous patient back in the cabin.
+      if (version === refreshVersion.current) setRows(next);
     } catch {
       /* keep last good rows; the next event or focus retries */
     }

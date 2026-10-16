@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "test:token-card": "node --test tests/token-card.test.cjs",
-    "test:patient-device": "node --test tests/patient-device.test.cjs"
+    "test:patient-device": "node --test tests/patient-device.test.cjs",
+    "test:live-queue": "node --test tests/live-queue.test.cjs"
   },
   "dependencies": {
     "firebase": "^12.19.0",

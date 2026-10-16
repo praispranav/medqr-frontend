@@ -424,6 +424,13 @@ export default function SelectDoctorPage() {
             </span>
           </div>
 
+          {tenant.maps_url && (
+            <a href={tenant.maps_url} target="_blank" rel="noopener noreferrer"
+              className="self-start flex items-center gap-2 px-3 py-2 rounded-lg bg-surface-container-lowest text-primary font-label-sm text-label-sm shadow-sm">
+              <Icon name="directions" className="text-[18px]" /> {t('sd_get_directions')}
+            </a>
+          )}
+
           {activeDoctors.length > 6 && (
             <div className="relative flex items-center">
               <Icon name="search" className="absolute left-3.5 text-on-surface-variant text-[20px]" />

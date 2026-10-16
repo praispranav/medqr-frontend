@@ -323,6 +323,7 @@ export interface TokenStatusView {
   token_number: number;
   status: TokenStatus;
   visit_id: string | null;
+  patient_id: string;
   patient_name: string | null;
   doctor: Pick<DoctorToday, 'id' | 'name' | 'qualification' | 'specialty' | 'cabin_label' | 'photo_url'>;
   clinic: { name: string; subdomain: string };
@@ -881,7 +882,7 @@ export const api = {
   /** Decision 26: take a patient out of the queue before their visit (reception / that doctor). */
   removeToken: (tokenId: string) => request(`/queue/tokens/${tokenId}/remove`, { method: 'POST' }),
   listQueueToday: (tenantId: string, doctorId?: string) =>
-    request<QueueRow[]>(`/queue/tenant/${tenantId}/today${doctorId ? `?doctorId=${doctorId}` : ''}`),
+    request<QueueRow[]>(`/queue/tenant/${tenantId}/today${doctorId ? `?doctorId=${doctorId}` : ''}`, { cache: 'no-store' }),
   getVisit: (visitId: string) => request<{ visit: Visit; patient: Patient | null }>(`/patients/visits/${visitId}`),
   getPatientHistory: (patientId: string, tenantId: string) =>
     request<Visit[]>(`/patients/${patientId}/history?tenantId=${tenantId}`),

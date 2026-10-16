@@ -47,6 +47,7 @@ function CommandCenter({ tenant, doctor }: { tenant: Tenant; doctor: DoctorToday
   const [busy, setBusy] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const [shift, setShift] = useState<ShiftView | null>(null);
+  const [readyNote, setReadyNote] = useState<string | null>(null);
   const [callError, setCallError] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
@@ -108,6 +109,7 @@ function CommandCenter({ tenant, doctor }: { tenant: Tenant; doctor: DoctorToday
   const run = async (fn: () => Promise<unknown>) => {
     setBusy(true);
     setCallError(null);
+    setReadyNote(null);
     try {
       await fn();
       await refresh();
@@ -149,6 +151,7 @@ function CommandCenter({ tenant, doctor }: { tenant: Tenant; doctor: DoctorToday
             <Icon name="info" className="text-[20px]" /> {notLiveReason}
           </p>
         )}
+        {readyNote && <p role="status" className="font-body-md text-body-md text-primary">{readyNote}</p>}
         {callError && <p className="font-body-md text-body-md text-error">{callError}</p>}
         {/* ---------- Now serving ---------- */}
         <section className="bg-surface-container-lowest rounded-2xl p-5 lg:p-6 shadow-sm flex flex-col gap-5 relative overflow-hidden">
@@ -323,7 +326,7 @@ function CommandCenter({ tenant, doctor }: { tenant: Tenant; doctor: DoctorToday
                 disabled={busy}
                 onClick={() => run(async () => {
                   const res = await api.alertReady(doctor.id);
-                  alert(`Alerted ${res.alerted} patient(s)`);
+                  setReadyNote(`Alerted ${res.alerted} patient(s).`);
                 })}
                 className="h-8 px-3 rounded-lg bg-tertiary-container text-on-tertiary-container font-label-sm text-label-sm flex items-center gap-1.5 hover:bg-tertiary-container/80 disabled:opacity-60"
               >

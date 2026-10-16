@@ -73,7 +73,7 @@ export const en = {
   'pre_session': 'Pre-Session:',
   'doctor_not_started': 'The doctor hasn\'t started yet. Your place in line is already saved.',
   'short_break': 'Short break:',
-  'doctor_back_shortly': '{doctor} will be back shortly ({detail}). Your place is saved.',
+  'doctor_back_shortly': '{doctor} will be back shortly{detail}. Your place is saved.',
   'finished_for_today': '{doctor} has finished for today. Please speak to {staff}.',
   'upcoming_session': 'Upcoming session',
   'session_starts_at': '{doctor}\'s session starts at {time}',
@@ -216,7 +216,7 @@ export const en = {
   "otp_enter_code": "Enter the code",
   "otp_your_number": "Your WhatsApp number",
   "otp_sent_to": "We sent a 6-digit code on WhatsApp to +91 {number}.",
-  "otp_will_send": "We'll send a code on WhatsApp. Your token updates come there too.",
+  "otp_will_send": "We'll send a verification code on WhatsApp.",
   "otp_sending": "Sending…",
   "otp_send": "Send code on WhatsApp",
   "otp_checking": "Checking…",
@@ -347,7 +347,7 @@ export const en = {
   "ar_wait": "Please wait nearby. The doctor will call your token number.",
   "ar_unreach": "Could not reach ClinicQ",
   "otp_second_token": "To get another token on this number, please confirm it on WhatsApp once. You'll stay verified on this phone.",
-  "otp_booking_verify": "Confirm your number on WhatsApp to finish booking. Your details are kept, and this phone will remember your verification.",
+  "otp_booking_verify": "Confirm your number on WhatsApp to finish booking. Your details are kept, and this phone will remember your verification for 90 days.",
 
   // Patient home (patient.clinicq.in) — regain a lost token, see visit history, book again
   "ph_title": "Your ClinicQ tokens",
