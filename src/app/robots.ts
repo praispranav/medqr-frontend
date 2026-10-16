@@ -24,7 +24,11 @@ export default function robots(): MetadataRoute.Robots {
         '/owner/',
         '/patient',
         '/patient/',
-        '/doctor',
+        // Note: NOT a bare "/doctor" — that's a prefix match, so it would also disallow
+        // "/doctors/<slug>", the public doctor profile pages (Decision 50), since every path under
+        // "/doctors/" literally starts with the string "/doctor". "/doctor/" (with the trailing
+        // slash) blocks only the private staff portal (/doctor/dashboard, /doctor/hours, …) without
+        // touching "/doctors/...".
         '/doctor/',
         '/reception',
         '/reception/',
