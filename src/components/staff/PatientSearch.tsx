@@ -16,7 +16,7 @@ export function PatientSearchAction({ onWalkIn, label }: { onWalkIn?: (p: { name
         aria-label="Search patients"
         className={
           label
-            ? 'h-9 px-3 rounded-lg bg-surface-container-low text-on-surface-variant font-label-md text-label-md flex items-center gap-1.5'
+            ? 'h-10 px-3 w-full rounded-lg bg-surface-container-low text-on-surface-variant font-label-md text-label-md flex items-center justify-center gap-1.5 whitespace-nowrap'
             : 'w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container-low'
         }
       >

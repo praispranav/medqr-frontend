@@ -237,37 +237,37 @@ function ReceptionDesk({ tenant, doctors, walkInPreFill, setWalkInPreFill }: { t
           )}
 
           <section className="bg-surface-container-lowest rounded-2xl p-5 shadow-sm">
-            <div className="flex items-center justify-between gap-3 mb-4">
-              <div className="flex items-center gap-2.5">
-                <Icon name="keyboard" className="text-primary text-[22px]" />
-                <h2 className="font-headline-sm text-headline-sm text-on-surface">Verify arrival</h2>
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <Icon name="keyboard" className="text-primary text-[22px] shrink-0" />
+                <h2 className="font-headline-sm text-headline-sm text-on-surface whitespace-nowrap">Verify arrival</h2>
               </div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <PatientSearchAction label="Search patients" onWalkIn={(p) => setWalkInPreFill(p)} />
-                <button
-                  type="button"
-                  onClick={() => {
-                    setScanError(null);
-                    setScanning(true);
-                  }}
-                  className="h-9 px-3 rounded-lg bg-primary-container text-on-primary-container font-label-md text-label-md flex items-center gap-1.5"
-                >
-                  <Icon name="qr_code_scanner" className="text-[18px]" />
-                  Scan QR
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowQrOpen(true)}
-                  className="h-9 px-3 rounded-lg bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-1.5 hover:bg-surface-container-highest transition-colors"
-                >
-                  <Icon name="qr_code_2" className="text-[18px]" />
-                  Show QR
-                </button>
-                <span className={`flex items-center gap-1.5 font-label-sm text-label-sm ${connected ? 'text-tertiary' : 'text-outline'}`}>
-                  <span className={`w-2 h-2 rounded-full ${connected ? 'bg-tertiary' : 'bg-outline'}`} />
-                  {connected ? 'Live' : 'Reconnecting…'}
-                </span>
-              </div>
+              <span className={`flex items-center gap-1.5 shrink-0 font-label-sm text-label-sm ${connected ? 'text-tertiary' : 'text-outline'}`}>
+                <span className={`w-2 h-2 rounded-full ${connected ? 'bg-tertiary' : 'bg-outline'}`} />
+                {connected ? 'Live' : 'Reconnecting…'}
+              </span>
+            </div>
+            <div className="grid grid-cols-3 gap-2 mb-4">
+              <PatientSearchAction label="Search patients" onWalkIn={(p) => setWalkInPreFill(p)} />
+              <button
+                type="button"
+                onClick={() => {
+                  setScanError(null);
+                  setScanning(true);
+                }}
+                className="h-10 px-3 rounded-lg bg-primary-container text-on-primary-container font-label-md text-label-md flex items-center justify-center gap-1.5"
+              >
+                <Icon name="qr_code_scanner" className="text-[18px]" />
+                Scan QR
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowQrOpen(true)}
+                className="h-10 px-3 rounded-lg bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center justify-center gap-1.5 hover:bg-surface-container-highest transition-colors"
+              >
+                <Icon name="qr_code_2" className="text-[18px]" />
+                Show QR
+              </button>
             </div>
             {scanError && (
               <p className="mb-3 font-body-sm text-body-sm text-error flex items-center gap-1.5">
