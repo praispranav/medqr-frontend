@@ -828,6 +828,8 @@ export const api = {
   verifyOtp: (mobile_number: string, code: string) =>
     request<{ patient_token: string; mobile_number: string }>('/patients/otp/verify', { method: 'POST', body: JSON.stringify({ mobile_number, code }) }),
   myProfiles: () => request<{ mobile_number: string; verified: boolean; profiles: Patient[] }>('/patients/me'),
+  // Decision 54: take a profile off this phone's list (hidden, never deleted).
+  removeProfile: (id: string) => request<{ removed: boolean }>(`/patients/me/${id}`, { method: 'DELETE' }),
   // patient.clinicq.in home: live tokens to regain + doctors previously visited, for "book again".
   myTokens: () =>
     request<{

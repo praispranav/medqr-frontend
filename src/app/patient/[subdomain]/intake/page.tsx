@@ -356,6 +356,26 @@ function IntakeForm() {
 
   const clinicName = tenant.display_name ?? subdomain;
   const selectedProfile = profiles.find((p) => p.id === selectedProfileId) ?? null;
+
+  // Decision 54 — "Remove" a saved person from this phone's list (hidden, never deleted; the clinic keeps visits).
+  const [removingId, setRemovingId] = useState<string | null>(null);
+  const [removeError, setRemoveError] = useState<string | null>(null);
+  const removeProfile = async (p: Patient) => {
+    if (!window.confirm(t('in_remove_confirm', { name: p.name }))) return;
+    setRemovingId(p.id);
+    setRemoveError(null);
+    try {
+      await api.removeProfile(p.id);
+      const rest = profiles.filter((x) => x.id !== p.id);
+      setProfiles(rest);
+      if (selectedProfileId === p.id) setSelectedProfileId(rest[0]?.id ?? null);
+      if (rest.length === 0) setMode('new');
+    } catch {
+      setRemoveError(t('in_remove_failed'));
+    } finally {
+      setRemovingId(null);
+    }
+  };
   // The picked family member already holds a live token with this doctor → the main button opens it instead of joining twice.
   const selectedActive = mode === 'returning' && selectedProfile ? myTokens.find((tok) => sameName(tok.patient_name, selectedProfile.name)) : undefined;
   // Anyone already holding an active token today doesn't need to "join" again — they're shown once,
@@ -656,11 +676,11 @@ function IntakeForm() {
                 {selectableProfiles.map((p) => {
                   const active = p.id === selectedProfileId;
                   return (
+                    <div key={p.id} className="flex items-center gap-1.5">
                     <button
-                      key={p.id}
                       type="button"
                       onClick={() => setSelectedProfileId(p.id)}
-                      className={`w-full text-left p-3 rounded-xl flex items-center justify-between transition-all ${
+                      className={`flex-1 min-w-0 text-left p-3 rounded-xl flex items-center justify-between transition-all ${
                         active ? 'bg-surface-container-low' : 'bg-surface-container-lowest hover:bg-surface-container-low'
                       }`}
                     >
@@ -690,6 +710,17 @@ function IntakeForm() {
                         className={`text-[24px] ${active ? 'text-primary' : 'text-outline-variant'}`}
                       />
                     </button>
+                    <button
+                      type="button"
+                      aria-label={t('in_remove_profile', { name: p.name })}
+                      title={t('in_remove_profile', { name: p.name })}
+                      disabled={removingId === p.id}
+                      onClick={() => removeProfile(p)}
+                      className="w-11 h-11 shrink-0 rounded-xl text-on-surface-variant hover:bg-error-container/40 hover:text-error flex items-center justify-center disabled:opacity-50"
+                    >
+                      <Icon name="delete" className="text-[20px]" />
+                    </button>
+                    </div>
                   );
                 })}
                 <button
@@ -701,6 +732,7 @@ function IntakeForm() {
                   <span>{t('in_add_family')}</span>
                 </button>
               </div>
+              {removeError && <p className="mt-3 font-body-sm text-body-sm text-error text-center">{removeError}</p>}
               <div className="mt-4 pt-3 border-t border-surface-container text-center">
                 <button type="button" onClick={() => startNewPerson(false)} className="text-primary hover:underline font-label-md text-label-md">
                   {t('in_not_you_other')}
@@ -1118,6 +1150,11 @@ function VerifyPhone({
   const [resendIn, setResendIn] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // The patient already typed this number on the form and tapped Join queue — don't ask them to confirm it
+  // again: send the code straight away (they can still tap "Change number"). Only the booking flow does this.
+  const startsWithNumber = reason === 'booking' && (initialMobile ?? '').replace(/\D/g, '').slice(-10).length === 10;
+  const [autoSending, setAutoSending] = useState(startsWithNumber);
+  const autoSent = useRef(false);
 
   useEffect(() => {
     if (resendIn <= 0) return;
@@ -1140,8 +1177,16 @@ function VerifyPhone({
       setError(e instanceof ApiError ? e.message : t('otp_send_failed'));
     } finally {
       setBusy(false);
+      setAutoSending(false);
     }
   };
+
+  useEffect(() => {
+    if (!startsWithNumber || autoSent.current) return;
+    autoSent.current = true;
+    send();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const verify = async (value: string) => {
     if (!sentTo || value.length !== 6) return;
@@ -1183,8 +1228,13 @@ function VerifyPhone({
           {reason === 'booking' && !sentTo && <p className="font-body-sm text-body-sm text-primary mt-2">{t('otp_booking_verify')}</p>}
         </div>
 
-        {!sentTo && <SavedPhoneNumbers numbers={savedNumbers} onSelect={onUseSaved} />}
-        {!sentTo ? (
+        {!sentTo && !autoSending && <SavedPhoneNumbers numbers={savedNumbers} onSelect={onUseSaved} />}
+        {!sentTo && autoSending ? (
+          <p className="flex items-center gap-2 font-body-md text-body-md text-on-surface-variant">
+            <Icon name="progress_activity" className="text-[20px] animate-spin" />
+            {t('otp_sending')}
+          </p>
+        ) : !sentTo ? (
           <form
             onSubmit={(e) => {
               e.preventDefault();
