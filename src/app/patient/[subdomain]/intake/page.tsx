@@ -118,6 +118,9 @@ function IntakeForm() {
   const [leaving, setLeaving] = useState<'book' | 'other' | null>(null);
   // Tokens this phone already holds with this doctor (shown as "View token" in the family list).
   const [myTokens, setMyTokens] = useState<MyToken[]>([]);
+  // Decision 54 — removing a saved profile (state lives up here: hooks must run before the early returns below).
+  const [removingId, setRemovingId] = useState<string | null>(null);
+  const [removeError, setRemoveError] = useState<string | null>(null);
 
   /** This phone's saved tokens for this clinic, re-checked with the server; keep the live ones for this doctor. */
   async function loadMyTokens(forDoctorId: string, forDate: string | null) {
@@ -358,8 +361,6 @@ function IntakeForm() {
   const selectedProfile = profiles.find((p) => p.id === selectedProfileId) ?? null;
 
   // Decision 54 — "Remove" a saved person from this phone's list (hidden, never deleted; the clinic keeps visits).
-  const [removingId, setRemovingId] = useState<string | null>(null);
-  const [removeError, setRemoveError] = useState<string | null>(null);
   const removeProfile = async (p: Patient) => {
     if (!window.confirm(t('in_remove_confirm', { name: p.name }))) return;
     setRemovingId(p.id);
