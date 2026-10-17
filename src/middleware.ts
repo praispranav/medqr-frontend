@@ -54,7 +54,13 @@ export function middleware(req: NextRequest) {
   if (isPatientHost(host)) {
     // The token screen fetches this shared image endpoint on the same host.
     if (pathname.startsWith('/token-image/') || pathname.startsWith('/q/')) return noindex(NextResponse.next());
-    if (isPatientPath(pathname)) return noindex(NextResponse.next());
+    // Pages link with "/patient/<clinic>/..." app paths; show the clean address (patient.clinicq.fit/<clinic>/...)
+    // instead of patient.clinicq.fit/patient/<clinic>/... — the clean path is rewritten back just below.
+    if (isPatientPath(pathname)) {
+      const url = req.nextUrl.clone();
+      url.pathname = pathname.slice('/patient'.length) || '/';
+      return NextResponse.redirect(url, 308);
+    }
     // Public main-site pages (doctor search, policies) belong on the main site.
     if (MAIN_SITE_URL && /^\/(doctors|clinics|privacy|terms|contact|login)(\/|$)/.test(pathname)) {
       return redirect(mainUrl(pathname + search, host));
