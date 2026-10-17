@@ -290,6 +290,45 @@ function PlatformSubscriptionCard() {
     </button>
   );
 
+  // Decision 59: the free plan — everything works, nothing is billed. Moving to the paid plan starts with a
+  // free trial, which the clinic requests here and ClinicQ switches on.
+  if (sub.status === 'free') {
+    const requestTrial = async () => {
+      setBusy(true);
+      setError(null);
+      try {
+        setSub(await api.requestTrial());
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Could not send the request. Try again.');
+      } finally {
+        setBusy(false);
+      }
+    };
+    return (
+      <section className="bg-surface-container-lowest rounded-2xl p-5 shadow-sm flex items-center gap-4 flex-wrap">
+        <Icon name="verified" className="text-tertiary text-[26px] shrink-0" />
+        <div className="flex-1 min-w-[220px]">
+          <p className="font-label-lg text-label-lg text-on-surface">Free plan — every feature, no charge</p>
+          <p className="font-body-sm text-body-sm text-on-surface-variant">
+            {sub.trial_requested_at
+              ? `Free trial of the paid plan requested on ${fmtDate(sub.trial_requested_at)}. ClinicQ will switch it on and let you know.`
+              : 'Your clinic is not billed. Want to move to the paid plan? Start with a free trial.'}
+          </p>
+          {error && <p className="font-body-sm text-body-sm text-error mt-1">{error}</p>}
+        </div>
+        {sub.trial_requested_at ? (
+          <span className="h-10 px-4 rounded-xl bg-surface-container-low text-on-surface-variant font-label-lg text-label-lg flex items-center gap-1.5 shrink-0">
+            <Icon name="schedule" className="text-[18px]" /> Trial requested
+          </span>
+        ) : (
+          <button disabled={busy} onClick={requestTrial} className="h-10 px-4 rounded-xl bg-primary text-on-primary font-label-lg text-label-lg disabled:opacity-50 shrink-0">
+            {busy ? 'Sending…' : 'Request free trial'}
+          </button>
+        )}
+      </section>
+    );
+  }
+
   if (sub.status === 'read_only') {
     const label = fmtDate(sub.grace_ends_at);
     return (

@@ -447,7 +447,7 @@ function DemoBanner() {
 
 /** Decision 18: trial countdown / grace / read-only — shown on every staff screen, not silently. */
 function SubscriptionBanner({ sub, me }: { sub: SubscriptionStatus | null; me: Me }) {
-  if (!sub || sub.status === 'active') return null;
+  if (!sub || sub.status === 'active' || sub.status === 'free') return null; // Decision 59: the free plan has no clock to show
   const billingHref = !me.user.can_manage_clinic ? null : me.doctor_count <= 1 ? '/doctor/billing' : '/manage/billing';
   const windowEnd = sub.status === 'grace' ? sub.grace_ends_at : sub.trial_ends_at;
   const daysLeft = windowEnd ? Math.ceil((new Date(windowEnd).getTime() - Date.now()) / 86400000) : null;

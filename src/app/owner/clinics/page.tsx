@@ -162,11 +162,25 @@ function Clinics({ api, referrer }: { api: AdminApi; referrer: boolean }) {
                           ? 'bg-secondary text-white'
                           : t.subscription.status === 'trial'
                             ? 'bg-blue-600 text-white'
-                            : 'bg-tertiary text-white'
+                            : t.subscription.status === 'free'
+                              ? 'bg-surface-container-high text-on-surface-variant'
+                              : 'bg-tertiary text-white'
                     }`}
                   >
-                    {t.subscription.status === 'trial' ? 'Free Trial' : t.subscription.status === 'grace' ? 'Grace' : t.subscription.status === 'read_only' ? 'Read-only' : 'Paid'}
+                    {t.subscription.status === 'free'
+                      ? 'Free'
+                      : t.subscription.status === 'trial'
+                        ? 'Free Trial'
+                        : t.subscription.status === 'grace'
+                          ? 'Grace'
+                          : t.subscription.status === 'read_only'
+                            ? 'Read-only'
+                            : 'Paid'}
                   </span>
+                )}
+                {/* Decision 59: a free clinic asked for a trial of the paid plan — start it from the clinic page. */}
+                {t.subscription?.status === 'free' && t.subscription.trial_requested_at && (
+                  <span className="px-2 py-0.5 rounded-full font-label-sm text-label-sm shrink-0 bg-amber-100 text-amber-800">Trial requested</span>
                 )}
               </div>
               <p className="font-body-sm text-body-sm text-on-surface-variant">{t.subdomain}.clinicq.fit</p>

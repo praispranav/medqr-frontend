@@ -22,10 +22,12 @@ async function request<T>(key: string, path: string, options?: RequestInit): Pro
   return res.json();
 }
 
-export type SubscriptionStatus = 'trial' | 'active' | 'grace' | 'read_only';
+export type SubscriptionStatus = 'free' | 'trial' | 'active' | 'grace' | 'read_only'; // 'free' = Decision 59
 
 export interface SubscriptionStatusView {
   status: SubscriptionStatus;
+  /** Decision 59: a free clinic asked for a free trial of the paid plan. */
+  trial_requested_at?: string | null;
   trial_ends_at: string | null;
   current_period_end: string | null;
   grace_ends_at: string | null;
@@ -61,6 +63,31 @@ export interface Coupon {
   clinics?: { id: string; name: string; discount_until: string | null }[];
 }
 export type CouponInput = Partial<Pick<Coupon, 'code' | 'percent_off' | 'discount_months' | 'free_months' | 'max_uses' | 'valid_until' | 'referrer_id' | 'note' | 'is_active'>>;
+
+/** Decision 59 — a Google Maps listing waiting in Owner › Clinic listings. */
+export interface ListingCandidate {
+  id: string;
+  place_id: string;
+  title: string;
+  category: string | null;
+  categories: string[];
+  address: string | null;
+  city: string | null;
+  phone: string | null;
+  website: string | null;
+  rating: number | null;
+  reviews_count: number | null;
+  maps_url: string | null;
+  search_term: string | null;
+  status: 'pending' | 'imported';
+  tenant_id: string | null;
+}
+
+export interface ListingImportResult {
+  imported: number;
+  failed: number;
+  results: { id: string; ok: boolean; tenant_id?: string; subdomain?: string; error?: string }[];
+}
 
 export type TrialLeadStatus = 'new' | 'contacted' | 'converted' | 'dismissed';
 
@@ -99,7 +126,7 @@ export interface AdminTenant extends Tenant {
   created_at: string;
   doctor_count: number;
   tokens_today: number;
-  subscription?: { status: SubscriptionStatus; trial_ends_at: string | null; grace_ends_at: string | null };
+  subscription?: { status: SubscriptionStatus; trial_ends_at: string | null; grace_ends_at: string | null; trial_requested_at?: string | null };
   /** Decision 27: the referral partner who looks after this clinic, if any. */
   referrer_id?: string | null;
   /** Decision 47: % of the setup checklist done (null for the demo clinic). */
@@ -309,6 +336,11 @@ export const adminApi = (key: string) => ({
   supportRequests: () => request<SupportRequest[]>(key, '/support'),
   updateSupport: (id: string, patch: { status?: SupportStatus; reply?: string | null }) =>
     request<SupportRequest>(key, `/support/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
+  listings: () => request<ListingCandidate[]>(key, '/listings'),
+  uploadListings: (items: Record<string, unknown>[]) =>
+    request<{ added: number; already_there: number; closed_skipped: number }>(key, '/listings/upload', { method: 'POST', body: JSON.stringify({ items }) }),
+  importListings: (ids: string[]) => request<ListingImportResult>(key, '/listings/import', { method: 'POST', body: JSON.stringify({ ids }) }),
+  deleteListings: (ids: string[]) => request<{ deleted: number }>(key, '/listings/delete', { method: 'POST', body: JSON.stringify({ ids }) }),
   leads: () => request<TrialLead[]>(key, '/leads'),
   setLeadStatus: (id: string, status: TrialLeadStatus) =>
     request<TrialLead>(key, `/leads/${id}`, { method: 'PATCH', body: JSON.stringify({ status }) }),

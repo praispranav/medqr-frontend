@@ -302,6 +302,7 @@ function daysLeft(iso: string | null) {
 }
 
 const STATUS_LABEL: Record<SubscriptionStatusView['status'], { text: string; className: string }> = {
+  free: { text: 'Free plan', className: 'bg-surface-container-high text-on-surface-variant' }, // Decision 59
   trial: { text: 'Free Trial', className: 'bg-blue-600 text-white' },
   active: { text: 'Paid', className: 'bg-tertiary text-white' },
   grace: { text: 'Grace period', className: 'bg-secondary text-white' },
@@ -366,6 +367,17 @@ function SubscriptionCard({ api, tenantId }: { api: AdminApi; tenantId: string }
           {sub.autopay_active ? ' · autopay renews it each month' : ''}
         </p>
       )}
+      {/* Decision 59: the free plan — full app, never billed; the clinic opts in by requesting a trial. */}
+      {sub.status === 'free' && (
+        <p className="font-body-md text-body-md text-on-surface-variant">
+          Full app, free, never goes read-only.{' '}
+          {sub.trial_requested_at ? (
+            <strong className="text-amber-700">Asked for a free trial of the paid plan on {fmt(sub.trial_requested_at)} — start it below.</strong>
+          ) : (
+            'Not on a trial — the clinic can request one from its Billing page.'
+          )}
+        </p>
+      )}
       {sub.status === 'read_only' && (
         <p className="font-body-md text-body-md text-error">Staff can view but not change anything for this clinic until it&apos;s marked active or given a grace period.</p>
       )}
@@ -380,9 +392,13 @@ function SubscriptionCard({ api, tenantId }: { api: AdminApi; tenantId: string }
             className="w-24 h-10 rounded-xl bg-surface-container-low px-3 font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-primary/30"
           />
         </div>
-        {(sub.status === 'trial' || sub.status === 'read_only') && (
-          <button disabled={busy || !n} onClick={() => run(() => api.extendTrial(tenantId, n))} className="h-10 px-4 rounded-xl bg-surface-container-low text-primary font-label-md text-label-md disabled:opacity-60">
-            Extend trial
+        {(sub.status === 'free' || sub.status === 'trial' || sub.status === 'read_only') && (
+          <button
+            disabled={busy || !n}
+            onClick={() => run(() => api.extendTrial(tenantId, n))}
+            className={`h-10 px-4 rounded-xl font-label-md text-label-md disabled:opacity-60 ${sub.status === 'free' ? 'bg-primary text-on-primary' : 'bg-surface-container-low text-primary'}`}
+          >
+            {sub.status === 'free' ? 'Start free trial' : 'Extend trial'}
           </button>
         )}
         {sub.status === 'active' && (

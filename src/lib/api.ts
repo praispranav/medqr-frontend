@@ -628,7 +628,10 @@ export interface DirectoryClinicSummary {
 }
 
 export interface SubscriptionStatus {
-  status: 'trial' | 'active' | 'grace' | 'read_only';
+  /** Decision 59: 'free' = the free plan (full app, no trial clock, never read-only). */
+  status: 'free' | 'trial' | 'active' | 'grace' | 'read_only';
+  /** Decision 59: when this free clinic asked for a free trial of the paid plan (null = not asked). */
+  trial_requested_at: string | null;
   trial_ends_at: string | null;
   current_period_end: string | null;
   grace_ends_at: string | null;
@@ -1037,6 +1040,7 @@ export const api = {
   billingPlan: () => request<MonthlyPlan>('/billing/plan'),
   // Platform-fee trial / subscription (Decision 18)
   getSubscription: () => request<SubscriptionStatus>('/billing/subscription'),
+  requestTrial: () => request<SubscriptionStatus>('/billing/subscription/trial-request', { method: 'POST' }),
   support: {
     contact: (body: { name: string; email?: string; mobile?: string; topic: SupportTopic; message: string; website?: string }) =>
       request<{ ok: true }>('/support/contact', { method: 'POST', body: JSON.stringify(body) }),

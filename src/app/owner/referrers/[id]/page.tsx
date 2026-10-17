@@ -16,7 +16,7 @@ export default function ReferrerPage() {
   return <AdminShell active="/owner/referrers">{(api) => <ReferrerView api={api} />}</AdminShell>;
 }
 
-const SUB_LABEL = { trial: 'Free trial', active: 'Paying', grace: 'Payment overdue', read_only: 'Read-only' } as const;
+const SUB_LABEL = { free: 'Free plan', trial: 'Free trial', active: 'Paying', grace: 'Payment overdue', read_only: 'Read-only' } as const;
 
 function ReferrerView({ api }: { api: AdminApi }) {
   const { id } = useParams<{ id: string }>();
