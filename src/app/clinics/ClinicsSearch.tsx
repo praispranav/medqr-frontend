@@ -63,6 +63,9 @@ export function ClinicsSearch({ initialQ, initialCity }: { initialQ?: string; in
             </div>
             <div className="flex-1 min-w-0">
               <p className="font-label-lg text-label-lg truncate">{c.clinic_name}</p>
+              {c.booking_open && <span className="inline-flex items-center gap-1 mt-1 rounded-full bg-primary-fixed px-2 py-0.5 text-label-sm text-primary">
+                <Icon name="confirmation_number" className="text-[14px]" />Online booking
+              </span>}
               <p className="font-body-sm text-body-sm text-on-surface-variant truncate">
                 {[c.city, `${c.doctor_count} doctor${c.doctor_count === 1 ? '' : 's'}`].filter(Boolean).join(' · ')}
               </p>
