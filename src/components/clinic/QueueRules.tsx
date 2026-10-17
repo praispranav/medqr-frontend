@@ -245,13 +245,13 @@ export const QueueRules = forwardRef<QueueRulesHandle, {
               hint="Patients see “~N min wait” = patients ahead × this."
             />
             <NumberField
-              label="Max tokens per doctor per day"
-              suffix="tokens"
+              label="Warn the doctor after"
+              suffix="patients a day"
               value={s.max_daily_tokens}
               min={1}
               max={999}
               onChange={(v) => set('max_daily_tokens', v)}
-              hint="New joins are refused with a polite message once reached."
+              hint="Patients can always join. Past this number the doctor sees a warning on My Queue (Decision 55)."
             />
           </div>
         </Section>

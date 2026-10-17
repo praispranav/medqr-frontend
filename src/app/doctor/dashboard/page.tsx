@@ -86,6 +86,7 @@ function CommandCenter({ tenant, doctor }: { tenant: Tenant; doctor: DoctorToday
   };
 
   const qs = doctorSettings(tenant, doctor); // Decision 28: this doctor's own settings
+  const todayCount = (rows ?? []).filter((r) => r.status !== 'cancelled').length;
   const avg = qs.avg_consult_mins;
   const estFinish = new Date(now + (callable.length + (current ? 1 : 0)) * avg * 60000).toLocaleTimeString('en-IN', {
     hour: 'numeric',
@@ -149,6 +150,12 @@ function CommandCenter({ tenant, doctor }: { tenant: Tenant; doctor: DoctorToday
         {!live && notLiveReason && (
           <p className="flex items-center gap-2 bg-secondary-fixed/40 text-on-secondary-fixed-variant rounded-xl px-4 py-3 font-label-lg text-label-lg">
             <Icon name="info" className="text-[20px]" /> {notLiveReason}
+          </p>
+        )}
+        {/* Decision 55: no daily cap — past the doctor's own number we only warn the doctor. */}
+        {todayCount > qs.max_daily_tokens && (
+          <p className="flex items-center gap-2 bg-error-container text-on-error-container rounded-xl px-4 py-3 font-label-lg text-label-lg">
+            <Icon name="warning" className="text-[20px]" /> {todayCount} patients today — more than your usual {qs.max_daily_tokens}. New patients can still join.
           </p>
         )}
         {readyNote && <p role="status" className="font-body-md text-body-md text-primary">{readyNote}</p>}

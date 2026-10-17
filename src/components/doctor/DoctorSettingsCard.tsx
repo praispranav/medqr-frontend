@@ -27,7 +27,7 @@ const MAIN: Field[] = [
   { key: 'payment_mode', label: 'When patients pay', kind: 'select', options: PAYMENT },
   { key: 'offer_online_payment', label: 'Offer online (UPI) payment', kind: 'bool' },
   { key: 'avg_consult_mins', label: 'Average consultation', kind: 'number', unit: 'min', min: 1, max: 120 },
-  { key: 'max_daily_tokens', label: 'Max tokens a day', kind: 'number', min: 1, max: 1000 },
+  { key: 'max_daily_tokens', label: 'Warn me after N patients a day', kind: 'number', min: 1, max: 1000 },
   {
     key: 'shift_start_mode',
     label: 'Queue goes live',

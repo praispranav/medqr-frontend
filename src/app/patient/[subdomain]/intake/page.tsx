@@ -633,12 +633,8 @@ function IntakeForm() {
                           : 'bg-surface-container-lowest text-on-surface-variant shadow-sm hover:shadow'
                       }`}
                     >
+                      {/* Decision 32 (amended): no token count on the chip; a full day is just greyed out. */}
                       <span className="font-label-md text-label-md font-bold">{label}</span>
-                      {d.doctor.tokens_left != null && (
-                        <span className={`font-label-sm text-[11px] ${isSelected ? 'text-on-primary/80' : 'text-on-surface-variant/80'}`}>
-                          {d.doctor.is_full ? t('in_full') : t('in_left', { n: d.doctor.tokens_left })}
-                        </span>
-                      )}
                     </button>
                   );
                 })}
