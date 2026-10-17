@@ -73,7 +73,7 @@ export const FAQS: FaqGroup[] = [
       { q: 'What is this product?', a: 'It is a digital token queue for clinics. Patients scan a QR code, get a token on their phone and follow their turn live. Reception and the doctor run the queue from one screen.' },
       { q: 'Do patients need to install an app?', a: 'No. The QR opens a page in the phone browser. Only a name and mobile number are needed; everything else is optional.' },
       { q: 'How do I get my QR poster?', a: 'Doctors open QR Standee in the menu and download it as a PDF or PNG. Clinic admins find QR Standees under Manage. You can print an A5 standee, a table tent card, or a black-and-white copy.' },
-      { q: 'How do I start the free trial?', a: 'Use the Start free trial form on the home page, or the Contact form below. We set up your clinic, your doctors and your logins, and send you the login details.' },
+      { q: 'How do I start the free trial?', a: 'Use the Start free trial form on the For clinics page (clinicq.fit/for-clinics), or the Contact form below. We set up your clinic, your doctors and your logins, and send you the login details.' },
       { q: 'I forgot my password. What do I do?', a: 'Ask your clinic admin (or us) to reset it. They will share a new setup link with you, and the old password stops working straight away.' },
     ],
   },
