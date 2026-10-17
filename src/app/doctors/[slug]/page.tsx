@@ -14,13 +14,13 @@ import { patientUrl } from '@/lib/clinicHost';
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:4000';
 
 async function getDoctor(slug: string): Promise<DirectoryDoctorProfile | null> {
-  const res = await fetch(`${API_BASE}/directory/doctors/${encodeURIComponent(slug)}`, { next: { revalidate: 60 } });
+  const res = await fetch(`${API_BASE}/directory/doctors/${encodeURIComponent(slug)}`, { cache: 'no-store' });
   if (!res.ok) return null;
   return res.json();
 }
 
 async function getClinic(slug: string): Promise<DirectoryClinicProfile | null> {
-  const res = await fetch(`${API_BASE}/directory/clinics/${encodeURIComponent(slug)}`, { next: { revalidate: 60 } });
+  const res = await fetch(`${API_BASE}/directory/clinics/${encodeURIComponent(slug)}`, { cache: 'no-store' });
   return res.ok ? res.json() : null;
 }
 
@@ -58,7 +58,7 @@ export default async function DoctorProfilePage({ params }: { params: { slug: st
   return (
     <main className="min-h-screen bg-surface">
       {/* eslint-disable-next-line react/no-danger */}
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c') }} />
       <header className="border-b border-surface-container">
         <div className="max-w-3xl mx-auto px-4 h-16 flex items-center">
           <BrandLogo />
@@ -97,13 +97,23 @@ export default async function DoctorProfilePage({ params }: { params: { slug: st
           {doctor.public_phone && <p className="font-body-md text-body-md text-on-surface-variant">{doctor.public_phone}</p>}
         </div>
 
-        <Link
-          href={patientUrl(`/patient/${doctor.clinic_subdomain}/intake?doctorId=${doctor.id}`, headers().get('host'))}
-          className="h-14 px-6 rounded-xl bg-primary text-on-primary font-label-lg text-label-lg flex items-center justify-center gap-2"
-        >
-          Get a digital queue token
-        </Link>
-        <p className="text-center font-body-sm text-body-sm text-on-surface-variant">No app download — instant QR check-in via ClinicQ.</p>
+        {/* Decision 60: only clinics that opted in take online tokens. */}
+        {doctor.booking_open !== false ? (
+          <>
+            <Link
+              href={patientUrl(`/patient/${doctor.clinic_subdomain}/intake?doctorId=${doctor.id}`, headers().get('host'))}
+              className="h-14 px-6 rounded-xl bg-primary text-on-primary font-label-lg text-label-lg flex items-center justify-center gap-2"
+            >
+              Get a digital queue token
+            </Link>
+            <p className="text-center font-body-sm text-body-sm text-on-surface-variant">No app download — instant QR check-in via ClinicQ.</p>
+          </>
+        ) : (
+          <p className="text-center font-body-sm text-body-sm text-on-surface-variant">
+            Online tokens aren&apos;t available for this clinic yet.{' '}
+            <Link href="/for-clinics" className="text-primary underline">Is this your clinic?</Link>
+          </p>
+        )}
       </div>
     </main>
   );

@@ -5,10 +5,10 @@ import Link from 'next/link';
 import { api, fileUrl, type DirectoryDoctorSummary } from '@/lib/api';
 import { Icon } from '@/components/patient/ui';
 
-export function DoctorsSearch({ initialQ }: { initialQ?: string }) {
+export function DoctorsSearch({ initialQ, initialCity }: { initialQ?: string; initialCity?: string }) {
   const [q, setQ] = useState(initialQ ?? '');
   const [specialty, setSpecialty] = useState('');
-  const [city, setCity] = useState('');
+  const [city, setCity] = useState(initialCity ?? '');
   const [specialties, setSpecialties] = useState<string[]>([]);
   const [cities, setCities] = useState<string[]>([]);
   const [results, setResults] = useState<DirectoryDoctorSummary[] | null>(null);
@@ -19,10 +19,11 @@ export function DoctorsSearch({ initialQ }: { initialQ?: string }) {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
     const t = setTimeout(() => {
-      api.directorySearch({ q, specialty, city }).then(setResults).catch(() => setResults([]));
+      api.directorySearch({ q, specialty, city }).then((rows) => { if (!cancelled) setResults(rows); }).catch(() => { if (!cancelled) setResults([]); });
     }, 250);
-    return () => clearTimeout(t);
+    return () => { cancelled = true; clearTimeout(t); };
   }, [q, specialty, city]);
 
   const clearFilters = () => {
@@ -113,6 +114,7 @@ export function DoctorsSearch({ initialQ }: { initialQ?: string }) {
               </div>
               <Icon name="chevron_right" className="text-on-surface-variant" />
             </Link>
+            {d.booking_open && <span className="self-start text-primary text-label-sm">Online tokens available</span>}
             {d.clinic_name && (
               <Link
                 href={d.clinic_slug ? `/clinics/${d.clinic_slug}` : `/doctors/${d.slug}`}

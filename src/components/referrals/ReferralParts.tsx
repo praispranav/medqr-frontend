@@ -56,7 +56,7 @@ export function Ledger({ r, onVoid }: { r: ReferrerDetail; onVoid?: (id: string)
       <h2 className="font-headline-sm text-headline-sm px-5 pt-5 pb-3">Rewards & payouts</h2>
       {rows.length === 0 && (
         <p className="px-5 pb-5 font-body-md text-body-md text-on-surface-variant">
-          Nothing yet. Rewards appear once a clinic is on a paid ClinicQ plan (not during the free trial).
+          {r.role === 'marketer' ? 'No earnings yet. Approved clinics or monthly salary will appear here once configured.' : 'Nothing yet. Rewards appear once a clinic is on a paid ClinicQ plan.'}
         </p>
       )}
       {rows.map((row) =>
@@ -65,7 +65,7 @@ export function Ledger({ r, onVoid }: { r: ReferrerDetail; onVoid?: (id: string)
             <Icon name="add_circle" className="text-[20px] text-tertiary" />
             <div className="flex-1 min-w-0">
               <p className="font-label-lg text-label-lg truncate">
-                {row.e.kind === 'one_time' ? 'Joining reward' : `Monthly reward · ${monthLabel(row.e.period)}`} — {row.e.clinic_name}
+                {row.e.kind === 'listing' ? 'Approved clinic' : row.e.kind === 'salary' ? 'Monthly salary' : row.e.kind === 'one_time' ? 'Joining reward' : `Monthly reward · ${monthLabel(row.e.period)}`} — {row.e.clinic_name}
               </p>
               <p className="font-body-sm text-body-sm text-on-surface-variant">
                 {shortDate(row.e.created_at)}

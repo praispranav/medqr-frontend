@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { MarketingTerms } from '@/components/referrals/MarketingTerms';
 import { useEffect, useState } from 'react';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { Icon } from '@/components/patient/ui';
@@ -19,6 +20,7 @@ export default function ReferrersPage() {
 function Referrers({ api }: { api: AdminApi }) {
   const [list, setList] = useState<ReferrerSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [role, setRole] = useState<'referrer' | 'marketer'>('referrer');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [mobile, setMobile] = useState('');
@@ -36,7 +38,7 @@ function Referrers({ api }: { api: AdminApi }) {
     setBusy(true);
     setError(null);
     try {
-      const res = await api.createReferrer({ name: name.trim(), email: email.trim(), mobile_number: mobile.trim() || undefined, ...rates });
+      const res = await api.createReferrer({ role, name: name.trim(), email: email.trim(), mobile_number: mobile.trim() || undefined, ...rates });
       setCreated({ name: res.referrer.name, email: res.referrer.email, mobile: res.referrer.mobile_number, password: res.password });
       setName('');
       setEmail('');
@@ -52,16 +54,22 @@ function Referrers({ api }: { api: AdminApi }) {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="font-headline-lg text-headline-lg">Referrers</h1>
+        <h1 className="font-headline-lg text-headline-lg">Referrers & marketers</h1>
         <p className="font-body-md text-body-md text-on-surface-variant mt-1">
-          Partners and marketers who bring clinics. They can add clinics, doctors and logins and set up hours — never delete anything.
+          Referrers onboard their own clinics. Marketers submit clinic and doctor details for approval and earn per approved clinic or a monthly salary.
         </p>
       </div>
 
       {created && <LoginShareCard {...created} onClose={() => setCreated(null)} />}
 
       <section className="bg-surface-container-lowest rounded-2xl p-5 shadow-sm flex flex-col gap-4">
-        <h2 className="font-headline-sm text-headline-sm">Add a referrer</h2>
+        <h2 className="font-headline-sm text-headline-sm">Add a referrer or marketer</h2>
+        <label className="flex flex-col gap-1">Account role
+          <select aria-label="Account role" value={role} onChange={(e) => setRole(e.target.value as 'referrer' | 'marketer')} className="h-12 rounded-xl bg-surface-container-low px-3">
+            <option value="referrer">Referrer — clinic onboarding & commission</option>
+            <option value="marketer">Marketer — submit clinics for approval</option>
+          </select>
+        </label>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           {(
             [
@@ -82,14 +90,14 @@ function Referrers({ api }: { api: AdminApi }) {
             </label>
           ))}
         </div>
-        <RatesFields value={rates} onChange={setRates} />
+        {role === 'marketer' ? <MarketingTerms value={rates} onChange={setRates} /> : <RatesFields value={rates} onChange={setRates} />}
         {error && <p className="font-body-sm text-body-sm text-error">{error}</p>}
         <button
           disabled={busy || !name.trim() || !email.trim()}
           onClick={create}
           className="h-12 self-start px-6 rounded-xl bg-primary text-on-primary font-label-lg text-label-lg disabled:opacity-60"
         >
-          {busy ? 'Creating…' : 'Create referrer login'}
+          {busy ? 'Creating…' : `Create ${role} login`}
         </button>
       </section>
 
@@ -103,11 +111,11 @@ function Referrers({ api }: { api: AdminApi }) {
             </div>
             <div className="flex-1 min-w-0">
               <p className="font-label-lg text-label-lg truncate">
-                {r.name}
+                {r.name} · {r.role === 'marketer' ? 'Marketer' : 'Referrer'}
                 {!r.is_active && <span className="ml-2 font-label-sm text-label-sm text-on-surface-variant">(login off)</span>}
               </p>
               <p className="font-body-sm text-body-sm text-on-surface-variant truncate">
-                {r.clinics} clinic{r.clinics === 1 ? '' : 's'} · {inr(r.one_time_inr)} once + {inr(r.monthly_inr)}/month · next payout {shortDate(r.next_payout)}
+                {r.role === 'marketer' ? r.compensation_basis === 'salary' ? `${inr(r.salary_inr ?? 0)}/month salary` : `${inr(r.per_clinic_inr ?? 0)} per approved clinic` : `${r.clinics} clinics · ${inr(r.one_time_inr)} once + ${inr(r.monthly_inr)}/month`} · next payout {shortDate(r.next_payout)}
               </p>
             </div>
             <div className="text-right shrink-0">

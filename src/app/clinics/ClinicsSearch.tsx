@@ -12,6 +12,8 @@ export function ClinicsSearch({ initialQ }: { initialQ?: string }) {
   const [q, setQ] = useState(initialQ ?? '');
   const [city, setCity] = useState('');
   const [cities, setCities] = useState<string[]>([]);
+  const [more, setMore] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [results, setResults] = useState<DirectoryClinicSummary[] | null>(null);
 
   useEffect(() => {
@@ -19,10 +21,12 @@ export function ClinicsSearch({ initialQ }: { initialQ?: string }) {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
+    setResults(null);
     const t = setTimeout(() => {
-      api.directoryClinicsSearch({ q, city }).then(setResults).catch(() => setResults([]));
+      api.directoryClinicsSearch({ q, city, limit: '100' }).then((rows) => { if (!cancelled) { setResults(rows); setMore(rows.length === 100); } }).catch(() => { if (!cancelled) setResults([]); });
     }, 250);
-    return () => clearTimeout(t);
+    return () => { cancelled = true; clearTimeout(t); };
   }, [q, city]);
 
   return (
@@ -67,6 +71,11 @@ export function ClinicsSearch({ initialQ }: { initialQ?: string }) {
           </Link>
         ))}
       </div>
+      {more && <button disabled={busy} className="h-11 px-5 self-center rounded-xl bg-primary text-on-primary" onClick={async () => {
+        setBusy(true);
+        try { const rows = await api.directoryClinicsSearch({ q, city, offset: String(results?.length ?? 0), limit: '100' }); setResults((prev) => [...(prev ?? []), ...rows]); setMore(rows.length === 100); }
+        finally { setBusy(false); }
+      }}>{busy ? 'Loading…' : 'Show more clinics'}</button>}
     </div>
   );
 }

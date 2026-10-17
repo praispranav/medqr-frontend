@@ -18,7 +18,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:4000'
 
 async function getJson<T>(path: string, fallback: T): Promise<T> {
   try {
-    const res = await fetch(`${API_BASE}${path}`, { next: { revalidate: 300 } });
+    const res = await fetch(`${API_BASE}${path}`, { cache: 'no-store' });
     return res.ok ? ((await res.json()) as T) : fallback;
   } catch {
     return fallback;
@@ -36,7 +36,7 @@ export default async function HomePage() {
   const host = headers().get('host');
   const [specialties, clinics] = await Promise.all([
     getJson<string[]>('/directory/specialties', []),
-    getJson<DirectoryClinicSummary[]>('/directory/clinics', []),
+    getJson<DirectoryClinicSummary[]>('/directory/clinics?bookable=1&limit=6', []), // Decision 60: only clinics taking online tokens
   ]);
   const patientHome = patientUrl('/patient', host);
 
@@ -123,11 +123,11 @@ export default async function HomePage() {
         </Link>
       </section>
 
-      {/* Clinics that chose to be listed */}
+      {/* Listed clinics that take online tokens (Decision 60) */}
       {clinics.length > 0 && (
         <section className="max-w-6xl mx-auto px-4 pb-14 flex flex-col gap-4">
           <div className="flex items-end justify-between gap-4">
-            <h2 className="font-headline-sm text-headline-sm">Clinics on ClinicQ</h2>
+            <h2 className="font-headline-sm text-headline-sm">Clinics taking online tokens</h2>
             <Link href="/clinics" className="font-label-md text-label-md text-primary whitespace-nowrap">See all →</Link>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">

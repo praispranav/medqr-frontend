@@ -14,8 +14,9 @@ import { Icon, LoadingPage } from '@/components/patient/ui';
 const NAV = [
   { href: '/owner', label: 'Activity', icon: 'monitoring' },
   { href: '/owner/clinics', label: 'Clinics', icon: 'local_hospital' },
-  { href: '/owner/referrers', label: 'Referrers', icon: 'handshake' },
+  { href: '/owner/referrers', label: 'Referrers & marketers', icon: 'handshake' },
   { href: '/owner/coupons', label: 'Coupons', icon: 'sell' },
+  { href: '/owner/listings', label: 'Clinic listings', icon: 'travel_explore' },
   { href: '/owner/leads', label: 'Trial requests', icon: 'inbox' },
   { href: '/owner/support', label: 'Support', icon: 'support_agent' },
   { href: '/owner/module-requests', label: 'Module requests', icon: 'extension' },
@@ -48,11 +49,12 @@ export function AdminShell({ active, children }: { active: string; children: (ap
   if (me === undefined) return <LoadingPage />;
   if (!me) return <SignIn onOk={setMe} />;
 
-  const referrer = me.role === 'referrer';
-  const nav = referrer ? REFERRER_NAV : NAV;
+  const referrer = me.role !== 'super';
+  const marketer = me.role === 'marketer';
+  const nav = marketer ? [{ href: '/owner/listings', label: 'My clinic submissions', icon: 'travel_explore' }, { href: '/owner/earnings', label: 'My earnings', icon: 'payments' }] : referrer ? REFERRER_NAV : NAV;
   // A referrer on a super-admin page (bookmark, old link) goes to their clinics instead.
   if (referrer && !nav.some((n) => n.href === active)) {
-    if (typeof window !== 'undefined') window.location.replace('/owner/clinics');
+    if (typeof window !== 'undefined') window.location.replace(marketer ? '/owner/listings' : '/owner/clinics');
     return <LoadingPage />;
   }
 
@@ -65,7 +67,7 @@ export function AdminShell({ active, children }: { active: string; children: (ap
           </div>
           <div>
             <p className="font-headline-sm text-headline-sm leading-tight">ClinicQ</p>
-            <p className="font-label-sm text-label-sm uppercase opacity-70">{referrer ? 'Referral partner' : 'Platform admin'}</p>
+            <p className="font-label-sm text-label-sm uppercase opacity-70">{marketer ? 'Marketer' : referrer ? 'Referral partner' : 'Platform admin'}</p>
           </div>
         </div>
         <nav className="flex flex-col gap-1">

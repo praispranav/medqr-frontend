@@ -56,6 +56,7 @@ function ClinicDetail({ api, referrer }: { api: AdminApi; referrer: boolean }) {
 
       <section className="bg-surface-container-lowest rounded-2xl p-5 shadow-sm flex flex-col gap-4">
         <ClinicName api={api} tenant={tenant} onSaved={setTenant} />
+        {!referrer && <ClinicCodeAndBooking api={api} tenant={tenant} onSaved={setTenant} />}
         <div className="flex flex-wrap gap-2 items-center">
           <a href={patientUrl(`/patient/${tenant.subdomain}`)} target="_blank" className="h-10 px-4 rounded-xl bg-surface-container-low text-primary font-label-md text-label-md flex items-center gap-2">
             <Icon name="smartphone" className="text-[18px]" /> Patient check-in page
@@ -251,6 +252,94 @@ function adminTeamApi(api: AdminApi, tenantId: string, referrer: boolean, clinic
     doctorSettings: clinic ? { clinic, save: (doctorId, patch) => api.updateDoctorSettings(doctorId, patch) } : undefined,
     directoryFields: true,
   };
+}
+
+/**
+ * Decision 60 — super admin only: shorten the clinic code (old code keeps working for links and staff
+ * logins) and choose whether public pages offer "Get a token".
+ */
+function ClinicCodeAndBooking({ api, tenant, onSaved }: { api: AdminApi; tenant: Tenant; onSaved: (t: Tenant) => void }) {
+  const [code, setCode] = useState(tenant.subdomain);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState<string | null>(null);
+  useEffect(() => setCode(tenant.subdomain), [tenant.subdomain]);
+
+  const save = async (body: { subdomain?: string; public_booking?: 'auto' | 'on' | 'off' }, msg: string) => {
+    setBusy(true);
+    setError(null);
+    setSaved(null);
+    try {
+      onSaved(await api.updateTenant(tenant.id, body));
+      setSaved(msg);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const booking = tenant.public_booking ?? 'auto';
+  const changed = code.trim().toLowerCase() !== tenant.subdomain;
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-surface-container pt-4">
+      <form
+        className="flex flex-col gap-1.5"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (!changed) return;
+          if (!window.confirm(`Change the clinic code to "${code.trim().toLowerCase()}"? Staff log in with the new code from now on; the old one keeps working.`)) return;
+          save({ subdomain: code.trim().toLowerCase() }, 'Clinic code changed.');
+        }}
+      >
+        <label className="font-label-md text-label-md">Clinic code</label>
+        <div className="flex gap-2">
+          <div className="flex-1 min-w-0 flex items-center bg-surface-container-low rounded-xl px-3 h-11 focus-within:ring-2 focus-within:ring-primary/30">
+            <input
+              value={code}
+              onChange={(e) => setCode(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 30))}
+              className="flex-1 min-w-0 bg-transparent font-body-md text-body-md focus:outline-none"
+              aria-label="Clinic code"
+            />
+            <span className="font-body-sm text-body-sm text-on-surface-variant">.clinicq.fit</span>
+          </div>
+          <button disabled={busy || !changed || code.trim().length < 3} className="h-11 px-4 rounded-xl bg-primary text-on-primary font-label-md text-label-md disabled:opacity-50">
+            Save
+          </button>
+        </div>
+        <p className="font-body-sm text-body-sm text-on-surface-variant">
+          3–30 letters, numbers or hyphens. Used for staff login and the clinic&apos;s address.
+          {tenant.previous_subdomains?.length ? ` Old codes still work: ${tenant.previous_subdomains.join(', ')}.` : ''}
+        </p>
+      </form>
+      <div className="flex flex-col gap-1.5">
+        <span className="font-label-md text-label-md">&quot;Get a token&quot; on public pages</span>
+        <div className="flex gap-1 bg-surface-container-low rounded-xl p-1 self-start">
+          {(
+            [
+              ['auto', 'Auto'],
+              ['on', 'Always on'],
+              ['off', 'Off'],
+            ] as const
+          ).map(([v, label]) => (
+            <button
+              key={v}
+              type="button"
+              disabled={busy}
+              onClick={() => v !== booking && save({ public_booking: v }, `"Get a token" set to ${label}.`)}
+              className={`h-9 px-3 rounded-lg font-label-md text-label-md ${booking === v ? 'bg-primary text-on-primary' : 'text-on-surface-variant'}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <p className="font-body-sm text-body-sm text-on-surface-variant">
+          Auto = shown while the clinic is on a free trial or the paid plan; hidden on the free plan and when a trial ends unpaid.
+        </p>
+      </div>
+      {(error || saved) && <p className={`md:col-span-2 font-body-sm text-body-sm ${error ? 'text-error' : 'text-tertiary'}`}>{error ?? saved}</p>}
+    </div>
+  );
 }
 
 function ClinicName({ api, tenant, onSaved }: { api: AdminApi; tenant: Tenant; onSaved: (t: Tenant) => void }) {

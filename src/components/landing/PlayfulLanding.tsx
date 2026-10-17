@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { BrandLogo } from '@/components/brand/BrandLogo';
 import { fileUrl, type DirectoryLandingDoctor } from '@/lib/api';
 import { WHY, directionsUrl, initials, orderedDoctors, telHref, tokenHref, type LandingProps } from './landingData';
+import { ClaimBox } from './ClaimBox';
 
 // Template 2 — "Playful": bright, rounded, pastel-tinted tiles and friendly icons. Same content as the editorial
 // template, a lighter and more energetic look. Green is the brand colour here (no blue / indigo); amber and peach
@@ -16,6 +17,7 @@ export function PlayfulLanding({ clinic, focusSlug, staffLoginHref, host }: Land
   const tel = telHref(clinic.public_phone);
   const place = [clinic.address, clinic.city].filter(Boolean).join(', ');
   const mainHref = tokenHref(clinic, doctors.length === 1 ? doctors[0] : null, host);
+  const canBook = clinic.booking_open !== false; // Decision 60: only opted-in clinics take online tokens
 
   return (
     <main className="min-h-screen bg-[#F4FBF6] text-[#0F2A24]">
@@ -24,7 +26,11 @@ export function PlayfulLanding({ clinic, focusSlug, staffLoginHref, host }: Land
           <BrandLogo />
           {!staffLoginHref && <Link href="/doctors" className="ml-auto text-[#0F2A24]/65 font-label-md text-label-md">All doctors</Link>}
           {staffLoginHref && <Link href={staffLoginHref} className="ml-auto h-10 px-4 rounded-full border border-[#0F766E]/25 text-[#0F766E] font-label-md text-label-md flex items-center">Login</Link>}
-          <Link href={mainHref} className="h-10 px-4 rounded-full bg-[#0F766E] text-white font-label-md text-label-md flex items-center">Get a token</Link>
+          {canBook ? (
+            <Link href={mainHref} className="h-10 px-4 rounded-full bg-[#0F766E] text-white font-label-md text-label-md flex items-center">Get a token</Link>
+          ) : (
+            tel && <a href={tel} className="h-10 px-4 rounded-full bg-[#0F766E] text-white font-label-md text-label-md flex items-center">Call</a>
+          )}
         </div>
       </header>
 
@@ -65,18 +71,26 @@ export function PlayfulLanding({ clinic, focusSlug, staffLoginHref, host }: Land
               <p className="font-body-sm text-body-sm text-[#0F2A24]/70">{clinic.public_phone}</p>
             </a>
           ) : <div className="rounded-[1.75rem] bg-[#FFEDD5] p-5"><p className="font-title-lg font-bold">Need help?</p><p className="font-body-sm text-[#0F2A24]/70">Ask at the reception desk.</p></div>}
-          <Link href={mainHref} className="rounded-[1.75rem] bg-[#0F766E] text-white p-5 flex flex-col gap-2 hover:bg-[#115E59] transition-colors">
-            <span className="material-symbols-outlined !text-[32px]">confirmation_number</span>
-            <p className="font-title-lg text-title-lg font-bold">Get a token</p>
-            <p className="font-body-sm text-body-sm text-white/85">Take your place in line from your phone.</p>
-          </Link>
+          {canBook ? (
+            <Link href={mainHref} className="rounded-[1.75rem] bg-[#0F766E] text-white p-5 flex flex-col gap-2 hover:bg-[#115E59] transition-colors">
+              <span className="material-symbols-outlined !text-[32px]">confirmation_number</span>
+              <p className="font-title-lg text-title-lg font-bold">Get a token</p>
+              <p className="font-body-sm text-body-sm text-white/85">Take your place in line from your phone.</p>
+            </Link>
+          ) : (
+            <div className="rounded-[1.75rem] bg-white p-5 flex flex-col gap-2">
+              <span className="material-symbols-outlined text-[#0F2A24]/50 !text-[32px]">schedule</span>
+              <p className="font-title-lg text-title-lg font-bold">Walk-in</p>
+              <p className="font-body-sm text-body-sm text-[#0F2A24]/70">Online tokens aren&apos;t available for this clinic yet.</p>
+            </div>
+          )}
         </section>
 
         {/* Doctors */}
         {doctors.length > 0 && (
           <section className="flex flex-col gap-4">
             <h2 className="font-headline-md text-headline-md font-extrabold">{doctors.length === 1 ? 'Meet your doctor' : 'Meet our doctors'}</h2>
-            {doctors.map((d) => <DoctorCard key={d.id} d={d} href={tokenHref(clinic, d, host)} />)}
+            {doctors.map((d) => <DoctorCard key={d.id} d={d} href={canBook ? tokenHref(clinic, d, host) : null} />)}
           </section>
         )}
 
@@ -120,11 +134,15 @@ export function PlayfulLanding({ clinic, focusSlug, staffLoginHref, host }: Land
         )}
 
         {/* Closing call to action */}
-        <section className="rounded-[2rem] bg-[#DCFCE7] p-8 md:p-12 text-center flex flex-col items-center gap-4">
-          <h2 className="font-headline-lg text-[32px] leading-[38px] md:text-[40px] md:leading-[46px] font-extrabold text-[#0F766E]">Skip the line, not the care.</h2>
-          <p className="font-body-lg text-body-lg text-[#0F2A24]/70 max-w-md">Take your token now and arrive when your turn is near. It only takes a few seconds.</p>
-          <Link href={mainHref} className={btn}>Get my token <span className="material-symbols-outlined text-[20px]">arrow_forward</span></Link>
-        </section>
+        {canBook ? (
+          <section className="rounded-[2rem] bg-[#DCFCE7] p-8 md:p-12 text-center flex flex-col items-center gap-4">
+            <h2 className="font-headline-lg text-[32px] leading-[38px] md:text-[40px] md:leading-[46px] font-extrabold text-[#0F766E]">Skip the line, not the care.</h2>
+            <p className="font-body-lg text-body-lg text-[#0F2A24]/70 max-w-md">Take your token now and arrive when your turn is near. It only takes a few seconds.</p>
+            <Link href={mainHref} className={btn}>Get my token <span className="material-symbols-outlined text-[20px]">arrow_forward</span></Link>
+          </section>
+        ) : (
+          <ClaimBox />
+        )}
       </div>
 
       <footer className="border-t border-[#0F766E]/10 bg-white">
@@ -138,7 +156,7 @@ export function PlayfulLanding({ clinic, focusSlug, staffLoginHref, host }: Land
   );
 }
 
-function DoctorCard({ d, href }: { d: DirectoryLandingDoctor; href: string }) {
+function DoctorCard({ d, href }: { d: DirectoryLandingDoctor; href: string | null }) {
   return (
     <article className="bg-white rounded-[2rem] shadow-[0_8px_30px_rgba(15,118,110,0.08)] p-5 md:p-7 flex flex-col sm:flex-row gap-5">
       {d.photo_url ? (
@@ -163,7 +181,7 @@ function DoctorCard({ d, href }: { d: DirectoryLandingDoctor; href: string }) {
             {d.hours ? <div className="rounded-2xl bg-[#F4FBF6] px-4 py-2"><p className="font-label-sm text-label-sm text-[#0F2A24]/55">Hours</p><p className="font-body-md text-body-md font-bold">{d.hours}</p></div> : null}
           </div>
         )}
-        <Link href={href} className={`${btn} self-start`}>Book with {d.name.replace(/^dr\.?\s+/i, 'Dr. ')}</Link>
+        {href && <Link href={href} className={`${btn} self-start`}>Book with {d.name.replace(/^dr\.?\s+/i, 'Dr. ')}</Link>}
       </div>
     </article>
   );

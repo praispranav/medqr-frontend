@@ -10,7 +10,7 @@ import { ClinicLanding } from '@/components/landing/ClinicLanding';
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:4000';
 
 async function getClinic(slug: string): Promise<DirectoryClinicProfile | null> {
-  const res = await fetch(`${API_BASE}/directory/clinics/${encodeURIComponent(slug)}`, { next: { revalidate: 60 } });
+  const res = await fetch(`${API_BASE}/directory/clinics/${encodeURIComponent(slug)}`, { cache: 'no-store' });
   if (!res.ok) return null;
   return res.json();
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { MarketingTerms } from '@/components/referrals/MarketingTerms';
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { AdminShell } from '@/components/admin/AdminShell';
@@ -82,7 +83,7 @@ function ReferrerView({ api }: { api: AdminApi }) {
       <MoneySummary r={r} />
       <MarkPaid r={r} onPay={(body) => act(() => api.recordReferrerPayout(r.id, body))} />
       <Rates r={r} onSave={(body) => act(() => api.updateReferrer(r.id, body))} />
-      <Clinics api={api} r={r} act={act} />
+      {r.role !== 'marketer' && <Clinics api={api} r={r} act={act} />}
       <BankForm key={r.bank.updated_at ?? 'none'} bank={r.bank} onSave={async (b) => setR(await api.updateReferrer(r.id, b))} />
       <Ledger
         r={r}
@@ -164,7 +165,7 @@ function MarkPaid({ r, onPay }: { r: ReferrerDetail; onPay: (b: { amount_inr: nu
 }
 
 function Rates({ r, onSave }: { r: ReferrerDetail; onSave: (b: Partial<ReferrerRates> & { notes?: string | null }) => Promise<void> }) {
-  const [rates, setRates] = useState<ReferrerRates>({ one_time_inr: r.one_time_inr, monthly_inr: r.monthly_inr, payout_frequency: r.payout_frequency, payout_day: r.payout_day });
+  const [rates, setRates] = useState<ReferrerRates>({ one_time_inr: r.one_time_inr, monthly_inr: r.monthly_inr, payout_frequency: r.payout_frequency, payout_day: r.payout_day, compensation_basis: r.compensation_basis, per_clinic_inr: r.per_clinic_inr, salary_inr: r.salary_inr });
   const [notes, setNotes] = useState(r.notes ?? '');
   const [busy, setBusy] = useState(false);
   return (
@@ -172,10 +173,10 @@ function Rates({ r, onSave }: { r: ReferrerDetail; onSave: (b: Partial<ReferrerR
       <div>
         <h2 className="font-headline-sm text-headline-sm">Rewards</h2>
         <p className="font-body-sm text-body-sm text-on-surface-variant">
-          Counted only while a clinic is on a paid ClinicQ plan — never during the free trial. Changes apply to rewards from now on.
+          {r.role === 'marketer' ? 'Approved-clinic rewards or monthly salary. Changes apply to future earnings.' : 'Counted only while a clinic is on a paid ClinicQ plan. Changes apply to future rewards.'}
         </p>
       </div>
-      <RatesFields value={rates} onChange={setRates} />
+      {r.role === 'marketer' ? <MarketingTerms value={rates} onChange={setRates} /> : <RatesFields value={rates} onChange={setRates} />}
       <label className="flex flex-col gap-1">
         <span className="font-label-md text-label-md">Private notes (not shown to them)</span>
         <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className="rounded-xl bg-surface-container-low p-3 font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-primary/30" />

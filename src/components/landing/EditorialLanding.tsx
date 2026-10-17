@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { BrandLogo } from '@/components/brand/BrandLogo';
 import { fileUrl, type DirectoryLandingDoctor } from '@/lib/api';
 import { WHY, directionsUrl, initials, orderedDoctors, telHref, tokenHref, type LandingProps } from './landingData';
+import { ClaimBox } from './ClaimBox';
 
 // Template 1 — "Warm Clinical Editorial": paper-toned canvas, serif (Newsreader) headlines, cream cards with hairline
 // borders, evergreen teal buttons and amber trust badges. Calm, spacious, a little literary.
@@ -15,6 +16,7 @@ export function EditorialLanding({ clinic, focusSlug, staffLoginHref, host }: La
   const doctors = orderedDoctors(clinic, focusSlug);
   const maps = directionsUrl(clinic);
   const tel = telHref(clinic.public_phone);
+  const canBook = clinic.booking_open !== false; // Decision 60: only opted-in clinics take online tokens
   const place = [clinic.address, clinic.city].filter(Boolean).join(', ');
 
   return (
@@ -24,7 +26,11 @@ export function EditorialLanding({ clinic, focusSlug, staffLoginHref, host }: La
           <BrandLogo />
           {!staffLoginHref && <Link href="/doctors" className="ml-auto text-[#1E293B]/70 hover:text-[#1E293B] font-label-md text-label-md">All doctors</Link>}
           {staffLoginHref && <Link href={staffLoginHref} className="ml-auto h-10 px-4 rounded-xl border border-[#1E293B]/15 text-[#1E293B] font-label-md text-label-md flex items-center">Login</Link>}
-          <Link href={tokenHref(clinic, doctors.length === 1 ? doctors[0] : null, host)} className="h-10 px-4 rounded-xl bg-[#0F766E] text-[#FBFAF7] font-label-md text-label-md flex items-center">Get a token</Link>
+          {canBook ? (
+            <Link href={tokenHref(clinic, doctors.length === 1 ? doctors[0] : null, host)} className="h-10 px-4 rounded-xl bg-[#0F766E] text-[#FBFAF7] font-label-md text-label-md flex items-center">Get a token</Link>
+          ) : (
+            tel && <a href={tel} className="h-10 px-4 rounded-xl bg-[#0F766E] text-[#FBFAF7] font-label-md text-label-md flex items-center">Call</a>
+          )}
         </div>
       </header>
 
@@ -43,9 +49,11 @@ export function EditorialLanding({ clinic, focusSlug, staffLoginHref, host }: La
             </ul>
           )}
           <div className="flex flex-wrap gap-3 pt-1">
-            <Link href={tokenHref(clinic, doctors.length === 1 ? doctors[0] : null, host)} className={btn}>
-              <span className="material-symbols-outlined text-[20px]">confirmation_number</span> Get my token
-            </Link>
+            {canBook && (
+              <Link href={tokenHref(clinic, doctors.length === 1 ? doctors[0] : null, host)} className={btn}>
+                <span className="material-symbols-outlined text-[20px]">confirmation_number</span> Get my token
+              </Link>
+            )}
             {tel && <a href={tel} className={ghost}><span className="material-symbols-outlined text-[20px]">call</span> {clinic.public_phone}</a>}
             {maps && <a href={maps} target="_blank" rel="noreferrer" className={ghost}><span className="material-symbols-outlined text-[20px]">near_me</span> Directions</a>}
           </div>
@@ -56,7 +64,7 @@ export function EditorialLanding({ clinic, focusSlug, staffLoginHref, host }: La
           <section className="flex flex-col gap-6">
             <h2 className="text-[30px] leading-[38px] font-medium" style={serif}>{doctors.length === 1 ? 'Your doctor' : 'Our doctors'}</h2>
             <div className="flex flex-col gap-5">
-              {doctors.map((d) => <DoctorCard key={d.id} d={d} href={tokenHref(clinic, d, host)} />)}
+              {doctors.map((d) => <DoctorCard key={d.id} d={d} href={canBook ? tokenHref(clinic, d, host) : null} />)}
             </div>
           </section>
         )}
@@ -103,15 +111,19 @@ export function EditorialLanding({ clinic, focusSlug, staffLoginHref, host }: La
         )}
 
         {/* Closing call to action */}
-        <section className="rounded-3xl bg-[#0F766E] text-[#FBFAF7] p-8 md:p-12 flex flex-col md:flex-row md:items-center gap-6">
-          <div className="flex-1">
-            <h2 className="text-[32px] leading-[40px] font-medium" style={serif}>Skip the line, not the care.</h2>
-            <p className="mt-2 text-[#A3FAEF] font-body-md text-body-md">Take your token now and come when your turn is near.</p>
-          </div>
-          <Link href={tokenHref(clinic, doctors.length === 1 ? doctors[0] : null, host)} className="h-12 px-6 rounded-xl bg-[#FBFAF7] text-[#0F766E] font-label-lg text-label-lg flex items-center justify-center gap-2">
-            Get my token <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
-          </Link>
-        </section>
+        {canBook ? (
+          <section className="rounded-3xl bg-[#0F766E] text-[#FBFAF7] p-8 md:p-12 flex flex-col md:flex-row md:items-center gap-6">
+            <div className="flex-1">
+              <h2 className="text-[32px] leading-[40px] font-medium" style={serif}>Skip the line, not the care.</h2>
+              <p className="mt-2 text-[#A3FAEF] font-body-md text-body-md">Take your token now and come when your turn is near.</p>
+            </div>
+            <Link href={tokenHref(clinic, doctors.length === 1 ? doctors[0] : null, host)} className="h-12 px-6 rounded-xl bg-[#FBFAF7] text-[#0F766E] font-label-lg text-label-lg flex items-center justify-center gap-2">
+              Get my token <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
+            </Link>
+          </section>
+        ) : (
+          <ClaimBox />
+        )}
       </div>
 
       <footer className="border-t border-[#1E293B]/[0.07]">
@@ -125,7 +137,7 @@ export function EditorialLanding({ clinic, focusSlug, staffLoginHref, host }: La
   );
 }
 
-function DoctorCard({ d, href }: { d: DirectoryLandingDoctor; href: string }) {
+function DoctorCard({ d, href }: { d: DirectoryLandingDoctor; href: string | null }) {
   return (
     <article className={`${card} p-5 md:p-7 flex flex-col md:flex-row gap-6`}>
       {d.photo_url ? (
@@ -147,7 +159,7 @@ function DoctorCard({ d, href }: { d: DirectoryLandingDoctor; href: string }) {
             {d.hours ? <div><dt className="font-label-sm text-label-sm uppercase tracking-wider text-[#1E293B]/55">Hours</dt><dd className="font-body-md text-body-md">{d.hours}</dd></div> : null}
           </dl>
         )}
-        <Link href={href} className={`${btn} self-start`}>Get a token with {d.name.replace(/^dr\.?\s+/i, 'Dr. ')}</Link>
+        {href && <Link href={href} className={`${btn} self-start`}>Get a token with {d.name.replace(/^dr\.?\s+/i, 'Dr. ')}</Link>}
       </div>
     </article>
   );

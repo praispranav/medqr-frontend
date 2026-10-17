@@ -24,6 +24,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const patientToken = typeof window !== 'undefined' ? patientDevice.get()?.token : undefined;
   const res = await fetch(`${apiBase()}${path}`, {
     headers: { 'Content-Type': 'application/json', ...(patientToken ? { 'x-patient-token': patientToken } : {}) },
+    ...(path.startsWith('/directory/') ? { cache: 'no-store' as const } : {}),
     credentials: 'include', // staff session cookie (httpOnly, set by POST /auth/login)
     ...options,
   });
@@ -100,6 +101,10 @@ export interface Entitlements {
 export interface Tenant {
   id: string;
   subdomain: string;
+  /** Decision 60 — "Get a token" on public pages: auto (trial/paid), on, off. */
+  public_booking?: 'auto' | 'on' | 'off';
+  /** Decision 60 — codes this clinic had before; old links and logins still work. */
+  previous_subdomains?: string[];
   display_name: string | null;
   wallet_balance_inr: string;
   entitlements: Entitlements;
@@ -566,6 +571,8 @@ export interface MonthlyPlan {
 
 // Public doctor/clinic directory (clinicq.fit/doctors)
 export interface DirectoryDoctorSummary {
+  /** Decision 60: "Get a token" is offered only by clinics on a free trial or the paid plan (or switched on by ClinicQ). */
+  booking_open?: boolean;
   slug: string;
   name: string;
   qualification: string | null;
@@ -604,6 +611,8 @@ export interface DirectoryLandingDoctor {
 }
 
 export interface DirectoryClinicProfile {
+  /** Decision 60: "Get a token" is offered only by clinics on a free trial or the paid plan (or switched on by ClinicQ). */
+  booking_open?: boolean;
   clinic_name: string | null;
   subdomain: string;
   city: string | null;
@@ -620,6 +629,8 @@ export interface DirectoryClinicProfile {
 
 /** One row of the clinics directory/search list (Decision 51) — the clinic page itself has the full profile. */
 export interface DirectoryClinicSummary {
+  /** Decision 60: "Get a token" is offered only by clinics on a free trial or the paid plan (or switched on by ClinicQ). */
+  booking_open?: boolean;
   slug: string;
   clinic_name: string;
   city: string | null;
@@ -1032,7 +1043,7 @@ export const api = {
   directoryDoctor: (slug: string) => request<DirectoryDoctorProfile>(`/directory/doctors/${encodeURIComponent(slug)}`),
   directoryClinic: (slug: string) => request<DirectoryClinicProfile>(`/directory/clinics/${encodeURIComponent(slug)}`),
   // Decision 51 — clinics are searchable too (clinicq.fit/clinics), not just reachable via a doctor's page.
-  directoryClinicsSearch: (opts: { q?: string; city?: string } = {}) =>
+  directoryClinicsSearch: (opts: { q?: string; city?: string; offset?: string; limit?: string } = {}) =>
     request<DirectoryClinicSummary[]>(`/directory/clinics${toQuery(opts)}`),
   directorySpecialties: () => request<string[]>('/directory/specialties'),
   directoryCities: () => request<string[]>('/directory/cities'),

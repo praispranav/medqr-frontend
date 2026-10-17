@@ -30,14 +30,14 @@ function MyEarnings({ api }: { api: AdminApi }) {
       <div>
         <h1 className="font-headline-lg text-headline-lg">My earnings</h1>
         <p className="font-body-md text-body-md text-on-surface-variant mt-1">
-          {[r.one_time_inr > 0 && `${inr(r.one_time_inr)} when a clinic starts paying`, r.monthly_inr > 0 && `${inr(r.monthly_inr)} a month while it keeps paying`]
+          {r.role === 'marketer' ? r.compensation_basis === 'salary' ? `${inr(r.salary_inr ?? 0)} monthly salary` : `${inr(r.per_clinic_inr ?? 0)} per approved clinic` : [r.one_time_inr > 0 && `${inr(r.one_time_inr)} when a clinic starts paying`, r.monthly_inr > 0 && `${inr(r.monthly_inr)} a month while it keeps paying`]
             .filter(Boolean)
             .join(' + ') || 'No reward amounts set yet — ClinicQ will set them.'}
           {' · '}Paid out {scheduleText(r).toLowerCase()}.
         </p>
       </div>
       <MoneySummary r={r} />
-      <MyCoupons api={api} />
+      {r.role !== 'marketer' && <MyCoupons api={api} />}
       <BankForm bank={r.bank} onSave={async (b) => setR(await api.updateMyBank(b))} />
       <Ledger r={r} />
     </div>

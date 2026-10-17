@@ -23,7 +23,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ];
 
   try {
-    const res = await fetch(`${API_BASE}/directory/sitemap`, { next: { revalidate: 3600 } });
+    const res = await fetch(`${API_BASE}/directory/sitemap`, { cache: 'no-store' });
     if (!res.ok) return base;
     const { doctors, clinics } = (await res.json()) as { doctors: { slug: string; updated_at: string }[]; clinics: { slug: string }[] };
     return [

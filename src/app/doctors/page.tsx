@@ -9,7 +9,7 @@ export async function generateMetadata({ searchParams }: { searchParams: { q?: s
 
   return {
     title: `Best ${specialty}${citySuffix} - Book Online & Live Queue | ClinicQ`,
-    description: `Find top-rated ${specialty}${citySuffix}. Get digital tokens, track live OPD waiting times, and skip the waiting room with ClinicQ.`,
+    description: `Find ${specialty}${citySuffix}. Get digital tokens, track live OPD waiting times, and skip the waiting room with ClinicQ.`,
     keywords: `Best ${specialty}${citySuffix}, online doctor appointment, live OPD status, digital token ${specialty}`,
     alternates: { canonical: '/doctors' },
     openGraph: {
@@ -25,7 +25,7 @@ export default function DoctorsIndexPage({ searchParams }: { searchParams: { q?:
     "@context": "https://schema.org",
     "@type": "MedicalWebPage",
     "name": "Find Best Doctors and Clinics | ClinicQ",
-    "description": "Directory of verified doctors offering digital OPD tokens and live queue tracking.",
+    "description": "Browse doctors and their clinics. Online tokens are available at participating clinics.",
     "audience": {
       "@type": "Patient"
     },
@@ -39,7 +39,7 @@ export default function DoctorsIndexPage({ searchParams }: { searchParams: { q?:
     <main className="min-h-screen bg-surface">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaData) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaData).replace(/</g, '\\u003c') }}
       />
       <header className="border-b border-surface-container">
         <div className="max-w-5xl mx-auto px-4 h-16 flex items-center gap-4">
@@ -54,9 +54,9 @@ export default function DoctorsIndexPage({ searchParams }: { searchParams: { q?:
           <h1 className="font-headline-lg text-headline-lg">
             {searchParams.q ? `Best ${searchParams.q.charAt(0).toUpperCase() + searchParams.q.slice(1)}${searchParams.city ? ` in ${searchParams.city}` : ''}` : 'Find a doctor'}
           </h1>
-          <p className="font-body-md text-body-md text-on-surface-variant mt-1">Search by name, specialty or city, then join the queue instantly.</p>
+          <p className="font-body-md text-body-md text-on-surface-variant mt-1">Search doctors by name, specialty or city and see their clinics. Online tokens are available at participating clinics.</p>
         </div>
-        <DoctorsSearch initialQ={searchParams.q} />
+        <DoctorsSearch initialQ={searchParams.q} initialCity={searchParams.city} />
       </div>
     </main>
   );

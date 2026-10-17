@@ -64,8 +64,10 @@ export interface Coupon {
 }
 export type CouponInput = Partial<Pick<Coupon, 'code' | 'percent_off' | 'discount_months' | 'free_months' | 'max_uses' | 'valid_until' | 'referrer_id' | 'note' | 'is_active'>>;
 
-/** Decision 59 — a Google Maps listing waiting in Owner › Clinic listings. */
+/** Decision 60 — a Google Maps listing waiting in Owner › Clinic listings. */
 export interface ListingCandidate {
+  submitted_by?: string | null;
+  doctor_name?: string | null;
   id: string;
   place_id: string;
   title: string;
@@ -231,6 +233,9 @@ export const adminApi = (key: string) => ({
       /** Decision 42 — super admin only: custom monthly base-plan price for this clinic. Null clears it. */
       base_plan_override_inr?: number | null;
       queue_settings?: Partial<QueueSettings>;
+      /** Decision 60 — super admin only. */
+      subdomain?: string;
+      public_booking?: 'auto' | 'on' | 'off';
     },
   ) => request<Tenant>(key, `/tenants/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
   /** Help a doctor set up: profile fields, Patient Notifications toggles, Intake Form. */
@@ -336,9 +341,10 @@ export const adminApi = (key: string) => ({
   supportRequests: () => request<SupportRequest[]>(key, '/support'),
   updateSupport: (id: string, patch: { status?: SupportStatus; reply?: string | null }) =>
     request<SupportRequest>(key, `/support/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
+  submitListing: (body: Record<string, unknown>) => request<{ added: number; already_there: number }>(key, '/listings/submit', { method: 'POST', body: JSON.stringify(body) }),
   listings: () => request<ListingCandidate[]>(key, '/listings'),
   uploadListings: (items: Record<string, unknown>[]) =>
-    request<{ added: number; already_there: number; closed_skipped: number }>(key, '/listings/upload', { method: 'POST', body: JSON.stringify({ items }) }),
+    request<{ added: number; already_there: number; closed_skipped: number; excluded_skipped?: number }>(key, '/listings/upload', { method: 'POST', body: JSON.stringify({ items }) }),
   importListings: (ids: string[]) => request<ListingImportResult>(key, '/listings/import', { method: 'POST', body: JSON.stringify({ ids }) }),
   deleteListings: (ids: string[]) => request<{ deleted: number }>(key, '/listings/delete', { method: 'POST', body: JSON.stringify({ ids }) }),
   leads: () => request<TrialLead[]>(key, '/leads'),
@@ -355,7 +361,7 @@ export const adminApi = (key: string) => ({
   // Referral partners (Decision 27) — super admin
   referrers: () => request<ReferrerSummary[]>(key, '/referrers'),
   referrer: (id: string) => request<ReferrerDetail>(key, `/referrers/${id}`),
-  createReferrer: (body: { name: string; email: string; mobile_number?: string } & ReferrerRates) =>
+  createReferrer: (body: { role?: 'referrer' | 'marketer'; name: string; email: string; mobile_number?: string } & ReferrerRates) =>
     request<{ referrer: ReferrerDetail; password: string }>(key, '/referrers', { method: 'POST', body: JSON.stringify(body) }),
   updateReferrer: (id: string, body: Partial<ReferrerRates & ReferrerBank & { name: string; mobile_number: string | null; is_active: boolean; notes: string | null }>) =>
     request<ReferrerDetail>(key, `/referrers/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
@@ -396,7 +402,7 @@ export interface PlatformAdminMe {
   email: string;
   name: string;
   /** Decision 27: 'referrer' = referral partner — only their own clinics, setup only. */
-  role: 'super' | 'referrer';
+  role: 'super' | 'referrer' | 'marketer';
 }
 
 // ---------- Referral partners (Decision 27) ----------
@@ -414,6 +420,9 @@ export interface ReferrerBank {
 }
 
 export interface ReferrerRates {
+  compensation_basis?: 'per_clinic' | 'salary';
+  per_clinic_inr?: number;
+  salary_inr?: number;
   one_time_inr: number;
   monthly_inr: number;
   payout_frequency: PayoutFrequency;
@@ -422,6 +431,7 @@ export interface ReferrerRates {
 }
 
 export interface ReferrerSummary extends ReferrerRates {
+  role: 'referrer' | 'marketer';
   id: string;
   name: string;
   email: string;
@@ -439,7 +449,7 @@ export interface ReferralEarningRow {
   id: string;
   tenant_id: string;
   clinic_name: string;
-  kind: 'one_time' | 'monthly';
+  kind: 'one_time' | 'monthly' | 'listing' | 'salary';
   period: string;
   amount_inr: number;
   voided_at: string | null;

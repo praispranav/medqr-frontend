@@ -146,6 +146,7 @@ export function ClinicDetails({
             <span className={`block w-6 h-6 rounded-full bg-white shadow transition-transform ${listed ? 'translate-x-6' : ''}`} />
           </button>
         </label>
+        <p className="text-body-sm text-on-surface-variant">Save to apply listing privacy. When off, the clinic and its doctors are hidden from public directory search. Direct clinic and patient links continue to work. Demo clinics never appear in directory search.</p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <label className="flex flex-col gap-1">
             <span className="font-label-sm text-label-sm text-on-surface-variant">City</span>

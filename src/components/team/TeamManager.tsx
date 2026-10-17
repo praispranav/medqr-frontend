@@ -63,6 +63,8 @@ export function DoctorsTab({ api }: { api: TeamApi }) {
   const [doctors, setDoctors] = useState<AdminDoctor[] | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [listingBusy, setListingBusy] = useState<string | null>(null);
+  const [listingError, setListingError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
 
   const load = useCallback(async () => {
@@ -81,6 +83,7 @@ export function DoctorsTab({ api }: { api: TeamApi }) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[360px_minmax(0,1fr)] gap-6">
       <section className="flex flex-col gap-3">
+        {listingError && <p role="alert" className="text-error">{listingError}</p>}
         {doctors.map((d) =>
           editingId === d.id ? (
             <DoctorEditor
@@ -129,6 +132,15 @@ export function DoctorsTab({ api }: { api: TeamApi }) {
               >
                 <Icon name="edit" className="text-[18px]" />
               </button>
+              {api.directoryFields && d.is_publicly_listed && (
+                <button type="button" disabled={listingBusy === d.id} aria-label={`Remove ${d.name} from public directory`}
+                  className="px-2 py-1 rounded-lg text-error text-label-sm disabled:opacity-50"
+                  onClick={async (e) => {
+                    e.stopPropagation(); setListingBusy(d.id); setListingError(null);
+                    try { await api.updateDoctor(d.id, { name: d.name, qualification: d.qualification ?? '', specialty: d.specialty ?? '', cabin_label: d.cabin_label ?? '', is_publicly_listed: false }); await load(); }
+                    catch (error) { setListingError((error as Error).message); } finally { setListingBusy(null); }
+                  }}>Remove public listing</button>
+              )}
               {api.deleteDoctor && (
                 <button
                   onClick={async (e) => {
@@ -269,6 +281,7 @@ function DoctorEditor({
             />
             <span className="font-label-md text-label-md">List this doctor in the public directory</span>
           </label>
+          <p className="text-body-sm text-on-surface-variant">Save to apply. The doctor appears publicly only when the clinic is also listed; demo clinics stay out of directory search.</p>
         </>
       )}
       {error && <p className="font-body-sm text-body-sm text-error">{error}</p>}

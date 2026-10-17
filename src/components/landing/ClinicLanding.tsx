@@ -7,7 +7,7 @@ export function ClinicLanding(props: LandingProps) {
   return (
     <>
       {/* eslint-disable-next-line react/no-danger */}
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd(props.clinic)) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd(props.clinic)).replace(/</g, '\\u003c') }} />
       {props.clinic.landing_template === 'playful' ? <PlayfulLanding {...props} /> : <EditorialLanding {...props} />}
     </>
   );

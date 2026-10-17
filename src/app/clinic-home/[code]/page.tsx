@@ -15,7 +15,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:4000'
 type HomeProfile = DirectoryClinicProfile & { listed: boolean; public_slug: string | null };
 
 async function getClinic(code: string): Promise<HomeProfile | null> {
-  const res = await fetch(`${API_BASE}/directory/clinic-home/${encodeURIComponent(code)}`, { next: { revalidate: 60 } });
+  const res = await fetch(`${API_BASE}/directory/clinic-home/${encodeURIComponent(code)}`, { cache: 'no-store' });
   if (!res.ok) return null;
   return res.json();
 }
