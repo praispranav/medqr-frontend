@@ -1,9 +1,17 @@
+import { patientUrl } from '@/lib/clinicHost';
 import type { DirectoryClinicProfile, DirectoryLandingDoctor } from '@/lib/api';
 
 // Decision 50 — shared helpers for the two clinic landing-page templates. Everything shown comes from what the clinic
 // really entered; nothing (reviews, ratings, patient counts, certifications) is invented.
 
-export type LandingProps = { clinic: DirectoryClinicProfile; focusSlug?: string | null };
+export type LandingProps = {
+  clinic: DirectoryClinicProfile;
+  focusSlug?: string | null;
+  /** Decision 56: only on the clinic's own subdomain (drkumar.clinicq.fit) — a staff Login button in the header. */
+  staffLoginHref?: string | null;
+  /** Decision 56: the request's Host, so "Get a token" stays on the visitor's domain (clinicq.in vs clinicq.fit). */
+  host?: string | null;
+};
 
 export const initials = (name: string) =>
   name
@@ -23,8 +31,9 @@ export function directionsUrl(c: DirectoryClinicProfile): string | null {
 
 export const telHref = (phone: string | null) => (phone ? `tel:${phone.replace(/[^\d+]/g, '')}` : null);
 
-export const tokenHref = (c: DirectoryClinicProfile, d?: DirectoryLandingDoctor | null) =>
-  d ? `/patient/${c.subdomain}/intake?doctorId=${d.id}` : `/patient/${c.subdomain}/select-doctor`;
+// Decision 56: always the patient site (patient.clinicq.fit), where the patient's saved session lives.
+export const tokenHref = (c: DirectoryClinicProfile, d: DirectoryLandingDoctor | null | undefined, host: string | null | undefined) =>
+  patientUrl(d ? `/patient/${c.subdomain}/intake?doctorId=${d.id}` : `/patient/${c.subdomain}/select-doctor`, host);
 
 /** The doctor to feature first: the one whose page this is, else the first listed. */
 export function orderedDoctors(c: DirectoryClinicProfile, focusSlug?: string | null) {

@@ -10,19 +10,20 @@ import { WHY, directionsUrl, initials, orderedDoctors, telHref, tokenHref, type 
 const TILE_TONES = ['bg-[#DCFCE7]', 'bg-[#FFEDD5]', 'bg-[#CCFBF1]', 'bg-[#ECFCCB]'];
 const btn = 'h-12 px-6 rounded-full bg-[#0F766E] hover:bg-[#115E59] text-white font-label-lg text-label-lg flex items-center justify-center gap-2 transition-colors';
 
-export function PlayfulLanding({ clinic, focusSlug }: LandingProps) {
+export function PlayfulLanding({ clinic, focusSlug, staffLoginHref, host }: LandingProps) {
   const doctors = orderedDoctors(clinic, focusSlug);
   const maps = directionsUrl(clinic);
   const tel = telHref(clinic.public_phone);
   const place = [clinic.address, clinic.city].filter(Boolean).join(', ');
-  const mainHref = tokenHref(clinic, doctors.length === 1 ? doctors[0] : null);
+  const mainHref = tokenHref(clinic, doctors.length === 1 ? doctors[0] : null, host);
 
   return (
     <main className="min-h-screen bg-[#F4FBF6] text-[#0F2A24]">
       <header className="bg-white/80 backdrop-blur border-b border-[#0F766E]/10 sticky top-0 z-10">
         <div className="max-w-5xl mx-auto px-5 h-16 flex items-center gap-3">
           <BrandLogo />
-          <Link href="/doctors" className="ml-auto text-[#0F2A24]/65 font-label-md text-label-md">All doctors</Link>
+          {!staffLoginHref && <Link href="/doctors" className="ml-auto text-[#0F2A24]/65 font-label-md text-label-md">All doctors</Link>}
+          {staffLoginHref && <Link href={staffLoginHref} className="ml-auto h-10 px-4 rounded-full border border-[#0F766E]/25 text-[#0F766E] font-label-md text-label-md flex items-center">Login</Link>}
           <Link href={mainHref} className="h-10 px-4 rounded-full bg-[#0F766E] text-white font-label-md text-label-md flex items-center">Get a token</Link>
         </div>
       </header>
@@ -75,7 +76,7 @@ export function PlayfulLanding({ clinic, focusSlug }: LandingProps) {
         {doctors.length > 0 && (
           <section className="flex flex-col gap-4">
             <h2 className="font-headline-md text-headline-md font-extrabold">{doctors.length === 1 ? 'Meet your doctor' : 'Meet our doctors'}</h2>
-            {doctors.map((d) => <DoctorCard key={d.id} d={d} href={tokenHref(clinic, d)} />)}
+            {doctors.map((d) => <DoctorCard key={d.id} d={d} href={tokenHref(clinic, d, host)} />)}
           </section>
         )}
 

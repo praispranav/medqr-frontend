@@ -58,7 +58,7 @@ function StarterKit({ api }: { api: any }) {
   };
 
   const getUrl = (code: string) => {
-    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://clinicq.in';
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://clinicq.fit';
     return `${origin}/q/${code}`;
   };
 

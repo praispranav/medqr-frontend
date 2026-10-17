@@ -4,7 +4,7 @@ import { ClinicsSearch } from './ClinicsSearch';
 import { BrandLogo } from '@/components/brand/BrandLogo';
 
 // Decision 51 — clinics directory/search, the clinic equivalent of /doctors: previously a clinic page
-// (clinicq.in/clinics/:slug) was only reachable if you already knew its slug (from a doctor's page or
+// (clinicq.fit/clinics/:slug) was only reachable if you already knew its slug (from a doctor's page or
 // a printed QR). This index makes clinics themselves searchable and discoverable.
 
 export async function generateMetadata({ searchParams }: { searchParams: { q?: string; city?: string } }): Promise<Metadata> {

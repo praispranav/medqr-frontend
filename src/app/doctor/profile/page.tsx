@@ -7,7 +7,7 @@ import { api, ApiError, type DoctorToday, type Tenant } from '@/lib/api';
 import { Icon, DoctorAvatar } from '@/components/patient/ui';
 import { ClinicDetails } from '@/components/clinic/ClinicDetails';
 
-// A doctor's own public directory profile (clinicq.in/doctors) — self-service, no admin needed. Every
+// A doctor's own public directory profile (clinicq.fit/doctors) — self-service, no admin needed. Every
 // doctor can edit their own listing regardless of being the clinic admin; the clinic as a whole still
 // needs its own switch on (Queue Rules -> Public directory) before any doctor there actually appears.
 export default function DoctorProfilePage() {
@@ -76,7 +76,7 @@ function ProfileForm({ doctor, tenant, onSaved }: { doctor: DoctorToday; tenant:
     <div className="flex flex-col gap-6">
       <div>
         <span className="px-2.5 py-1 rounded-full bg-primary-fixed/50 text-on-primary-fixed-variant font-label-sm text-label-sm uppercase">
-          clinicq.in/doctors
+          clinicq.fit/doctors
         </span>
         <h1 className="font-headline-lg text-headline-lg text-on-surface mt-2">Your public profile</h1>
         <p className="font-body-md text-body-md text-on-surface-variant">
@@ -141,7 +141,7 @@ function ProfileForm({ doctor, tenant, onSaved }: { doctor: DoctorToday; tenant:
         <label className="flex items-center justify-between gap-3">
           <div>
             <p className="font-label-lg text-label-lg">List me in the public directory</p>
-            <p className="font-body-sm text-body-sm text-on-surface-variant">Patients can find and check in with you from clinicq.in/doctors.</p>
+            <p className="font-body-sm text-body-sm text-on-surface-variant">Patients can find and check in with you from clinicq.fit/doctors.</p>
           </div>
           <button
             role="switch"

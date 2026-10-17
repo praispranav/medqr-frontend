@@ -333,4 +333,6 @@ export const hi: Partial<Record<TranslationKey, string>> = {
   "ar_unreach": "ClinicQ तक नहीं पहुँच सके",
   "otp_second_token": "इस नंबर पर एक और टोकन लेने के लिए, कृपया WhatsApp पर एक बार नंबर की पुष्टि करें। इस फ़ोन पर आप सत्यापित रहेंगे।",
   "otp_booking_verify": "बुकिंग पूरी करने के लिए WhatsApp पर अपना नंबर सत्यापित करें। आपकी भरी हुई जानकारी बनी रहेगी और यह फ़ोन 90 दिनों तक सत्यापन याद रखेगा।",
+  "ph_find_doctor": "डॉक्टर खोजें",
+  "ph_find_doctor_sub": "ClinicQ पर डॉक्टर और क्लिनिक खोजें, लॉगिन की ज़रूरत नहीं।",
 };

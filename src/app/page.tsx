@@ -5,6 +5,8 @@ import { BrandLogo } from '@/components/brand/BrandLogo';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { api, ApiError } from '@/lib/api';
+import { patientUrl } from '@/lib/clinicHost';
+import { useHost } from '@/lib/useHost';
 
 // Marketing landing. Ported from
 // stitch_medqr_clinic_suite_ui_design/medqr_landing_digital_queue_clinic_suite/code.html.
@@ -124,6 +126,7 @@ const FLOWS: { title: string; steps: FlowStep[] }[] = [
 export default function LandingPage() {
   const router = useRouter();
   const [trialOpen, setTrialOpen] = useState(false);
+  const host = useHost(); // Decision 56: Patient Login goes to patient.<the domain the visitor is on>
   const [trialDays, setTrialDays] = useState<number | null>(null);
   const [demoError, setDemoError] = useState<string | null>(null);
   const [demoLoading, setDemoLoading] = useState(false);
@@ -158,12 +161,17 @@ export default function LandingPage() {
             <a href="#pricing" className="hover:text-on-surface">Pricing</a>
           </nav>
           <div className="ml-auto flex items-center gap-2">
-            {/* On phones the hero right below already has the big trial button, so the header keeps just Login. */}
+            {/* On phones the hero right below already has the big trial button, so the header keeps just the two logins. */}
             <button onClick={() => setTrialOpen(true)} className="hidden sm:inline-flex h-10 px-4 items-center whitespace-nowrap rounded-xl bg-primary-container text-on-primary-container font-label-md text-label-md">
               Start free trial
             </button>
+            {/* Decision 56: patients log in on the patient site (WhatsApp code) to see their tokens and old visits. */}
+            <a href={patientUrl('/patient', host)} className="h-10 px-4 inline-flex items-center whitespace-nowrap rounded-xl bg-surface-container-low text-primary font-label-md text-label-md">
+              <span className="sm:hidden">Patient</span>
+              <span className="hidden sm:inline">Patient Login</span>
+            </a>
             <Link href="/login" className="h-10 px-4 inline-flex items-center whitespace-nowrap rounded-xl bg-primary text-on-primary font-label-md text-label-md">
-              <span className="sm:hidden">Login</span>
+              <span className="sm:hidden">Staff</span>
               <span className="hidden sm:inline">Doctor/Staff Login</span>
             </Link>
           </div>
@@ -442,6 +450,7 @@ export default function LandingPage() {
             <Link href="/terms">Terms</Link>
             <Link href="/privacy">Privacy</Link>
             <Link href="/contact">Contact &amp; help</Link>
+            <a href={patientUrl('/patient', host)}>Patient Login</a>
             <Link href="/login">Doctor/Staff Login</Link>
           </div>
         </div>

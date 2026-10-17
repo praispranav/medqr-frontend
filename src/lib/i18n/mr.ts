@@ -332,4 +332,6 @@ export const mr: Partial<Record<TranslationKey, string>> = {
   "ed_remove": "काढा",
   "otp_second_token": "या नंबरवर आणखी एक टोकन घेण्यासाठी, कृपया WhatsApp वर एकदा नंबर निश्चित करा. या फोनवर तुम्ही पडताळलेले राहाल.",
   "otp_booking_verify": "बुकिंग पूर्ण करण्यासाठी WhatsApp वर तुमचा नंबर सत्यापित करा. भरलेली माहिती तशीच राहील आणि हा फोन 90 दिवस सत्यापन लक्षात ठेवेल.",
+  "ph_find_doctor": "डॉक्टर शोधा",
+  "ph_find_doctor_sub": "ClinicQ वर डॉक्टर आणि क्लिनिक शोधा, लॉगिनची गरज नाही.",
 };

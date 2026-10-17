@@ -7,7 +7,7 @@ import { api, ApiError } from '@/lib/api';
 import { FullPageMessage, Icon, LoadingPage, PatientHeader } from '@/components/patient/ui';
 import { useT } from '@/lib/i18n';
 
-// Decision 21: where the clinic's arrival QR points (the clinic's own patient site — <clinic>.clinicq.in/arrive,
+// Decision 21: where the clinic's arrival QR points (the clinic's own patient site — <clinic>.clinicq.fit/arrive,
 // or /patient/<clinic>/arrive — so it sees the tokens this phone saved on that site). A patient scans it with the phone camera; this
 // page finds the token(s) this phone holds for that clinic today and checks them in — no typing,
 // no app. (The token page has its own "Scan arrival QR" button that does the same thing.)

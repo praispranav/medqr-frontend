@@ -4,9 +4,11 @@ import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { api, ApiError, patientDevice } from '@/lib/api';
 import { Icon, PatientHeader, LoadingPage } from '@/components/patient/ui';
+import { mainUrl } from '@/lib/clinicHost';
+import { useHost } from '@/lib/useHost';
 import { useT, dateLocale } from '@/lib/i18n';
 
-// patient.clinicq.in home — the one shared landing/account page for every clinic's patients, reached
+// patient.clinicq.fit home — the one shared landing/account page for every clinic's patients, reached
 // by visiting the subdomain with no clinic in the path (the middleware rewrites "/" here to "/patient").
 // Scanning a clinic's QR still goes straight into /patient/<subdomain>/... exactly as before; this page
 // is only for someone who already has a phone-verified ClinicQ history and wants to:
@@ -27,6 +29,7 @@ export default function PatientHomePage() {
   const [verified, setVerified] = useState(false);
   const [summary, setSummary] = useState<Awaited<ReturnType<typeof api.myTokens>> | null>(null);
   const codeRef = useRef<HTMLInputElement>(null);
+  const host = useHost();
 
   // Browser-only saved sessions must be read after hydration, not during the server render.
   useEffect(() => { setVerified(!!patientDevice.get()); }, []);
@@ -238,6 +241,16 @@ export default function PatientHomePage() {
             </p>
           </>
         )}
+
+        {/* Decision 56: doctor search is public — shown whether or not the patient has logged in. */}
+        <a href={mainUrl('/doctors', host)} className="bg-surface-container-lowest rounded-2xl p-4 shadow-sm flex items-center gap-3">
+          <Icon name="search" className="text-primary text-[22px]" />
+          <span className="flex-1 min-w-0">
+            <span className="block font-label-lg text-label-lg">{t('ph_find_doctor')}</span>
+            <span className="block font-body-sm text-body-sm text-on-surface-variant">{t('ph_find_doctor_sub')}</span>
+          </span>
+          <Icon name="chevron_right" className="text-on-surface-variant text-[20px]" />
+        </a>
       </div>
     </main>
   );

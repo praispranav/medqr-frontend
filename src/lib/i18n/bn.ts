@@ -332,4 +332,6 @@ export const bn: Partial<Record<TranslationKey, string>> = {
   "ed_remove": "সরান",
   "otp_second_token": "এই নম্বরে আরও একটি টোকেন নিতে, অনুগ্রহ করে WhatsApp-এ একবার নম্বরটি নিশ্চিত করুন। এই ফোনে আপনি যাচাইকৃত থাকবেন।",
   "otp_booking_verify": "বুকিং শেষ করতে WhatsApp-এ আপনার নম্বর নিশ্চিত করুন। আপনার দেওয়া তথ্য থাকবে এবং এই ফোনে 90 দিন যাচাই মনে রাখা হবে।",
+  "ph_find_doctor": "ডাক্তার খুঁজুন",
+  "ph_find_doctor_sub": "ClinicQ-এ ডাক্তার ও ক্লিনিক খুঁজুন, লগইন লাগবে না।",
 };

@@ -349,7 +349,7 @@ export const en = {
   "otp_second_token": "To get another token on this number, please confirm it on WhatsApp once. You'll stay verified on this phone.",
   "otp_booking_verify": "Confirm your number on WhatsApp to finish booking. Your details are kept, and this phone will remember your verification for 90 days.",
 
-  // Patient home (patient.clinicq.in) — regain a lost token, see visit history, book again
+  // Patient home (patient.clinicq.fit) — regain a lost token, see visit history, book again
   "ph_title": "Your ClinicQ tokens",
   "patient_logout": "Log out",
   "ph_subtitle": "Enter your mobile number to see your active tokens and past visits.",
@@ -364,6 +364,8 @@ export const en = {
   "ph_scan_instead": "Have a clinic's QR code? Scan that instead to check in.",
   "ph_mobile_invalid": "Enter a 10-digit mobile number",
   "save_token_prompt": "Save your token to this phone, in case you lose the page.",
+  "ph_find_doctor": "Find a doctor",
+  "ph_find_doctor_sub": "Search doctors and clinics on ClinicQ, no login needed.",
 };
 
 export type TranslationKey = keyof typeof en;

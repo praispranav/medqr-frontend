@@ -4,15 +4,29 @@ import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { api, ApiError } from '@/lib/api';
 import { HOME_FOR_ROLE } from '@/lib/staffRoutes';
-import { clinicFromHost, ROOT_DOMAIN } from '@/lib/clinicHost';
+import { apiBase, clinicFromHost, rootOf, ROOT_DOMAIN } from '@/lib/clinicHost';
+import { useHost } from '@/lib/useHost';
 import { Icon, LoadingPage } from '@/components/patient/ui';
 
 // Staff login. Reception and doctors have separate accounts (created in /admin); the role decides
 // where you land and which screens the server lets you use.
-// Clinic code: opened on a clinic's own subdomain (drkumar.clinicq.in/login) we move to the main
-// domain's /login?clinic=drkumar — staff screens and the session cookie live there, and a cookie
-// set from a clinic subdomain isn't reliably sent (never locally: drkumar.localhost ≠ localhost).
-// With ?clinic= naming a real clinic, the code is filled in and the field is hidden.
+// Clinic code (Decision 56): opened on a clinic's own subdomain (drkumar.clinicq.fit/login) the code
+// comes from the address and the field is hidden — staff stay on their clinic's address, because the
+// API (api.clinicq.fit) is the same site, so its session cookie is sent from there too. When the API
+// is on another site (locally: drkumar.localhost ≠ localhost) we still move to the main domain's
+// /login?clinic=drkumar instead. With ?clinic= naming a real clinic, the field is hidden as well.
+
+/** True when the API this page calls shares its root domain (api.clinicq.in from drkumar.clinicq.in). */
+function apiIsSameSite() {
+  const root = rootOf(window.location.host);
+  if (!root || root === 'localhost') return false;
+  try {
+    const h = new URL(apiBase()).hostname.toLowerCase();
+    return h === root || h.endsWith(`.${root}`);
+  } catch {
+    return false;
+  }
+}
 
 const LAST_CLINIC_KEY = 'medqr:last-clinic';
 const RECENT_CLINICS_KEY = 'medqr:recent-clinics';
@@ -56,6 +70,9 @@ function LoginForm() {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [highlighted, setHighlighted] = useState(0);
   const usernameRef = useRef<HTMLInputElement>(null);
+  const host = useHost();
+  const visitorRoot = rootOf(host);
+  const codeSuffix = visitorRoot && visitorRoot !== 'localhost' ? visitorRoot : ROOT_DOMAIN === 'localhost' ? 'clinicq.fit' : ROOT_DOMAIN;
   // Set when the page is on a clinic subdomain that really exists; the code field is then hidden.
   const [hostClinic, setHostClinic] = useState<{
     code: string;
@@ -64,9 +81,20 @@ function LoginForm() {
 
   useEffect(() => {
     const fromHost = clinicFromHost(window.location.host);
+    if (fromHost && apiIsSameSite()) {
+      api
+        .getTenantBySubdomain(fromHost)
+        .then((t) => {
+          if (!t) return;
+          setClinic(fromHost);
+          setHostClinic({ code: fromHost, name: t.display_name ?? fromHost });
+        })
+        .catch(() => setClinic(fromHost));
+      return;
+    }
     if (fromHost) {
       const main = new URL(window.location.href);
-      main.hostname = ROOT_DOMAIN;
+      main.hostname = rootOf(window.location.host) ?? ROOT_DOMAIN;
       main.searchParams.set('clinic', fromHost);
       window.location.replace(main.toString());
       return;
@@ -219,7 +247,7 @@ function LoginForm() {
                 aria-autocomplete="list"
                 className="flex-1 min-w-0 bg-transparent font-body-lg text-body-lg focus:outline-none"
               />
-              <span className="font-body-md text-body-md text-on-surface-variant">.clinicq.in</span>
+              <span className="font-body-md text-body-md text-on-surface-variant">.{codeSuffix}</span>
             </div>
             {showSuggestions && suggestions.length > 0 && (
               <ul className="absolute left-0 right-0 top-full mt-1 z-10 bg-surface-container-lowest rounded-xl shadow-md overflow-hidden border border-surface-container-low">

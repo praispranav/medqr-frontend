@@ -1,6 +1,7 @@
 import { ApiError, type ClinicGatewayView, type SetupView, type PayoutView, type SupportRequest, type SupportStatus, type ArrivalQr, type DoctorSession, type Entitlements, type HoursSlot, type HoursWeek, type QrCodeView, type QueueSettings, type QueueSetupMessage, type QueueSetupTurn, type StaffLinkResult, type Tenant, type TokenStatus } from '@/lib/api';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:4000';
+import { apiBase } from '@/lib/clinicHost';
+
 /** Old key-in-the-browser storage — cleared on sign-in; the admin panel now uses an email + password login. */
 export const ADMIN_KEY_STORAGE = 'medqr:admin-key';
 
@@ -9,7 +10,7 @@ export const ADMIN_KEY_STORAGE = 'medqr:admin-key';
  * 'include'). `key` is only for scripts that still use ADMIN_API_KEY; the web panel passes ''.
  */
 async function request<T>(key: string, path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE}/owner${path}`, {
+  const res = await fetch(`${apiBase()}/owner${path}`, {
     ...options,
     credentials: 'include',
     headers: { 'Content-Type': 'application/json', ...(key ? { 'x-admin-key': key } : {}), ...(options?.headers ?? {}) },
@@ -346,7 +347,7 @@ export type AdminApi = ReturnType<typeof adminApi>;
 
 /** Platform admin sign-in (email + password → httpOnly session cookie). */
 async function authRequest<T>(path: string, body?: unknown): Promise<T> {
-  const res = await fetch(`${API_BASE}/owner-auth${path}`, {
+  const res = await fetch(`${apiBase()}/owner-auth${path}`, {
     method: body === undefined ? 'GET' : 'POST',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },

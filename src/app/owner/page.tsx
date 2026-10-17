@@ -72,7 +72,7 @@ function ActivityView({ api }: { api: AdminApi }) {
               <Link key={c.id} href={`/owner/clinics/${c.id}`} className="py-3 flex items-center gap-3 hover:bg-surface-container-low -mx-2 px-2 rounded-lg">
                 <div className="flex-1 min-w-0">
                   <p className="font-label-lg text-label-lg truncate">{c.name}</p>
-                  <p className="font-body-sm text-body-sm text-on-surface-variant">{c.subdomain}.clinicq.in</p>
+                  <p className="font-body-sm text-body-sm text-on-surface-variant">{c.subdomain}.clinicq.fit</p>
                 </div>
                 <div className="text-right font-body-sm text-body-sm text-on-surface-variant">
                   <p><strong className="text-on-surface font-headline-sm text-headline-sm">{c.tokens_today}</strong> tokens</p>

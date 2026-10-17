@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import { headers } from 'next/headers';
 import type { DirectoryClinicProfile } from '@/lib/api';
 import { ClinicLanding } from '@/components/landing/ClinicLanding';
 
@@ -33,5 +34,5 @@ export default async function ClinicProfilePage({ params, searchParams }: { para
   if (!clinic) notFound();
   // ?preview=playful|editorial shows the other look before choosing it in Public Profile.
   const preview = searchParams.preview === 'playful' || searchParams.preview === 'editorial' ? searchParams.preview : null;
-  return <ClinicLanding clinic={preview ? { ...clinic, landing_template: preview } : clinic} />;
+  return <ClinicLanding clinic={preview ? { ...clinic, landing_template: preview } : clinic} host={headers().get('host')} />;
 }

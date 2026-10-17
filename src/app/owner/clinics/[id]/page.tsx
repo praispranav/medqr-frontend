@@ -18,6 +18,7 @@ import { ArrivalQrCard } from '@/components/qr/ArrivalQrCard';
 import { QrStandees } from '@/components/qr/QrStandees';
 import { GatewaySetupTab } from '@/components/admin/GatewaySetupTab';
 import { AdminSetupCard } from '@/components/setup/SetupCards';
+import { clinicSiteUrl, patientUrl } from '@/lib/clinicHost';
 
 // One clinic: doctors, their day-by-day consulting sessions (these drive the today-only
 // availability chips, Decision 6), module switches (Decision 3 keeps OCR and Image-to-Text
@@ -56,12 +57,12 @@ function ClinicDetail({ api, referrer }: { api: AdminApi; referrer: boolean }) {
       <section className="bg-surface-container-lowest rounded-2xl p-5 shadow-sm flex flex-col gap-4">
         <ClinicName api={api} tenant={tenant} onSaved={setTenant} />
         <div className="flex flex-wrap gap-2 items-center">
-          <Link href={`/patient/${tenant.subdomain}`} target="_blank" className="h-10 px-4 rounded-xl bg-surface-container-low text-primary font-label-md text-label-md flex items-center gap-2">
+          <a href={patientUrl(`/patient/${tenant.subdomain}`)} target="_blank" className="h-10 px-4 rounded-xl bg-surface-container-low text-primary font-label-md text-label-md flex items-center gap-2">
             <Icon name="smartphone" className="text-[18px]" /> Patient check-in page
-          </Link>
-          <Link href={`/login?clinic=${tenant.subdomain}`} target="_blank" className="h-10 px-4 rounded-xl bg-surface-container-low text-primary font-label-md text-label-md flex items-center gap-2">
+          </a>
+          <a href={clinicSiteUrl(tenant.subdomain, '/login') ?? `/login?clinic=${tenant.subdomain}`} target="_blank" className="h-10 px-4 rounded-xl bg-surface-container-low text-primary font-label-md text-label-md flex items-center gap-2">
             <Icon name="login" className="text-[18px]" /> Doctor/Staff Login page
-          </Link>
+          </a>
           <div className="flex-1" />
           {!referrer && (
           <button
@@ -262,7 +263,7 @@ function ClinicName({ api, tenant, onSaved }: { api: AdminApi; tenant: Tenant; o
       <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="font-headline-lg text-headline-lg">{tenant.display_name ?? tenant.subdomain}</h1>
-          <p className="font-body-md text-body-md text-on-surface-variant">{tenant.subdomain}.clinicq.in</p>
+          <p className="font-body-md text-body-md text-on-surface-variant">{tenant.subdomain}.clinicq.fit</p>
         </div>
         <button onClick={() => setEditing(true)} className="h-10 px-3 rounded-xl text-primary font-label-md text-label-md flex items-center gap-1">
           <Icon name="edit" className="text-[18px]" /> Rename

@@ -1,37 +1,83 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import { clinicFromHost, isLegacyHost, isPatientHost, mainUrl, MAIN_SITE_URL, PATIENT_SITE_URL, patientUrl } from '@/lib/clinicHost';
 
-// Decision 42 (domains) — ONE shared subdomain for every clinic's patient pages, on any root domain
-// (patient.clinicq.in, patient.praispranav.com, …): the clinic itself is identified by the path, same
-// as it always has been on the main domain (/patient/<subdomain>/...), so this is a pure prefix-rewrite,
-// not per-clinic routing — no DNS/Vercel work is ever needed again when a new clinic is created.
-//   patient.clinicq.in/              → /patient              (patient home: regain a token, book again)
-//   patient.clinicq.in/drkumar       → /patient/drkumar       (doctor selection)
-//   patient.clinicq.in/drkumar/intake?... → /patient/drkumar/intake?... (where QR scans land)
-// The bare root domain (clinicq.in) is untouched by this file — it's the marketing site.
-// Locally: http://patient.localhost:3000 works with no DNS setup.
+// Decision 56 (domains) — one Next.js app, four kinds of host on EACH root domain (clinicq.fit and
+// clinicq.in alike — see lib/clinicHost.ts). Every redirect stays on the root the visitor is on;
+// legacy hosts go to the primary root (clinicq.fit).
+//
+//   patient.clinicq.fit/                    → /patient                (patient home: login, old visits, book again)
+//   patient.clinicq.fit/drkumar             → /patient/drkumar        (doctor selection)
+//   patient.clinicq.fit/drkumar/intake?...  → /patient/drkumar/intake (where QR scans land)
+//     The clinic is identified by the path, so no DNS work is needed for the patient site when a
+//     clinic is created. Pages there still link with "/patient/..." paths — those pass straight through.
+//
+//   drkumar.clinicq.fit/                    → /clinic-home/drkumar    (the clinic's page, with a staff Login button)
+//   drkumar.clinicq.fit/login, /reception…  → served as-is (staff work on their clinic's own address)
+//
+//   Patient flows are always sent to patient.clinicq.fit (NEXT_PUBLIC_PATIENT_SITE_URL) from every other
+//   host: the patient's saved session lives in that ONE origin's storage, so it must never be split
+//   across hosts.
+//
+//   Legacy hosts (praispranav) only serve /q/<code> for printed QR codes; everything else moves to the
+//   main site.
+//
+// Locally nothing redirects (the site URLs are unset): http://patient.localhost:3000 and
+// http://drkumar.localhost:3000 work with no DNS setup.
 
-const PATIENT_SUBDOMAIN = 'patient';
+const NOINDEX = 'noindex, nofollow';
+
+const redirect = (to: string) => NextResponse.redirect(to, 308);
+
+const noindex = (res: NextResponse) => {
+  // Transactional/private booking pages with zero SEO value. robots.txt's path rules (for /patient/...)
+  // don't apply on the patient host — the browser never sends that prefix there.
+  res.headers.set('X-Robots-Tag', NOINDEX);
+  return res;
+};
+
+const isPatientPath = (p: string) => p === '/patient' || p.startsWith('/patient/');
 
 export function middleware(req: NextRequest) {
-  const host = (req.headers.get('host') ?? '').split(':')[0].toLowerCase();
-  if (host.split('.')[0] !== PATIENT_SUBDOMAIN) return NextResponse.next();
+  const host = req.headers.get('host') ?? '';
+  const { pathname, search } = req.nextUrl;
 
-  const { pathname } = req.nextUrl;
-  // The token screen fetches this shared image endpoint on the same host. It must
-  // reach /token-image directly, rather than /patient/token-image (which is a 404).
-  if (pathname.startsWith('/token-image/')) {
-    const res = NextResponse.next();
-    res.headers.set('X-Robots-Tag', 'noindex, nofollow');
-    return res;
+  // Printed QR codes and token pictures already handed out keep working on old hosts.
+  if (isLegacyHost(host)) {
+    if (pathname.startsWith('/q/') || pathname.startsWith('/token-image/')) return NextResponse.next();
+    if (isPatientPath(pathname) && PATIENT_SITE_URL) return redirect(patientUrl(pathname + search, host));
+    // patient.praispranav.com/<clinic>/... never had the /patient prefix in its paths.
+    if (isPatientHost(host) && PATIENT_SITE_URL) return redirect(patientUrl(`/patient${pathname === '/' ? '' : pathname}${search}`, host));
+    if (MAIN_SITE_URL) return redirect(mainUrl(pathname + search, host));
+    return NextResponse.next();
   }
-  const url = req.nextUrl.clone();
-  url.pathname = `/patient${pathname === '/' ? '' : pathname}`;
-  const res = NextResponse.rewrite(url);
-  // Every page here is a transactional/private booking flow with zero SEO value, and robots.txt's
-  // path-based disallow rules (for /patient/...) don't apply on this subdomain — the browser never
-  // sends that prefix here, so a crawler would otherwise see these as indexable.
-  res.headers.set('X-Robots-Tag', 'noindex, nofollow');
-  return res;
+
+  if (isPatientHost(host)) {
+    // The token screen fetches this shared image endpoint on the same host.
+    if (pathname.startsWith('/token-image/') || pathname.startsWith('/q/')) return noindex(NextResponse.next());
+    if (isPatientPath(pathname)) return noindex(NextResponse.next());
+    // Public main-site pages (doctor search, policies) belong on the main site.
+    if (MAIN_SITE_URL && /^\/(doctors|clinics|privacy|terms|contact|login)(\/|$)/.test(pathname)) {
+      return redirect(mainUrl(pathname + search, host));
+    }
+    const url = req.nextUrl.clone();
+    url.pathname = `/patient${pathname === '/' ? '' : pathname}`;
+    return noindex(NextResponse.rewrite(url));
+  }
+
+  const clinic = clinicFromHost(host);
+  if (clinic) {
+    if (pathname === '/') {
+      const url = req.nextUrl.clone();
+      url.pathname = `/clinic-home/${clinic}`;
+      return NextResponse.rewrite(url);
+    }
+    if (isPatientPath(pathname) && PATIENT_SITE_URL) return redirect(patientUrl(pathname + search, host));
+    return NextResponse.next();
+  }
+
+  // Main site: intake/queue links (old WhatsApp messages, bookmarks) move to the patient site.
+  if (isPatientPath(pathname) && PATIENT_SITE_URL) return redirect(patientUrl(pathname + search, host));
+  return NextResponse.next();
 }
 
 export const config = {

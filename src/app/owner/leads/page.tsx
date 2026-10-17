@@ -200,7 +200,7 @@ function CreateClinicFromLeadModal({
               placeholder="drsharma"
               className="flex-1 min-w-0 bg-transparent font-body-lg text-body-lg focus:outline-none"
             />
-            <span className="font-body-md text-body-md text-on-surface-variant">.clinicq.in</span>
+            <span className="font-body-md text-body-md text-on-surface-variant">.clinicq.fit</span>
           </div>
         </label>
         <label className="flex flex-col gap-1">

@@ -1,6 +1,9 @@
 import { patientDevice } from './patientDevice';
+import { apiBase } from './clinicHost';
 export { patientDevice } from './patientDevice';
 
+// Static files (photos) can come from the configured API host on any domain; calls that carry the staff
+// session cookie use apiBase() — the API name on the visitor's own root domain (Decision 56).
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:4000';
 
 export class ApiError extends Error {
@@ -19,7 +22,7 @@ function toQuery(params: Record<string, string | undefined>): string {
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const patientToken = typeof window !== 'undefined' ? patientDevice.get()?.token : undefined;
-  const res = await fetch(`${API_BASE}${path}`, {
+  const res = await fetch(`${apiBase()}${path}`, {
     headers: { 'Content-Type': 'application/json', ...(patientToken ? { 'x-patient-token': patientToken } : {}) },
     credentials: 'include', // staff session cookie (httpOnly, set by POST /auth/login)
     ...options,
@@ -103,7 +106,7 @@ export interface Tenant {
   queue_settings: QueueSettings;
   /** The permanent "See the doctor suite" demo clinic — always read-only (Decision 18). */
   is_demo?: boolean;
-  /** Public doctor/clinic directory (clinicq.in/doctors) — off by default, platform admin opts a clinic in. */
+  /** Public doctor/clinic directory (clinicq.fit/doctors) — off by default, platform admin opts a clinic in. */
   is_publicly_listed?: boolean;
   city?: string | null;
   address?: string | null;
@@ -511,7 +514,7 @@ async function uploadFile(original: File) {
   const file = await shrinkImage(original);
   const body = new FormData();
   body.append('file', file);
-  const res = await fetch(`${API_BASE}/uploads`, { method: 'POST', body, credentials: 'include' });
+  const res = await fetch(`${apiBase()}/uploads`, { method: 'POST', body, credentials: 'include' });
   if (!res.ok) {
     throw new Error(
       res.status === 413
@@ -561,7 +564,7 @@ export interface MonthlyPlan {
   wallet_balance_inr: number;
 }
 
-// Public doctor/clinic directory (clinicq.in/doctors)
+// Public doctor/clinic directory (clinicq.fit/doctors)
 export interface DirectoryDoctorSummary {
   slug: string;
   name: string;
@@ -831,7 +834,7 @@ export const api = {
   myProfiles: () => request<{ mobile_number: string; verified: boolean; profiles: Patient[] }>('/patients/me'),
   // Decision 54: take a profile off this phone's list (hidden, never deleted).
   removeProfile: (id: string) => request<{ removed: boolean }>(`/patients/me/${id}`, { method: 'DELETE' }),
-  // patient.clinicq.in home: live tokens to regain + doctors previously visited, for "book again".
+  // patient.clinicq.fit home: live tokens to regain + doctors previously visited, for "book again".
   myTokens: () =>
     request<{
       live: {
@@ -943,7 +946,7 @@ export const api = {
   /** Logs an ask from the chat for something that isn't an actual setting yet, for the platform admin to review. */
   requestSetting: (tenantId: string, description: string) =>
     request(`/tenants/${tenantId}/queue-setup/request`, { method: 'POST', body: JSON.stringify({ description }) }),
-  // Public doctor/clinic directory (clinicq.in/doctors) — clinic-wide fields: doctor/owner self-service (Decision 14).
+  // Public doctor/clinic directory (clinicq.fit/doctors) — clinic-wide fields: doctor/owner self-service (Decision 14).
   updateTenantPublicProfile: (
     tenantId: string,
     patch: { is_publicly_listed?: boolean; city?: string | null; address?: string | null; public_phone?: string | null; maps_url?: string | null; landing_template?: LandingTemplate; landing_tagline?: string | null; landing_about?: string | null; landing_highlights?: string[] },
@@ -1020,12 +1023,12 @@ export const api = {
   // Public landing page "Start free trial" lead form (Decision 18) — never creates a tenant by itself.
   submitTrialLead: (body: { clinic_name: string; contact_name: string; phone: string; email?: string; city?: string; message?: string }) =>
     request<{ id: string }>('/leads', { method: 'POST', body: JSON.stringify(body) }),
-  // Public doctor/clinic directory (clinicq.in/doctors) — only clinics/doctors that opted in ever show up here.
+  // Public doctor/clinic directory (clinicq.fit/doctors) — only clinics/doctors that opted in ever show up here.
   directorySearch: (opts: { q?: string; specialty?: string; city?: string } = {}) =>
     request<DirectoryDoctorSummary[]>(`/directory/doctors${toQuery(opts)}`),
   directoryDoctor: (slug: string) => request<DirectoryDoctorProfile>(`/directory/doctors/${encodeURIComponent(slug)}`),
   directoryClinic: (slug: string) => request<DirectoryClinicProfile>(`/directory/clinics/${encodeURIComponent(slug)}`),
-  // Decision 51 — clinics are searchable too (clinicq.in/clinics), not just reachable via a doctor's page.
+  // Decision 51 — clinics are searchable too (clinicq.fit/clinics), not just reachable via a doctor's page.
   directoryClinicsSearch: (opts: { q?: string; city?: string } = {}) =>
     request<DirectoryClinicSummary[]>(`/directory/clinics${toQuery(opts)}`),
   directorySpecialties: () => request<string[]>('/directory/specialties'),

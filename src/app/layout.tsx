@@ -11,12 +11,12 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 })(window,document,'script','dataLayer','${GTM_ID}');`;
 
 // metadataBase is self-referencing by whichever domain actually served the request (see robots.ts) —
-// so canonical/OG URLs are correct under clinicq.praispranav.com today and clinicq.in later, with no
+// so canonical/OG URLs are correct under clinicq.praispranav.com today and clinicq.fit later, with no
 // env flip or redeploy either time.
 function siteUrl(): string {
   const host = headers().get('host');
   if (host && !/^(localhost|127\.0\.0\.1)/.test(host)) return `https://${host}`;
-  return process.env.NEXT_PUBLIC_SITE_URL ?? 'https://clinicq.in';
+  return process.env.NEXT_PUBLIC_SITE_URL ?? 'https://clinicq.fit';
 }
 
 export async function generateMetadata(): Promise<Metadata> {

@@ -17,7 +17,7 @@ export default function TermsPage() {
         <h2>1. Who these terms apply to</h2>
         <p>
           These Terms of Use (&quot;Terms&quot;) govern use of ClinicQ — the QR-based digital token queue and
-          consultation platform available at clinicq.in and its clinic subdomains (together, the &quot;Service&quot;).
+          consultation platform available at clinicq.fit and its clinic subdomains (together, the &quot;Service&quot;).
           They apply to two kinds of users:
         </p>
         <ul>

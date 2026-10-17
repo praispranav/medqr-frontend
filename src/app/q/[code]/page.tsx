@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { api, ApiError, type Me, type QrResolve } from '@/lib/api';
 import { FullPageMessage, Icon, LoadingPage } from '@/components/patient/ui';
+import { isLegacyHost, MAIN_SITE_URL, patientUrl } from '@/lib/clinicHost';
 
 // What a scanned standalone standee (/q/<code>) opens.
 // - Assigned to a doctor → straight into that doctor's check-in (skips doctor selection).
@@ -12,6 +13,8 @@ import { FullPageMessage, Icon, LoadingPage } from '@/components/patient/ui';
 // - Unassigned → a logged-in doctor can link it to themselves ("scan to claim"); patients are told to
 //   ask reception. Codes are handed out at onboarding before they belong to anyone.
 // - Disabled  → no longer active.
+// Decision 56: printed codes point at the old clinicq.praispranav.com host; patients are sent on to the
+// patient site (patient.clinicq.fit) — a full page load, since it's another origin.
 
 export default function QrEntryPage() {
   const { code } = useParams<{ code: string }>();
@@ -27,14 +30,25 @@ export default function QrEntryPage() {
     (async () => {
       try {
         const r = await api.resolveQr(code);
+        const go = (path: string) => {
+          const to = patientUrl(path);
+          if (to.startsWith('http')) window.location.replace(to);
+          else router.replace(to);
+        };
         if (r.status === 'assigned' && r.clinic && !r.doctor) {
-          router.replace(`/patient/${r.clinic.subdomain}`); // whole-clinic QR → pick the doctor
+          go(`/patient/${r.clinic.subdomain}`); // whole-clinic QR → pick the doctor (mandatory)
           return;
         }
         if (r.status === 'assigned' && r.clinic && r.doctor) {
           // Doctor QR → no selection. The intake page handles "not consulting today" itself
           // (Home + book their next session), so an off-today doctor is never a dead end.
-          router.replace(`/patient/${r.clinic.subdomain}/intake?doctorId=${r.doctor.id}`);
+          go(`/patient/${r.clinic.subdomain}/intake?doctorId=${r.doctor.id}`);
+          return;
+        }
+        // "Scan to claim" needs the doctor's staff session, which the API only sees from a clinicq.fit
+        // page (same-site cookie) — finish an unassigned scan on the main site.
+        if (r.status === 'unassigned' && MAIN_SITE_URL && isLegacyHost(window.location.host)) {
+          window.location.replace(`${MAIN_SITE_URL}/q/${encodeURIComponent(code)}`);
           return;
         }
         setQr(r);

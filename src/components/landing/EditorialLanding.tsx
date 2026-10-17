@@ -11,7 +11,7 @@ const btn = 'h-12 px-6 rounded-xl bg-[#0F766E] hover:bg-[#115E59] text-[#FBFAF7]
 const ghost = 'h-12 px-5 rounded-xl bg-[#F4F1EA] border border-[#0F766E]/20 text-[#0F766E] font-label-lg text-label-lg flex items-center justify-center gap-2';
 const card = 'bg-[#F4F1EA] border border-[#1E293B]/[0.07] rounded-3xl shadow-[0_4px_20px_-2px_rgba(30,41,59,0.05)]';
 
-export function EditorialLanding({ clinic, focusSlug }: LandingProps) {
+export function EditorialLanding({ clinic, focusSlug, staffLoginHref, host }: LandingProps) {
   const doctors = orderedDoctors(clinic, focusSlug);
   const maps = directionsUrl(clinic);
   const tel = telHref(clinic.public_phone);
@@ -22,8 +22,9 @@ export function EditorialLanding({ clinic, focusSlug }: LandingProps) {
       <header className="border-b border-[#1E293B]/[0.07]">
         <div className="max-w-5xl mx-auto px-5 h-16 flex items-center gap-4">
           <BrandLogo />
-          <Link href="/doctors" className="ml-auto text-[#1E293B]/70 hover:text-[#1E293B] font-label-md text-label-md">All doctors</Link>
-          <Link href={tokenHref(clinic, doctors.length === 1 ? doctors[0] : null)} className="h-10 px-4 rounded-xl bg-[#0F766E] text-[#FBFAF7] font-label-md text-label-md flex items-center">Get a token</Link>
+          {!staffLoginHref && <Link href="/doctors" className="ml-auto text-[#1E293B]/70 hover:text-[#1E293B] font-label-md text-label-md">All doctors</Link>}
+          {staffLoginHref && <Link href={staffLoginHref} className="ml-auto h-10 px-4 rounded-xl border border-[#1E293B]/15 text-[#1E293B] font-label-md text-label-md flex items-center">Login</Link>}
+          <Link href={tokenHref(clinic, doctors.length === 1 ? doctors[0] : null, host)} className="h-10 px-4 rounded-xl bg-[#0F766E] text-[#FBFAF7] font-label-md text-label-md flex items-center">Get a token</Link>
         </div>
       </header>
 
@@ -42,7 +43,7 @@ export function EditorialLanding({ clinic, focusSlug }: LandingProps) {
             </ul>
           )}
           <div className="flex flex-wrap gap-3 pt-1">
-            <Link href={tokenHref(clinic, doctors.length === 1 ? doctors[0] : null)} className={btn}>
+            <Link href={tokenHref(clinic, doctors.length === 1 ? doctors[0] : null, host)} className={btn}>
               <span className="material-symbols-outlined text-[20px]">confirmation_number</span> Get my token
             </Link>
             {tel && <a href={tel} className={ghost}><span className="material-symbols-outlined text-[20px]">call</span> {clinic.public_phone}</a>}
@@ -55,7 +56,7 @@ export function EditorialLanding({ clinic, focusSlug }: LandingProps) {
           <section className="flex flex-col gap-6">
             <h2 className="text-[30px] leading-[38px] font-medium" style={serif}>{doctors.length === 1 ? 'Your doctor' : 'Our doctors'}</h2>
             <div className="flex flex-col gap-5">
-              {doctors.map((d) => <DoctorCard key={d.id} d={d} href={tokenHref(clinic, d)} />)}
+              {doctors.map((d) => <DoctorCard key={d.id} d={d} href={tokenHref(clinic, d, host)} />)}
             </div>
           </section>
         )}
@@ -107,7 +108,7 @@ export function EditorialLanding({ clinic, focusSlug }: LandingProps) {
             <h2 className="text-[32px] leading-[40px] font-medium" style={serif}>Skip the line, not the care.</h2>
             <p className="mt-2 text-[#A3FAEF] font-body-md text-body-md">Take your token now and come when your turn is near.</p>
           </div>
-          <Link href={tokenHref(clinic, doctors.length === 1 ? doctors[0] : null)} className="h-12 px-6 rounded-xl bg-[#FBFAF7] text-[#0F766E] font-label-lg text-label-lg flex items-center justify-center gap-2">
+          <Link href={tokenHref(clinic, doctors.length === 1 ? doctors[0] : null, host)} className="h-12 px-6 rounded-xl bg-[#FBFAF7] text-[#0F766E] font-label-lg text-label-lg flex items-center justify-center gap-2">
             Get my token <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
           </Link>
         </section>

@@ -332,4 +332,6 @@ export const gu: Partial<Record<TranslationKey, string>> = {
   "ed_remove": "દૂર કરો",
   "otp_second_token": "આ નંબર પર બીજું ટોકન લેવા માટે, કૃપા કરીને WhatsApp પર એકવાર નંબરની પુષ્ટિ કરો. આ ફોનમાં તમે ચકાસાયેલા રહેશો.",
   "otp_booking_verify": "બુકિંગ પૂરું કરવા WhatsApp પર તમારો નંબર ચકાસો. તમારી ભરેલી વિગતો રહેશે અને આ ફોન 90 દિવસ સુધી ચકાસણી યાદ રાખશે.",
+  "ph_find_doctor": "ડૉક્ટર શોધો",
+  "ph_find_doctor_sub": "ClinicQ પર ડૉક્ટર અને ક્લિનિક શોધો, લૉગિનની જરૂર નથી.",
 };

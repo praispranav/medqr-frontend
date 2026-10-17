@@ -1,11 +1,12 @@
 import { io, Socket } from 'socket.io-client';
+import { apiBase } from './clinicHost';
 
 let socket: Socket | null = null;
 
 /** Single shared connection to the /queue namespace — powers live token updates (Decision 1 & 7). */
 export function getQueueSocket(): Socket {
   if (!socket) {
-    const base = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:4000';
+    const base = apiBase(); // the API on this page's own root domain (Decision 56)
     // Default transports (long-polling first, then upgrade to WebSocket): networks or proxies that
     // block WebSockets still get live updates. Reconnect forever — phones drop connections a lot.
     socket = io(`${base}/queue`, { reconnection: true, reconnectionAttempts: Infinity, reconnectionDelayMax: 10_000 });

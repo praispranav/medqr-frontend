@@ -1,11 +1,13 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { headers } from 'next/headers';
 import { fileUrl, type DirectoryClinicProfile, type DirectoryDoctorProfile } from '@/lib/api';
 import { ClinicLanding } from '@/components/landing/ClinicLanding';
 import { BrandLogo } from '@/components/brand/BrandLogo';
+import { patientUrl } from '@/lib/clinicHost';
 
-// Public, server-rendered doctor profile — the actual target of clinicq.in/doctors search results and
+// Public, server-rendered doctor profile — the actual target of clinicq.fit/doctors search results and
 // of Google search. Deliberately a server component (not 'use client' like the rest of the app) so
 // the title/description/structured data are in the HTML a crawler sees, not injected after the fact.
 
@@ -42,7 +44,7 @@ export default async function DoctorProfilePage({ params }: { params: { slug: st
 
   // Decision 50: when the doctor's clinic is listed, the doctor's page is the clinic's landing page with this doctor first.
   const clinic = doctor.clinic_public_slug ? await getClinic(doctor.clinic_public_slug) : null;
-  if (clinic) return <ClinicLanding clinic={clinic} focusSlug={doctor.slug} />;
+  if (clinic) return <ClinicLanding clinic={clinic} focusSlug={doctor.slug} host={headers().get('host')} />;
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -96,7 +98,7 @@ export default async function DoctorProfilePage({ params }: { params: { slug: st
         </div>
 
         <Link
-          href={`/patient/${doctor.clinic_subdomain}/intake?doctorId=${doctor.id}`}
+          href={patientUrl(`/patient/${doctor.clinic_subdomain}/intake?doctorId=${doctor.id}`, headers().get('host'))}
           className="h-14 px-6 rounded-xl bg-primary text-on-primary font-label-lg text-label-lg flex items-center justify-center gap-2"
         >
           Get a digital queue token
