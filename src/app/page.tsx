@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import { api, ApiError } from '@/lib/api';
 import { patientUrl } from '@/lib/clinicHost';
 import { useHost } from '@/lib/useHost';
+import { CONTACT_PHONE_DISPLAY, CONTACT_WHATSAPP } from '@/components/support/contactInfo';
 
 // Marketing landing. Ported from
 // stitch_medqr_clinic_suite_ui_design/medqr_landing_digital_queue_clinic_suite/code.html.
@@ -446,7 +447,10 @@ export default function LandingPage() {
       <footer className="border-t border-surface-container">
         <div className="max-w-6xl mx-auto px-4 py-8 flex flex-col sm:flex-row gap-3 justify-between font-body-sm text-body-sm text-on-surface-variant">
           <p>© {new Date().getFullYear()} ClinicQ · Digital OPD queues for Indian clinics</p>
-          <div className="flex gap-4">
+          <div className="flex flex-wrap gap-x-4 gap-y-2">
+            <a href={CONTACT_WHATSAPP} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-primary font-label-md text-label-md">
+              <span className="material-symbols-outlined text-[16px]">chat</span> WhatsApp {CONTACT_PHONE_DISPLAY}
+            </a>
             <Link href="/terms">Terms</Link>
             <Link href="/privacy">Privacy</Link>
             <Link href="/contact">Contact &amp; help</Link>
