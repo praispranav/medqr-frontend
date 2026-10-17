@@ -1042,15 +1042,15 @@ export const api = {
     request<{ id: string }>('/leads', { method: 'POST', body: JSON.stringify(body) }),
   // Public doctor/clinic directory (clinicq.fit/doctors) — only clinics/doctors that opted in ever show up here.
   directoryProducts: () => request<DirectoryProduct[]>('/directory/products'),
-  directorySearch: (opts: { q?: string; specialty?: string; city?: string; product?: string } = {}) =>
+  directorySearch: (opts: { q?: string; specialty?: string; city?: string } = {}) =>
     request<DirectoryDoctorSummary[]>(`/directory/doctors${toQuery(opts)}`),
   directoryDoctor: (slug: string) => request<DirectoryDoctorProfile>(`/directory/doctors/${encodeURIComponent(slug)}`),
   directoryClinic: (slug: string) => request<DirectoryClinicProfile>(`/directory/clinics/${encodeURIComponent(slug)}`),
   // Decision 51 — clinics are searchable too (clinicq.fit/clinics), not just reachable via a doctor's page.
-  directoryClinicsSearch: (opts: { q?: string; city?: string; offset?: string; limit?: string; product?: string } = {}) =>
+  directoryClinicsSearch: (opts: { q?: string; city?: string; offset?: string; limit?: string } = {}) =>
     request<DirectoryClinicSummary[]>(`/directory/clinics${toQuery(opts)}`),
-  directorySpecialties: (product?: string) => request<string[]>(`/directory/specialties${toQuery({ product })}`),
-  directoryCities: (product?: string) => request<string[]>(`/directory/cities${toQuery({ product })}`),
+  directorySpecialties: () => request<string[]>('/directory/specialties'),
+  directoryCities: () => request<string[]>('/directory/cities'),
   directorySitemap: () => request<{ doctors: { slug: string; updated_at: string }[]; clinics: { slug: string }[] }>('/directory/sitemap'),
   billingPlan: () => request<MonthlyPlan>('/billing/plan'),
   // Platform-fee trial / subscription (Decision 18)

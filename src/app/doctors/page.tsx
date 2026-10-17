@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { DoctorsSearch } from './DoctorsSearch';
 import { BrandLogo } from '@/components/brand/BrandLogo';
 
-export async function generateMetadata({ searchParams }: { searchParams: { q?: string; city?: string; product?: string } }): Promise<Metadata> {
+export async function generateMetadata({ searchParams }: { searchParams: { q?: string; city?: string } }): Promise<Metadata> {
   const specialty = searchParams.q ? searchParams.q.charAt(0).toUpperCase() + searchParams.q.slice(1) : 'Doctors';
   const citySuffix = searchParams.city ? ` in ${searchParams.city}` : '';
 
@@ -19,7 +19,7 @@ export async function generateMetadata({ searchParams }: { searchParams: { q?: s
   };
 }
 
-export default function DoctorsIndexPage({ searchParams }: { searchParams: { q?: string; city?: string; product?: string } }) {
+export default function DoctorsIndexPage({ searchParams }: { searchParams: { q?: string; city?: string } }) {
 
   const schemaData = {
     "@context": "https://schema.org",
@@ -56,7 +56,7 @@ export default function DoctorsIndexPage({ searchParams }: { searchParams: { q?:
           </h1>
           <p className="font-body-md text-body-md text-on-surface-variant mt-1">Search doctors by name, specialty or city and see their clinics. Online tokens are available at participating clinics.</p>
         </div>
-        <DoctorsSearch initialQ={searchParams.q} initialCity={searchParams.city} initialProduct={searchParams.product} />
+        <DoctorsSearch initialQ={searchParams.q} initialCity={searchParams.city} />
       </div>
     </main>
   );

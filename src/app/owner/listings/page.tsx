@@ -380,7 +380,7 @@ function ProductCatalog({ api }: { api: AdminApi }) {
   useEffect(() => { api.directoryProducts().then(setProducts).catch(() => undefined); }, [api]);
   return <section className="rounded-2xl bg-surface-container-lowest p-5 flex flex-col gap-3">
     <h2 className="font-headline-sm text-headline-sm">ClinicQ products</h2>
-    <p className="text-body-sm text-on-surface-variant">ClinicQ is the umbrella brand. QR Token System is the default filter. Add future products here, then assign clinics from their clinic page. This creates a directory filter only.</p>
+    <p className="text-body-sm text-on-surface-variant">ClinicQ is the umbrella brand. QR Token System is the default filter in the super-admin clinic list. Add future products here, then assign clinics from their clinic page. Products are internal filters and do not affect the public clinic and doctor directory.</p>
     <p>{products.map(p => p.name).join(' · ')}</p>
     <form className="flex flex-wrap gap-3" onSubmit={async (e) => { e.preventDefault(); setBusy(true); setNote(null); try { await api.createDirectoryProduct({ key, name }); setProducts(await api.directoryProducts()); setName(''); setKey(''); setNote('Product filter added.'); } catch(error) { setNote((error as Error).message); } finally { setBusy(false); } }}>
       <label className="flex flex-col gap-1">Product name<input aria-label="New product name" required value={name} onChange={e=>setName(e.target.value)} placeholder="Patient Admissions" className="h-11 rounded-xl bg-surface-container-low px-3" /></label>

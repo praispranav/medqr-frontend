@@ -2,12 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { DirectoryProductFilter, DEFAULT_DIRECTORY_PRODUCT } from '@/components/clinic/DirectoryProductFilter';
 import { api, fileUrl, type DirectoryDoctorSummary } from '@/lib/api';
 import { Icon } from '@/components/patient/ui';
 
-export function DoctorsSearch({ initialQ, initialCity, initialProduct }: { initialQ?: string; initialCity?: string; initialProduct?: string }) {
-  const [product, setProduct] = useState(initialProduct ?? DEFAULT_DIRECTORY_PRODUCT);
+export function DoctorsSearch({ initialQ, initialCity }: { initialQ?: string; initialCity?: string }) {
   const [q, setQ] = useState(initialQ ?? '');
   const [specialty, setSpecialty] = useState('');
   const [city, setCity] = useState(initialCity ?? '');
@@ -16,17 +14,17 @@ export function DoctorsSearch({ initialQ, initialCity, initialProduct }: { initi
   const [results, setResults] = useState<DirectoryDoctorSummary[] | null>(null);
 
   useEffect(() => {
-    api.directorySpecialties(product).then(setSpecialties).catch(() => undefined);
-    api.directoryCities(product).then(setCities).catch(() => undefined);
-  }, [product]);
+    api.directorySpecialties().then(setSpecialties).catch(() => undefined);
+    api.directoryCities().then(setCities).catch(() => undefined);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
     const t = setTimeout(() => {
-      api.directorySearch({ q, specialty, city, product }).then((rows) => { if (!cancelled) setResults(rows); }).catch(() => { if (!cancelled) setResults([]); });
+      api.directorySearch({ q, specialty, city }).then((rows) => { if (!cancelled) setResults(rows); }).catch(() => { if (!cancelled) setResults([]); });
     }, 250);
     return () => { cancelled = true; clearTimeout(t); };
-  }, [q, specialty, city, product]);
+  }, [q, specialty, city]);
 
   const clearFilters = () => {
     setQ('');
@@ -37,7 +35,6 @@ export function DoctorsSearch({ initialQ, initialCity, initialProduct }: { initi
   return (
     <div className="flex flex-col gap-6">
       <div className="bg-surface-container-lowest rounded-2xl shadow-sm p-4 flex flex-col sm:flex-row gap-3">
-        <DirectoryProductFilter value={product} onChange={(key) => { setProduct(key); setCity(''); setSpecialty(''); }} />
         <div className="flex-1 flex items-center bg-surface-container-low rounded-xl px-3 h-12">
           <Icon name="search" className="text-[20px] text-on-surface-variant" />
           <input

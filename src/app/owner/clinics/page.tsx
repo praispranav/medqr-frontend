@@ -16,6 +16,12 @@ export default function AdminClinicsPage() {
 function Clinics({ api, referrer }: { api: AdminApi; referrer: boolean }) {
   const router = useRouter();
   const [list, setList] = useState<AdminTenant[] | null>(null);
+  const [product, setProduct] = useState('qr-token-system');
+  const [products, setProducts] = useState([{ key: 'qr-token-system', name: 'QR Token System' }]);
+  useEffect(() => {
+    if (!referrer) api.directoryProducts().then(setProducts).catch((e: Error) => setError(e.message));
+  }, [api, referrer]);
+  const visibleClinics = list?.filter(t => referrer || product === 'all' || (t.directory_products ?? ['qr-token-system']).includes(product));
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
   const [codeTouched, setCodeTouched] = useState(false);
@@ -142,10 +148,16 @@ function Clinics({ api, referrer }: { api: AdminApi; referrer: boolean }) {
         </button>
       </form>
 
+      {!referrer && <label className="flex flex-col gap-1 self-start text-label-md">Product
+        <select aria-label="Product" value={product} onChange={e => setProduct(e.target.value)} className="h-12 rounded-xl bg-surface-container-lowest px-3">
+          {products.map(p => <option key={p.key} value={p.key}>{p.name}</option>)}
+          <option value="all">All products</option>
+        </select>
+      </label>}
       <section className="bg-surface-container-lowest rounded-2xl shadow-sm overflow-hidden">
         {list === null && !error && <p className="p-5 font-body-md text-body-md text-on-surface-variant">Loading…</p>}
-        {list?.length === 0 && <p className="p-5 font-body-md text-body-md text-on-surface-variant">No clinics yet — add the first one above.</p>}
-        {list?.map((t) => (
+        {visibleClinics?.length === 0 && <p className="p-5 font-body-md text-body-md text-on-surface-variant">{referrer || product === 'all' ? 'No clinics yet — add the first one above.' : 'No clinics match this product.'}</p>}
+        {visibleClinics?.map((t) => (
           <Link key={t.id} href={`/owner/clinics/${t.id}`} className="flex items-center gap-4 px-5 py-4 border-b border-surface-container last:border-0 hover:bg-surface-container-low">
             <div className="w-10 h-10 rounded-xl bg-primary-fixed/50 text-primary flex items-center justify-center shrink-0">
               <Icon name="local_hospital" className="text-[22px]" />
@@ -201,7 +213,6 @@ function Clinics({ api, referrer }: { api: AdminApi; referrer: boolean }) {
             <Icon name="chevron_right" className="text-on-surface-variant" />
           </Link>
         ))}
-        {list?.length === 0 && <p className="p-5 font-body-md text-body-md text-on-surface-variant">No clinics yet — add the first one above.</p>}
       </section>
     </div>
   );

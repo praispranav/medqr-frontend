@@ -342,10 +342,10 @@ function ClinicCodeAndBooking({ api, tenant, onSaved }: { api: AdminApi; tenant:
         </p>
       </div>
       <section className="md:col-span-2 flex flex-col gap-2">
-        <h3 className="font-label-md text-label-md">ClinicQ product directories</h3>
-        <p className="text-body-sm text-on-surface-variant">Select where this clinic is listed. Product grouping does not enable software features or online booking.</p>
+        <h3 className="font-label-md text-label-md">ClinicQ products</h3>
+        <p className="text-body-sm text-on-surface-variant">Used for super-admin clinic filtering. Public directory visibility is controlled separately.</p>
         <div className="flex flex-wrap gap-4">{products.map((p) => <label key={p.key} className="flex items-center gap-2"><input type="checkbox" checked={chosen.includes(p.key)} onChange={(e) => setChosen(e.target.checked ? [...chosen, p.key] : chosen.filter(k => k !== p.key))} />{p.name}</label>)}</div>
-        <button type="button" disabled={busy || !chosen.length} className="h-10 self-start px-4 rounded-xl bg-primary text-on-primary disabled:opacity-50" onClick={() => save({ directory_products: chosen }, 'Product directories saved.')}>Save product directories</button>
+        <button type="button" disabled={busy || !chosen.length} className="h-10 self-start px-4 rounded-xl bg-primary text-on-primary disabled:opacity-50" onClick={() => save({ directory_products: chosen }, 'Clinic products saved.')}>Save clinic products</button>
       </section>
       {(error || saved) && <p className={`md:col-span-2 font-body-sm text-body-sm ${error ? 'text-error' : 'text-tertiary'}`}>{error ?? saved}</p>}
     </div>
