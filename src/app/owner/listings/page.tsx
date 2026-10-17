@@ -157,7 +157,7 @@ function Listings({ api, marketer }: { api: AdminApi; marketer: boolean }) {
           excluded += r.excluded_skipped ?? 0;
         }
       }
-      setNotice(`Added ${added} new listing${added === 1 ? '' : 's'}. ${already} were already here${closed ? `, ${closed} permanently closed skipped` : ''}${excluded ? `, ${excluded} pharmacies/labs left out` : ''}.`);
+      setNotice(`Added ${added} new listing${added === 1 ? '' : 's'}. ${already} were already here${closed ? `, ${closed} permanently closed skipped` : ''}${excluded ? `, ${excluded} unrelated, pharmacy or lab listings left out` : ''}.`);
       await load();
     } catch (e) {
       setError((e as Error).message);
@@ -228,6 +228,7 @@ function Listings({ api, marketer }: { api: AdminApi; marketer: boolean }) {
         </div>
       </div>
 
+      {!marketer && <ProductCatalog api={api} />}
       <ListingForm api={api} onSaved={load} />
       {error && <p className="font-body-md text-body-md text-error">{error}</p>}
       {notice && <p className="font-body-md text-body-md text-primary">{notice}</p>}
@@ -371,4 +372,20 @@ function ListingForm({ api, onSaved }: { api: AdminApi; onSaved: () => Promise<v
     {note && <p role="status">{note}</p>}
     <button disabled={busy} className="h-11 px-5 self-start rounded-xl bg-primary text-on-primary disabled:opacity-50">{busy ? 'Submitting…' : 'Submit clinic for approval'}</button>
   </form>;
+}
+
+function ProductCatalog({ api }: { api: AdminApi }) {
+  const [products, setProducts] = useState<{ key: string; name: string }[]>([]);
+  const [name, setName] = useState(''); const [key, setKey] = useState(''); const [note, setNote] = useState<string | null>(null); const [busy, setBusy] = useState(false);
+  useEffect(() => { api.directoryProducts().then(setProducts).catch(() => undefined); }, [api]);
+  return <section className="rounded-2xl bg-surface-container-lowest p-5 flex flex-col gap-3">
+    <h2 className="font-headline-sm text-headline-sm">ClinicQ products</h2>
+    <p className="text-body-sm text-on-surface-variant">ClinicQ is the umbrella brand. QR Token System is the default filter. Add future products here, then assign clinics from their clinic page. This creates a directory filter only.</p>
+    <p>{products.map(p => p.name).join(' · ')}</p>
+    <form className="flex flex-wrap gap-3" onSubmit={async (e) => { e.preventDefault(); setBusy(true); setNote(null); try { await api.createDirectoryProduct({ key, name }); setProducts(await api.directoryProducts()); setName(''); setKey(''); setNote('Product filter added.'); } catch(error) { setNote((error as Error).message); } finally { setBusy(false); } }}>
+      <label className="flex flex-col gap-1">Product name<input aria-label="New product name" required value={name} onChange={e=>setName(e.target.value)} placeholder="Patient Admissions" className="h-11 rounded-xl bg-surface-container-low px-3" /></label>
+      <label className="flex flex-col gap-1">Product code<input aria-label="New product code" required pattern="[a-z0-9]+(-[a-z0-9]+)*" value={key} onChange={e=>setKey(e.target.value.toLowerCase())} placeholder="patient-admissions" className="h-11 rounded-xl bg-surface-container-low px-3" /></label>
+      <button disabled={busy} className="self-end h-11 px-4 rounded-xl bg-primary text-on-primary disabled:opacity-50">Add product filter</button>
+    </form>{note && <p role="status">{note}</p>}
+  </section>;
 }

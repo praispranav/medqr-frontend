@@ -2,36 +2,39 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { DirectoryProductFilter, DEFAULT_DIRECTORY_PRODUCT } from '@/components/clinic/DirectoryProductFilter';
 import { api, type DirectoryClinicSummary } from '@/lib/api';
 import { Icon } from '@/components/patient/ui';
 
 // Decision 51 — clinics are searchable too, the same way /doctors already is: name/city search, a
 // city filter, and a result list linking into each clinic's own landing page (Decision 50).
 
-export function ClinicsSearch({ initialQ }: { initialQ?: string }) {
+export function ClinicsSearch({ initialQ, initialCity, initialProduct }: { initialQ?: string; initialCity?: string; initialProduct?: string }) {
+  const [product, setProduct] = useState(initialProduct ?? DEFAULT_DIRECTORY_PRODUCT);
   const [q, setQ] = useState(initialQ ?? '');
-  const [city, setCity] = useState('');
+  const [city, setCity] = useState(initialCity ?? '');
   const [cities, setCities] = useState<string[]>([]);
   const [more, setMore] = useState(false);
   const [busy, setBusy] = useState(false);
   const [results, setResults] = useState<DirectoryClinicSummary[] | null>(null);
 
   useEffect(() => {
-    api.directoryCities().then(setCities).catch(() => undefined);
-  }, []);
+    api.directoryCities(product).then(setCities).catch(() => undefined);
+  }, [product]);
 
   useEffect(() => {
     let cancelled = false;
     setResults(null);
     const t = setTimeout(() => {
-      api.directoryClinicsSearch({ q, city, limit: '100' }).then((rows) => { if (!cancelled) { setResults(rows); setMore(rows.length === 100); } }).catch(() => { if (!cancelled) setResults([]); });
+      api.directoryClinicsSearch({ q, city, product, limit: '100' }).then((rows) => { if (!cancelled) { setResults(rows); setMore(rows.length === 100); } }).catch(() => { if (!cancelled) setResults([]); });
     }, 250);
     return () => { cancelled = true; clearTimeout(t); };
-  }, [q, city]);
+  }, [q, city, product]);
 
   return (
     <div className="flex flex-col gap-6">
       <div className="bg-surface-container-lowest rounded-2xl shadow-sm p-4 flex flex-col sm:flex-row gap-3">
+        <DirectoryProductFilter value={product} onChange={(key) => { setProduct(key); setCity(''); }} />
         <div className="flex-1 flex items-center bg-surface-container-low rounded-xl px-3 h-12">
           <Icon name="search" className="text-[20px] text-on-surface-variant" />
           <input
@@ -73,7 +76,7 @@ export function ClinicsSearch({ initialQ }: { initialQ?: string }) {
       </div>
       {more && <button disabled={busy} className="h-11 px-5 self-center rounded-xl bg-primary text-on-primary" onClick={async () => {
         setBusy(true);
-        try { const rows = await api.directoryClinicsSearch({ q, city, offset: String(results?.length ?? 0), limit: '100' }); setResults((prev) => [...(prev ?? []), ...rows]); setMore(rows.length === 100); }
+        try { const rows = await api.directoryClinicsSearch({ q, city, product, offset: String(results?.length ?? 0), limit: '100' }); setResults((prev) => [...(prev ?? []), ...rows]); setMore(rows.length === 100); }
         finally { setBusy(false); }
       }}>{busy ? 'Loading…' : 'Show more clinics'}</button>}
     </div>

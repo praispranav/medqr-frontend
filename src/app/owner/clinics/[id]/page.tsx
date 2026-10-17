@@ -260,12 +260,16 @@ function adminTeamApi(api: AdminApi, tenantId: string, referrer: boolean, clinic
  */
 function ClinicCodeAndBooking({ api, tenant, onSaved }: { api: AdminApi; tenant: Tenant; onSaved: (t: Tenant) => void }) {
   const [code, setCode] = useState(tenant.subdomain);
+  const [products, setProducts] = useState<{ key: string; name: string }[]>([]);
+  const [chosen, setChosen] = useState<string[]>(tenant.directory_products ?? ['qr-token-system']);
+  useEffect(() => { api.directoryProducts().then(setProducts).catch(() => undefined); }, [api]);
+  useEffect(() => setChosen(tenant.directory_products ?? ['qr-token-system']), [tenant.directory_products]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState<string | null>(null);
   useEffect(() => setCode(tenant.subdomain), [tenant.subdomain]);
 
-  const save = async (body: { subdomain?: string; public_booking?: 'auto' | 'on' | 'off' }, msg: string) => {
+  const save = async (body: { subdomain?: string; public_booking?: 'auto' | 'on' | 'off'; directory_products?: string[] }, msg: string) => {
     setBusy(true);
     setError(null);
     setSaved(null);
@@ -337,6 +341,12 @@ function ClinicCodeAndBooking({ api, tenant, onSaved }: { api: AdminApi; tenant:
           Auto = shown while the clinic is on a free trial or the paid plan; hidden on the free plan and when a trial ends unpaid.
         </p>
       </div>
+      <section className="md:col-span-2 flex flex-col gap-2">
+        <h3 className="font-label-md text-label-md">ClinicQ product directories</h3>
+        <p className="text-body-sm text-on-surface-variant">Select where this clinic is listed. Product grouping does not enable software features or online booking.</p>
+        <div className="flex flex-wrap gap-4">{products.map((p) => <label key={p.key} className="flex items-center gap-2"><input type="checkbox" checked={chosen.includes(p.key)} onChange={(e) => setChosen(e.target.checked ? [...chosen, p.key] : chosen.filter(k => k !== p.key))} />{p.name}</label>)}</div>
+        <button type="button" disabled={busy || !chosen.length} className="h-10 self-start px-4 rounded-xl bg-primary text-on-primary disabled:opacity-50" onClick={() => save({ directory_products: chosen }, 'Product directories saved.')}>Save product directories</button>
+      </section>
       {(error || saved) && <p className={`md:col-span-2 font-body-sm text-body-sm ${error ? 'text-error' : 'text-tertiary'}`}>{error ?? saved}</p>}
     </div>
   );

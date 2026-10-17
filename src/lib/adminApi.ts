@@ -235,7 +235,7 @@ export const adminApi = (key: string) => ({
       queue_settings?: Partial<QueueSettings>;
       /** Decision 60 — super admin only. */
       subdomain?: string;
-      public_booking?: 'auto' | 'on' | 'off';
+      public_booking?: 'auto' | 'on' | 'off'; directory_products?: string[];
     },
   ) => request<Tenant>(key, `/tenants/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
   /** Help a doctor set up: profile fields, Patient Notifications toggles, Intake Form. */
@@ -342,6 +342,8 @@ export const adminApi = (key: string) => ({
   updateSupport: (id: string, patch: { status?: SupportStatus; reply?: string | null }) =>
     request<SupportRequest>(key, `/support/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
   submitListing: (body: Record<string, unknown>) => request<{ added: number; already_there: number }>(key, '/listings/submit', { method: 'POST', body: JSON.stringify(body) }),
+  directoryProducts: () => request<{ key: string; name: string }[]>(key, '/directory-products'),
+  createDirectoryProduct: (body: { key: string; name: string }) => request<{ key: string; name: string }>(key, '/directory-products', { method: 'POST', body: JSON.stringify(body) }),
   listings: () => request<ListingCandidate[]>(key, '/listings'),
   uploadListings: (items: Record<string, unknown>[]) =>
     request<{ added: number; already_there: number; closed_skipped: number; excluded_skipped?: number }>(key, '/listings/upload', { method: 'POST', body: JSON.stringify({ items }) }),

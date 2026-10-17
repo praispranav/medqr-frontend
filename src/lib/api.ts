@@ -98,7 +98,10 @@ export interface Entitlements {
   [key: string]: boolean;
 }
 
+export interface DirectoryProduct { key: string; name: string }
+
 export interface Tenant {
+  directory_products?: string[];
   id: string;
   subdomain: string;
   /** Decision 60 — "Get a token" on public pages: auto (trial/paid), on, off. */
@@ -1038,15 +1041,16 @@ export const api = {
   submitTrialLead: (body: { clinic_name: string; contact_name: string; phone: string; email?: string; city?: string; message?: string }) =>
     request<{ id: string }>('/leads', { method: 'POST', body: JSON.stringify(body) }),
   // Public doctor/clinic directory (clinicq.fit/doctors) — only clinics/doctors that opted in ever show up here.
-  directorySearch: (opts: { q?: string; specialty?: string; city?: string } = {}) =>
+  directoryProducts: () => request<DirectoryProduct[]>('/directory/products'),
+  directorySearch: (opts: { q?: string; specialty?: string; city?: string; product?: string } = {}) =>
     request<DirectoryDoctorSummary[]>(`/directory/doctors${toQuery(opts)}`),
   directoryDoctor: (slug: string) => request<DirectoryDoctorProfile>(`/directory/doctors/${encodeURIComponent(slug)}`),
   directoryClinic: (slug: string) => request<DirectoryClinicProfile>(`/directory/clinics/${encodeURIComponent(slug)}`),
   // Decision 51 — clinics are searchable too (clinicq.fit/clinics), not just reachable via a doctor's page.
-  directoryClinicsSearch: (opts: { q?: string; city?: string; offset?: string; limit?: string } = {}) =>
+  directoryClinicsSearch: (opts: { q?: string; city?: string; offset?: string; limit?: string; product?: string } = {}) =>
     request<DirectoryClinicSummary[]>(`/directory/clinics${toQuery(opts)}`),
-  directorySpecialties: () => request<string[]>('/directory/specialties'),
-  directoryCities: () => request<string[]>('/directory/cities'),
+  directorySpecialties: (product?: string) => request<string[]>(`/directory/specialties${toQuery({ product })}`),
+  directoryCities: (product?: string) => request<string[]>(`/directory/cities${toQuery({ product })}`),
   directorySitemap: () => request<{ doctors: { slug: string; updated_at: string }[]; clinics: { slug: string }[] }>('/directory/sitemap'),
   billingPlan: () => request<MonthlyPlan>('/billing/plan'),
   // Platform-fee trial / subscription (Decision 18)

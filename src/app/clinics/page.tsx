@@ -7,7 +7,7 @@ import { BrandLogo } from '@/components/brand/BrandLogo';
 // (clinicq.fit/clinics/:slug) was only reachable if you already knew its slug (from a doctor's page or
 // a printed QR). This index makes clinics themselves searchable and discoverable.
 
-export async function generateMetadata({ searchParams }: { searchParams: { q?: string; city?: string } }): Promise<Metadata> {
+export async function generateMetadata({ searchParams }: { searchParams: { q?: string; city?: string; product?: string } }): Promise<Metadata> {
   const citySuffix = searchParams.city ? ` in ${searchParams.city}` : '';
   const q = searchParams.q ? ` matching "${searchParams.q}"` : '';
   return {
@@ -17,12 +17,12 @@ export async function generateMetadata({ searchParams }: { searchParams: { q?: s
   };
 }
 
-export default function ClinicsIndexPage({ searchParams }: { searchParams: { q?: string; city?: string } }) {
+export default function ClinicsIndexPage({ searchParams }: { searchParams: { q?: string; city?: string; product?: string } }) {
   const schemaData = {
     '@context': 'https://schema.org',
     '@type': 'CollectionPage',
     name: 'Find a Clinic | ClinicQ',
-    description: 'Directory of clinics offering digital OPD tokens and live queue tracking.',
+    description: 'Directory of clinics grouped by ClinicQ product.',
   };
 
   return (
@@ -42,9 +42,9 @@ export default function ClinicsIndexPage({ searchParams }: { searchParams: { q?:
           <h1 className="font-headline-lg text-headline-lg">
             {searchParams.city ? `Clinics in ${searchParams.city}` : 'Find a clinic'}
           </h1>
-          <p className="font-body-md text-body-md text-on-surface-variant mt-1">Search by clinic name or city, then join the digital queue instantly.</p>
+          <p className="font-body-md text-body-md text-on-surface-variant mt-1">Search by clinic name, city or ClinicQ product. Online tokens are available at participating clinics.</p>
         </div>
-        <ClinicsSearch initialQ={searchParams.q} />
+        <ClinicsSearch initialQ={searchParams.q} initialCity={searchParams.city} initialProduct={searchParams.product} />
       </div>
     </main>
   );
