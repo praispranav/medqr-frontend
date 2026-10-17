@@ -7,7 +7,8 @@ import { useEffect, useState } from 'react';
 import { api, ApiError } from '@/lib/api';
 import { patientUrl } from '@/lib/clinicHost';
 import { useHost } from '@/lib/useHost';
-import { COMPANY_NAME, COMPANY_URL, CONTACT_PHONE_DISPLAY, CONTACT_WHATSAPP } from '@/components/support/contactInfo';
+import { COMPANY_NAME, COMPANY_URL } from '@/components/support/contactInfo';
+import { WhatsAppFloat } from '@/components/support/WhatsAppFloat';
 
 // Marketing landing. Ported from
 // stitch_medqr_clinic_suite_ui_design/medqr_landing_digital_queue_clinic_suite/code.html.
@@ -451,9 +452,6 @@ export default function LandingPage() {
             <a href={COMPANY_URL} target="_blank" rel="noreferrer" className="text-primary font-label-md text-label-md">{COMPANY_NAME}</a>
           </p>
           <div className="flex flex-wrap gap-x-4 gap-y-2">
-            <a href={CONTACT_WHATSAPP} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-primary font-label-md text-label-md">
-              <span className="material-symbols-outlined text-[16px]">chat</span> WhatsApp {CONTACT_PHONE_DISPLAY}
-            </a>
             <Link href="/terms">Terms</Link>
             <Link href="/privacy">Privacy</Link>
             <Link href="/contact">Contact &amp; help</Link>
@@ -462,6 +460,8 @@ export default function LandingPage() {
           </div>
         </div>
       </footer>
+
+      <WhatsAppFloat />
 
       {trialOpen && <StartTrialModal trialDays={trialDays} onClose={() => setTrialOpen(false)} />}
     </div>
