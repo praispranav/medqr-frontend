@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { LegalLayout } from '@/components/legal/LegalLayout';
 import { ContactForm } from '@/components/support/ContactForm';
 import { HelpCenter } from '@/components/support/HelpCenter';
-import { CONTACT_EMAIL, CONTACT_PHONE_DISPLAY, CONTACT_PHONE_TEL, CONTACT_WHATSAPP } from '@/components/support/contactInfo';
+import { COMPANY_NAME, COMPANY_URL, CONTACT_EMAIL, CONTACT_PHONE_DISPLAY, CONTACT_PHONE_TEL, CONTACT_WHATSAPP } from '@/components/support/contactInfo';
 
 export const metadata: Metadata = {
   title: 'Contact us and help — ClinicQ',
@@ -29,6 +29,11 @@ export default function ContactPage() {
           <span className="font-label-lg text-label-lg text-primary">Message us</span>
         </a>
       </div>
+
+      <p className="font-body-md text-body-md">
+        ClinicQ is a product of{' '}
+        <a className="text-primary underline" href={COMPANY_URL} target="_blank" rel="noreferrer">{COMPANY_NAME}</a>.
+      </p>
 
       <section className="flex flex-col gap-4">
         <h2>Send us a message</h2>

@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { LegalLayout } from '@/components/legal/LegalLayout';
-import { CONTACT_EMAIL, CONTACT_PHONE_DISPLAY, CONTACT_PHONE_TEL } from '@/components/support/contactInfo';
+import { COMPANY_NAME, COMPANY_URL, CONTACT_EMAIL, CONTACT_PHONE_DISPLAY, CONTACT_PHONE_TEL } from '@/components/support/contactInfo';
 
 export const metadata: Metadata = { title: 'Terms of Use — ClinicQ' };
 
@@ -10,7 +10,7 @@ export default function TermsPage() {
   return (
     <LegalLayout title="Terms of Use" updated={UPDATED}>
       <p className="font-body-lg text-body-lg text-on-surface">
-        ClinicQ is a registered product and software service owned and operated by <strong>Altis Labs</strong>.
+        ClinicQ is a registered product and software service owned and operated by <a href={COMPANY_URL} target="_blank" rel="noreferrer" className="text-primary underline"><strong>{COMPANY_NAME}</strong></a>.
       </p>
 
       <section>

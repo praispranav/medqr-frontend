@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { LegalLayout } from '@/components/legal/LegalLayout';
-import { CONTACT_EMAIL, CONTACT_PHONE_DISPLAY, CONTACT_PHONE_TEL } from '@/components/support/contactInfo';
+import { COMPANY_NAME, COMPANY_URL, CONTACT_EMAIL, CONTACT_PHONE_DISPLAY, CONTACT_PHONE_TEL } from '@/components/support/contactInfo';
 
 export const metadata: Metadata = { title: 'Privacy Policy — ClinicQ' };
 
@@ -10,7 +10,7 @@ export default function PrivacyPage() {
   return (
     <LegalLayout title="Privacy Policy" updated={UPDATED}>
       <p className="font-body-lg text-body-lg text-on-surface">
-        ClinicQ is a registered product and software service owned and operated by <strong>Altis Labs</strong>. This
+        ClinicQ is a registered product and software service owned and operated by <a href={COMPANY_URL} target="_blank" rel="noreferrer" className="text-primary underline"><strong>{COMPANY_NAME}</strong></a>. This
         policy explains what information ClinicQ collects, why, and how it&apos;s protected — for both the clinics that
         run on ClinicQ and the patients who use a clinic&apos;s digital queue.
       </p>
