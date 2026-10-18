@@ -64,9 +64,9 @@ export default async function HomePage({ searchParams }: { searchParams?: { q?: 
           </div>
         </div>
       </header>
-
-      {/* Search */}
-      <section className="max-w-6xl mx-auto px-4 pt-12 sm:pt-16 pb-10 flex flex-col items-center text-center gap-5">
+      <main>
+        {/* Search */}
+        <section className="max-w-6xl mx-auto px-4 pt-12 sm:pt-16 pb-10 flex flex-col items-center text-center gap-5">
         <span className="px-3 py-1 rounded-full bg-primary-fixed/50 text-on-primary-fixed-variant font-label-sm text-label-sm uppercase">
           Doctor &amp; clinic directory · Free to search
         </span>
@@ -83,7 +83,7 @@ export default async function HomePage({ searchParams }: { searchParams?: { q?: 
               <Link
                 key={g.slug}
                 href={directoryPath(null, g.slug)}
-                className="h-9 px-3.5 inline-flex items-center rounded-full bg-surface-container-lowest shadow-sm font-label-md text-label-md text-on-surface-variant hover:text-primary"
+                className="min-h-[44px] px-4 inline-flex items-center rounded-full bg-surface-container-lowest shadow-sm font-label-md text-label-md text-on-surface-variant hover:text-primary transition-colors"
               >
                 {g.name}
               </Link>
@@ -186,6 +186,7 @@ export default async function HomePage({ searchParams }: { searchParams?: { q?: 
           </Link>
         </div>
       </section>
+      </main>
 
       <footer className="border-t border-surface-container">
         <div className="max-w-6xl mx-auto px-4 py-8 flex flex-col xl:flex-row gap-3 justify-between font-body-sm text-body-sm text-on-surface-variant">
@@ -193,13 +194,13 @@ export default async function HomePage({ searchParams }: { searchParams?: { q?: 
             © {new Date().getFullYear()} ClinicQ · Doctor &amp; clinic directory with online OPD booking · A product of{' '}
             <a href={COMPANY_URL} target="_blank" rel="noreferrer" className="text-primary font-label-md text-label-md">{COMPANY_NAME}</a>
           </p>
-          <div className="flex flex-wrap gap-x-4 gap-y-2">
-            <Link href="/for-clinics">For clinics</Link>
-            <Link href="/terms">Terms</Link>
-            <Link href="/privacy">Privacy</Link>
-            <Link href="/contact">Contact &amp; help</Link>
-            <Link href="/signin">Sign in</Link>
-            <Link href="/signin">List your clinic</Link>
+          <div className="flex flex-wrap gap-x-4 gap-y-1">
+            <Link href="/for-clinics" className="min-h-[44px] px-1 inline-flex items-center hover:text-on-surface">For clinics</Link>
+            <Link href="/terms" className="min-h-[44px] px-1 inline-flex items-center hover:text-on-surface">Terms</Link>
+            <Link href="/privacy" className="min-h-[44px] px-1 inline-flex items-center hover:text-on-surface">Privacy</Link>
+            <Link href="/contact" className="min-h-[44px] px-1 inline-flex items-center hover:text-on-surface">Contact &amp; help</Link>
+            <Link href="/signin" className="min-h-[44px] px-1 inline-flex items-center hover:text-on-surface">Sign in</Link>
+            <Link href="/for-clinics#claim" className="min-h-[44px] px-1 inline-flex items-center hover:text-on-surface">List your clinic</Link>
           </div>
         </div>
       </footer>
