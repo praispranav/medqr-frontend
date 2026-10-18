@@ -151,6 +151,8 @@ export interface DoctorToday {
   today_status_detail: string;
   /** Decision 6 (amended): off-today doctors only — their next planned session; bookable only inside the advance-booking window. */
   next_session?: NextSession | null;
+  /** Decision 65: no consulting hours set at all (nothing planned ahead) — show "Timings not available", not "Off today". */
+  hours_unknown?: boolean;
   bio?: string | null;
   /** Years in practice (optional, shown on the public page only when set). */
   experience_years?: number | null;

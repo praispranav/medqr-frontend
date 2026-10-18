@@ -276,6 +276,8 @@ export const en = {
   "sd_on_break": "On break",
   "sd_later_today": "Starts later today",
   "sd_off_today": "Off today",
+  "sd_hours_na": "Timings not available",
+  "sd_hours_na_detail": "Please call the clinic",
   "sd_next": "Next: {when}",
   "tk_not_found": "Token not found",
   "tk_not_found_body": "This link may have expired. Please ask the clinic staff.",

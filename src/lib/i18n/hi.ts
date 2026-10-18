@@ -261,6 +261,8 @@ export const hi: Partial<Record<TranslationKey, string>> = {
   "sd_on_break": "ब्रेक पर",
   "sd_later_today": "आज बाद में शुरू",
   "sd_off_today": "आज अवकाश",
+  "sd_hours_na": "समय उपलब्ध नहीं",
+  "sd_hours_na_detail": "कृपया क्लिनिक को कॉल करें",
   "sd_next": "अगला: {when}",
   "tk_not_found": "टोकन नहीं मिला",
   "tk_not_found_body": "यह लिंक समाप्त हो गया होगा। कृपया क्लिनिक स्टाफ़ से पूछें।",

@@ -62,10 +62,22 @@ export function nextSessionLabel(n: NextSession, locale = 'en-IN') {
   return `${day}, ${h % 12 === 0 ? 12 : h % 12}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
 }
 
-export function DoctorStatusRow({ status, detail: rawDetail, next }: { status: DoctorTodayStatus; detail: string; next?: NextSession | null }) {
+export function DoctorStatusRow({ status, detail: rawDetail, next, hoursUnknown }: { status: DoctorTodayStatus; detail: string; next?: NextSession | null; hoursUnknown?: boolean }) {
   // Shared component: follows the patient's language without ever setting it (Decision 35).
   const { t, lang } = useT();
   const detail = localizeStatusDetail(rawDetail, t);
+  // No hours were ever given (e.g. a directory listing): say so calmly instead of a red "Off today".
+  if (status === 'off_today' && hoursUnknown && !next) {
+    return (
+      <div className="mt-1 flex items-center justify-between bg-surface-container-low px-3 py-1.5 rounded-lg">
+        <div className="flex items-center gap-1.5">
+          <Icon name="schedule" className="text-[16px] text-on-surface-variant" />
+          <span className="font-label-sm text-label-sm text-on-surface-variant font-semibold">{t('sd_hours_na')}</span>
+        </div>
+        <span className="font-label-sm text-label-sm text-on-surface-variant font-medium">{t('sd_hours_na_detail')}</span>
+      </div>
+    );
+  }
   switch (status) {
     case 'available':
       return (

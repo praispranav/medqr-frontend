@@ -247,6 +247,8 @@ export const kn: Partial<Record<TranslationKey, string>> = {
   "sd_on_break": "ವಿರಾಮದಲ್ಲಿ",
   "sd_later_today": "ಇಂದು ನಂತರ ಆರಂಭ",
   "sd_off_today": "ಇಂದು ರಜೆ",
+  "sd_hours_na": "ಸಮಯ ಲಭ್ಯವಿಲ್ಲ",
+  "sd_hours_na_detail": "ದಯವಿಟ್ಟು ಕ್ಲಿನಿಕ್‌ಗೆ ಕರೆ ಮಾಡಿ",
   "sd_next": "ಮುಂದೆ: {when}",
   "tk_not_found": "ಟೋಕನ್ ಸಿಗಲಿಲ್ಲ",
   "tk_not_found_body": "ಈ ಲಿಂಕ್ ಅವಧಿ ಮುಗಿದಿರಬಹುದು. ದಯವಿಟ್ಟು ಕ್ಲಿನಿಕ್ ಸಿಬ್ಬಂದಿಯನ್ನು ಕೇಳಿ.",

@@ -346,7 +346,7 @@ export default function SelectDoctorPage() {
                   <span className="font-label-sm text-label-sm text-on-surface font-semibold">{t('sd_consulting_on', { date: formatDate(selectedDate!) })}</span>
                 </div>
               ) : (
-                <DoctorStatusRow status={d.today_status} detail={d.today_status_detail} next={d.next_session} />
+                <DoctorStatusRow status={d.today_status} detail={d.today_status_detail} next={d.next_session} hoursUnknown={d.hours_unknown} />
               )}
             </div>
 
@@ -498,7 +498,7 @@ export default function SelectDoctorPage() {
                       <span className="font-label-sm text-label-sm text-on-surface">{t('sd_consulting_on', { date: formatDate(selectedDate!) })}</span>
                     </div>
                   ) : (
-                    <DoctorStatusRow status={d.today_status} detail={d.today_status_detail} next={d.next_session} />
+                    <DoctorStatusRow status={d.today_status} detail={d.today_status_detail} next={d.next_session} hoursUnknown={d.hours_unknown} />
                   )}
                   {canBookAhead && (
                     <span className="self-start flex items-center gap-1 font-label-sm text-label-sm text-primary font-bold">

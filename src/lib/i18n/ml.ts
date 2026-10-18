@@ -247,6 +247,8 @@ export const ml: Partial<Record<TranslationKey, string>> = {
   "sd_on_break": "ഇടവേളയിൽ",
   "sd_later_today": "ഇന്ന് പിന്നീട് തുടങ്ങും",
   "sd_off_today": "ഇന്ന് അവധി",
+  "sd_hours_na": "സമയം ലഭ്യമല്ല",
+  "sd_hours_na_detail": "ദയവായി ക്ലിനിക്കിൽ വിളിക്കുക",
   "sd_next": "അടുത്തത്: {when}",
   "tk_not_found": "ടോക്കൺ കണ്ടെത്തിയില്ല",
   "tk_not_found_body": "ഈ ലിങ്കിന്റെ കാലാവധി കഴിഞ്ഞിരിക്കാം. ദയവായി ക്ലിനിക് സ്റ്റാഫിനോട് ചോദിക്കുക.",

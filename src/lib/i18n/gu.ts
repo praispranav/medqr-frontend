@@ -247,6 +247,8 @@ export const gu: Partial<Record<TranslationKey, string>> = {
   "sd_on_break": "વિરામ પર",
   "sd_later_today": "આજે પછી શરૂ",
   "sd_off_today": "આજે રજા",
+  "sd_hours_na": "સમય ઉપલબ્ધ નથી",
+  "sd_hours_na_detail": "કૃપા કરીને ક્લિનિકને કૉલ કરો",
   "sd_next": "આગળ: {when}",
   "tk_not_found": "ટોકન મળ્યું નથી",
   "tk_not_found_body": "આ લિંકની મુદત પૂરી થઈ ગઈ હશે. કૃપા કરીને ક્લિનિક સ્ટાફને પૂછો.",

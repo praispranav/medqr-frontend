@@ -247,6 +247,8 @@ export const ta: Partial<Record<TranslationKey, string>> = {
   "sd_on_break": "இடைவேளையில்",
   "sd_later_today": "இன்று பின்னர் தொடங்கும்",
   "sd_off_today": "இன்று விடுப்பு",
+  "sd_hours_na": "நேரம் கிடைக்கவில்லை",
+  "sd_hours_na_detail": "கிளினிக்கை அழைக்கவும்",
   "sd_next": "அடுத்து: {when}",
   "tk_not_found": "டோக்கன் கிடைக்கவில்லை",
   "tk_not_found_body": "இந்த இணைப்பு காலாவதியாகி இருக்கலாம். கிளினிக் ஊழியர்களிடம் கேளுங்கள்.",

@@ -247,6 +247,8 @@ export const mr: Partial<Record<TranslationKey, string>> = {
   "sd_on_break": "विश्रांतीवर",
   "sd_later_today": "आज नंतर सुरू",
   "sd_off_today": "आज सुट्टी",
+  "sd_hours_na": "वेळ उपलब्ध नाही",
+  "sd_hours_na_detail": "कृपया क्लिनिकला कॉल करा",
   "sd_next": "पुढील: {when}",
   "tk_not_found": "टोकन सापडले नाही",
   "tk_not_found_body": "ही लिंक कालबाह्य झाली असावी. कृपया क्लिनिक स्टाफला विचारा.",

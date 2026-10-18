@@ -247,6 +247,8 @@ export const te: Partial<Record<TranslationKey, string>> = {
   "sd_on_break": "విరామంలో",
   "sd_later_today": "ఈ రోజు తర్వాత మొదలు",
   "sd_off_today": "ఈ రోజు సెలవు",
+  "sd_hours_na": "సమయాలు అందుబాటులో లేవు",
+  "sd_hours_na_detail": "దయచేసి క్లినిక్‌కు కాల్ చేయండి",
   "sd_next": "తదుపరి: {when}",
   "tk_not_found": "టోకెన్ దొరకలేదు",
   "tk_not_found_body": "ఈ లింక్ గడువు ముగిసి ఉండవచ్చు. దయచేసి క్లినిక్ సిబ్బందిని అడగండి.",
