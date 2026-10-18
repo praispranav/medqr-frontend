@@ -657,7 +657,7 @@ function ModulesTab({ api, tenant, onSaved }: { api: AdminApi; tenant: Tenant; o
     ...(catalog ?? []).map((a) => ({ key: a.key, name: a.name, price: a.price_inr_per_month })),
   ];
 
-  const otpOn = !!tenant.queue_settings.require_whatsapp_otp;
+  const otpOn = tenant.queue_settings.require_whatsapp_otp !== false; // Decision 71: on by default
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] gap-6">

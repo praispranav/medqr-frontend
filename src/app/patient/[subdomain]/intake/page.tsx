@@ -192,7 +192,7 @@ function IntakeForm() {
             });
           }
         }
-        const rules = await api.checkInRules(clinic.id).catch(() => ({ require_whatsapp_otp: false }));
+        const rules = await api.checkInRules(clinic.id).catch(() => ({ require_whatsapp_otp: true }));
         if (cancelled) return;
         setOtpRequired(rules.require_whatsapp_otp);
         setTenant(clinic);

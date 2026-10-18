@@ -266,7 +266,7 @@ export const QueueRules = forwardRef<QueueRulesHandle, {
               when joining. Verified numbers are remembered on that device for 90 days.
             </p>
           </div>
-          <Toggle checked={!!s.require_whatsapp_otp} onChange={(v) => set('require_whatsapp_otp', v)} />
+          <Toggle checked={s.require_whatsapp_otp !== false} onChange={(v) => set('require_whatsapp_otp', v)} />
         </label>
       </Section>
 
