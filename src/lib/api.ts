@@ -575,6 +575,14 @@ export interface MonthlyPlan {
 }
 
 // Public doctor/clinic directory (clinicq.fit/doctors)
+export interface DirectorySitemap {
+  doctors: { slug: string; updated_at: string }[];
+  clinics: { slug: string }[];
+  cities: { city: string; n: number }[];
+  groups: { group: string; n: number }[];
+  pairs: { city: string; group: string; n: number }[];
+}
+
 export interface DirectoryDoctorSummary {
   /** Decision 60: "Get a token" is offered only by clinics on a free trial or the paid plan (or switched on by ClinicQ). */
   booking_open?: boolean;
@@ -1054,7 +1062,7 @@ export const api = {
     request<{ id: string }>('/leads', { method: 'POST', body: JSON.stringify(body) }),
   // Public doctor/clinic directory (clinicq.fit/doctors) — only clinics/doctors that opted in ever show up here.
   directoryProducts: () => request<DirectoryProduct[]>('/directory/products'),
-  directorySearch: (opts: { q?: string; specialty?: string; city?: string; limit?: string; offset?: string } = {}) =>
+  directorySearch: (opts: { q?: string; specialty?: string; group?: string; city?: string; bookable?: string; limit?: string; offset?: string } = {}) =>
     request<DirectoryDoctorSummary[]>(`/directory/doctors${toQuery(opts)}`),
   directoryDoctor: (slug: string) => request<DirectoryDoctorProfile>(`/directory/doctors/${encodeURIComponent(slug)}`),
   directoryClinic: (slug: string) => request<DirectoryClinicProfile>(`/directory/clinics/${encodeURIComponent(slug)}`),
@@ -1074,7 +1082,12 @@ export const api = {
     return res.json() as Promise<{ ok: true }>;
   },
   directoryCities: () => request<string[]>('/directory/cities'),
-  directorySitemap: () => request<{ doctors: { slug: string; updated_at: string }[]; clinics: { slug: string }[] }>('/directory/sitemap'),
+  /** Decision 66 — patient-facing specialties with listed doctors (optionally in one city). */
+  directorySpecialtyGroups: (city?: string) => request<{ slug: string; name: string; plural: string; count: number }[]>(`/directory/specialty-groups${toQuery({ city })}`),
+  /** Decision 66 — "Ask for online booking" on a clinic/doctor without online OPD booking. */
+  requestOnlineBooking: (body: { doctor_slug?: string; clinic_slug?: string; clinic_code?: string }) =>
+    request<{ ok: true; requests: number; clinic_phone: string | null; clinic_name: string }>('/directory/online-booking-requests', { method: 'POST', body: JSON.stringify(body) }),
+  directorySitemap: () => request<DirectorySitemap>('/directory/sitemap'),
   billingPlan: () => request<MonthlyPlan>('/billing/plan'),
   // Platform-fee trial / subscription (Decision 18)
   getSubscription: () => request<SubscriptionStatus>('/billing/subscription'),

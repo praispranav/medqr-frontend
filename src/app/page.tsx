@@ -8,11 +8,13 @@ import { WhatsAppFloat } from '@/components/support/WhatsAppFloat';
 import { COMPANY_NAME, COMPANY_URL } from '@/components/support/contactInfo';
 import { patientUrl } from '@/lib/clinicHost';
 import type { DirectoryClinicSummary } from '@/lib/api';
+import { directoryCities, directoryPath, specialtyGroupsIn } from '@/lib/directoryServer';
+import { placeSlug } from '@/lib/specialtyGroups';
 
-// Decision 58 — the home page is for the people who USE ClinicQ every day: patients find a doctor or
-// clinic and get back to their tokens; doctors and reception log in. The clinic-facing marketing page
-// (pricing, features, free trial) moved to /for-clinics, one button away. Only real data is shown:
-// specialties and clinics come from the public directory (clinics that chose to be listed).
+// Decision 58 / 66 — ClinicQ is a doctor & clinic directory: patients find a doctor or clinic (timings,
+// address, directions) and, where the clinic has it, book an online OPD token — that's the product clinics
+// buy (pitched at /for-clinics). Only real data is shown, and "Popular searches" links to the server-rendered
+// city / specialty pages so search engines can reach every listed doctor.
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:4000';
 
@@ -26,18 +28,20 @@ async function getJson<T>(path: string, fallback: T): Promise<T> {
 }
 
 export const metadata: Metadata = {
-  title: 'ClinicQ | Find a Doctor & Join the Clinic Queue From Your Phone',
+  title: 'ClinicQ | Find Doctors & Clinics Near You — Timings, Address & Online OPD Booking',
   description:
-    'Search doctors and clinics, take a digital token and wait from home — no app to download. Check your live position and get an alert when it’s your turn.',
+    'Find doctors, clinics and hospitals in Patna, Sitamarhi and nearby: OPD timings, address, phone and directions. Book an online OPD token at clinics that offer it — no app needed.',
   alternates: { canonical: '/' },
 };
 
 export default async function HomePage() {
   const host = headers().get('host');
-  const [specialties, clinics] = await Promise.all([
-    getJson<string[]>('/directory/specialties', []),
+  const [groups, clinics, cities] = await Promise.all([
+    specialtyGroupsIn(),
     getJson<DirectoryClinicSummary[]>('/directory/clinics?bookable=1&limit=6', []), // Decision 60: only clinics taking online tokens
+    directoryCities(),
   ]);
+  const popular = await Promise.all(cities.map(async (city) => ({ city, groups: (await specialtyGroupsIn(city)).sort((a, b) => b.count - a.count).slice(0, 8) })));
   const patientHome = patientUrl('/patient', host);
 
   const card = 'bg-surface-container-lowest rounded-2xl p-5 shadow-sm flex gap-4 items-start hover:shadow-md transition-shadow';
@@ -68,24 +72,24 @@ export default async function HomePage() {
       {/* Search */}
       <section className="max-w-6xl mx-auto px-4 pt-12 sm:pt-16 pb-10 flex flex-col items-center text-center gap-5">
         <span className="px-3 py-1 rounded-full bg-primary-fixed/50 text-on-primary-fixed-variant font-label-sm text-label-sm uppercase">
-          No app download · wait from anywhere
+          Doctor &amp; clinic directory · Free to search
         </span>
         <h1 className="font-headline-lg text-[34px] leading-[40px] sm:text-[44px] sm:leading-[50px] tracking-tight font-extrabold max-w-3xl">
-          Find your doctor. Join the queue from your phone.
+          Find the right doctor near you.
         </h1>
         <p className="font-body-lg text-body-lg text-on-surface-variant max-w-xl">
-          Search doctors and clinics, take a token, and see your live place in the queue — no crowded waiting room.
+          Doctors, clinics and hospitals with OPD timings, address and directions. Where a clinic offers online OPD booking, take your token from your phone and wait from home.
         </p>
         <HomeSearch />
-        {specialties.length > 0 && (
+        {groups.length > 0 && (
           <div className="flex flex-wrap justify-center gap-2 max-w-3xl">
-            {specialties.slice(0, 10).map((s) => (
+            {groups.slice(0, 10).map((g) => (
               <Link
-                key={s}
-                href={`/doctors?q=${encodeURIComponent(s)}`}
+                key={g.slug}
+                href={directoryPath(null, g.slug)}
                 className="h-9 px-3.5 inline-flex items-center rounded-full bg-surface-container-lowest shadow-sm font-label-md text-label-md text-on-surface-variant hover:text-primary"
               >
-                {s}
+                {g.name}
               </Link>
             ))}
           </div>
@@ -127,7 +131,7 @@ export default async function HomePage() {
       {clinics.length > 0 && (
         <section className="max-w-6xl mx-auto px-4 pb-14 flex flex-col gap-4">
           <div className="flex items-end justify-between gap-4">
-            <h2 className="font-headline-sm text-headline-sm">Clinics taking online tokens</h2>
+            <h2 className="font-headline-sm text-headline-sm">Clinics with online OPD booking</h2>
             <Link href="/clinics" className="font-label-md text-label-md text-primary whitespace-nowrap">See all →</Link>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -149,15 +153,40 @@ export default async function HomePage() {
         </section>
       )}
 
+      {/* Popular searches — real city / specialty pages, for patients and for search engines. */}
+      {popular.some((p) => p.groups.length) && (
+        <section className="max-w-6xl mx-auto px-4 pb-14 flex flex-col gap-5">
+          <h2 className="font-headline-sm text-headline-sm">Popular searches</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {popular.filter((p) => p.groups.length).map((p) => (
+              <div key={p.city} className="flex flex-col gap-2">
+                <h3 className="font-label-lg text-label-lg">
+                  <Link href={directoryPath(p.city)} className="hover:text-primary">Doctors in {p.city}</Link>
+                  <span className="text-on-surface-variant font-body-sm text-body-sm"> · </span>
+                  <Link href={`/clinics/in/${placeSlug(p.city)}`} className="font-body-sm text-body-sm text-primary">Clinics &amp; hospitals</Link>
+                </h3>
+                <ul className="flex flex-wrap gap-x-4 gap-y-1.5 font-body-sm text-body-sm text-on-surface-variant">
+                  {p.groups.map((g) => (
+                    <li key={g.slug}>
+                      <Link href={directoryPath(p.city, g.slug)} className="hover:text-primary">{g.plural} in {p.city}</Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* For clinics → the marketing page */}
       <section className="max-w-6xl mx-auto px-4 pb-16">
         <div className="rounded-3xl bg-primary text-on-primary p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center gap-4 justify-between">
           <div className="flex flex-col gap-1">
-            <h2 className="font-headline-sm text-headline-sm">Run a clinic?</h2>
-            <p className="font-body-md text-body-md opacity-90">Digital tokens, QR check-in and WhatsApp alerts for your patients. Free trial, no hardware.</p>
+            <h2 className="font-headline-sm text-headline-sm">Doctor or clinic owner?</h2>
+            <p className="font-body-md text-body-md opacity-90">Your listing is free. Add online OPD booking — patients take a token from their phone, with QR check-in and WhatsApp alerts. No hardware.</p>
           </div>
           <Link href="/for-clinics" className="h-12 px-6 inline-flex items-center justify-center gap-2 rounded-xl bg-surface-container-lowest text-primary font-label-lg text-label-lg shrink-0">
-            ClinicQ for clinics <Icon name="arrow_forward" className="text-[20px]" />
+            Online OPD booking <Icon name="arrow_forward" className="text-[20px]" />
           </Link>
         </div>
       </section>
@@ -165,7 +194,7 @@ export default async function HomePage() {
       <footer className="border-t border-surface-container">
         <div className="max-w-6xl mx-auto px-4 py-8 flex flex-col xl:flex-row gap-3 justify-between font-body-sm text-body-sm text-on-surface-variant">
           <p>
-            © {new Date().getFullYear()} ClinicQ · Digital OPD queues for Indian clinics · A product of{' '}
+            © {new Date().getFullYear()} ClinicQ · Doctor &amp; clinic directory with online OPD booking · A product of{' '}
             <a href={COMPANY_URL} target="_blank" rel="noreferrer" className="text-primary font-label-md text-label-md">{COMPANY_NAME}</a>
           </p>
           <div className="flex flex-wrap gap-x-4 gap-y-2">

@@ -19,12 +19,16 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   const clinic = await getClinic(params.slug);
   if (!clinic) return { title: 'Clinic not found — ClinicQ' };
   const place = [clinic.clinic_name, clinic.city].filter(Boolean).join(', ');
-  const title = `${place} — Doctors & Queue | ClinicQ`;
-  const description = clinic.tagline || clinic.about?.slice(0, 160) || `${clinic.doctors.length} doctor${clinic.doctors.length === 1 ? '' : 's'} at ${clinic.clinic_name}${clinic.city ? ` in ${clinic.city}` : ''}. Join the digital queue, no app download.`;
+  const title = `${place} — Doctors, Timings & Address | ClinicQ`;
+  // Decision 66: say plainly whether online OPD booking is available here.
+  const booking = clinic.booking_open ? 'Online OPD booking available — take your token from your phone.' : 'Address, timings and directions.';
+  const description = clinic.tagline || clinic.about?.slice(0, 160) || `${clinic.doctors.length} doctor${clinic.doctors.length === 1 ? '' : 's'} at ${clinic.clinic_name}${clinic.city ? ` in ${clinic.city}` : ''}. ${booking}`;
   return {
     title,
     description,
     alternates: { canonical: `/clinics/${params.slug}` },
+    // Decision 66: a clinic with no listed doctor isn't searchable — the page still opens by link.
+    ...(clinic.doctors.length === 0 ? { robots: { index: false, follow: true } } : {}),
     openGraph: { title, description, type: 'website' },
   };
 }

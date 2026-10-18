@@ -6,6 +6,8 @@ import { fileUrl, type DirectoryClinicProfile, type DirectoryDoctorProfile } fro
 import { ClinicLanding } from '@/components/landing/ClinicLanding';
 import { BrandLogo } from '@/components/brand/BrandLogo';
 import { patientUrl } from '@/lib/clinicHost';
+import { groupOf } from '@/lib/specialtyGroups';
+import { AskOnlineBooking } from '@/components/directory/AskOnlineBooking';
 
 // Public, server-rendered doctor profile — the actual target of clinicq.fit/doctors search results and
 // of Google search. Deliberately a server component (not 'use client' like the rest of the app) so
@@ -28,8 +30,10 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   const doctor = await getDoctor(params.slug);
   if (!doctor) return { title: 'Doctor not found — ClinicQ' };
   const place = [doctor.clinic_name, doctor.city].filter(Boolean).join(', ');
-  const title = `${doctor.name}${doctor.specialty ? ` — ${doctor.specialty}` : ''}${place ? ` in ${place}` : ''} | ClinicQ`;
-  const description = doctor.bio || `Book a digital queue token with ${doctor.name}${place ? ` at ${place}` : ''}. No app download, no waiting in line.`;
+  const specialty = groupOf(doctor.specialty)?.name ?? doctor.specialty;
+  const title = `${doctor.name}${specialty ? `, ${specialty}` : ''}${doctor.city ? ` in ${doctor.city}` : ''} — Timings, Address & Fees | ClinicQ`;
+  // Decision 66: whether online OPD booking is available is part of the description.
+  const description = `${doctor.name}${specialty ? `, ${specialty.toLowerCase()}` : ''}${place ? ` at ${place}` : ''}. ${doctor.booking_open ? 'Online OPD booking available — take your token from your phone, no app needed.' : 'Clinic address, OPD timings, phone and directions.'}${doctor.bio ? ` ${doctor.bio.slice(0, 80)}` : ''}`;
   return {
     title,
     description,
@@ -109,10 +113,11 @@ export default async function DoctorProfilePage({ params }: { params: { slug: st
             <p className="text-center font-body-sm text-body-sm text-on-surface-variant">No app download — instant QR check-in via ClinicQ.</p>
           </>
         ) : (
-          <p className="text-center font-body-sm text-body-sm text-on-surface-variant">
-            Online tokens aren&apos;t available for this clinic yet.{' '}
-            <Link href="/for-clinics" className="text-primary underline">Is this your clinic?</Link>
-          </p>
+          <div className="bg-surface-container-lowest rounded-2xl shadow-sm p-6 flex flex-col items-center text-center gap-3">
+            <p className="font-body-md text-body-md text-on-surface-variant">Online OPD booking isn&apos;t available for this doctor yet.</p>
+            <AskOnlineBooking doctorSlug={doctor.slug} />
+            <Link href={`/claim/${doctor.clinic_subdomain}`} className="font-body-sm text-body-sm text-primary underline">Is this your clinic?</Link>
+          </div>
         )}
       </div>
     </main>

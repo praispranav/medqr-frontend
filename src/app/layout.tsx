@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import { COMPANY_NAME, COMPANY_URL } from '@/components/support/contactInfo';
 import { headers } from 'next/headers';
 import './globals.css';
 
@@ -21,17 +22,16 @@ function siteUrl(): string {
 
 export async function generateMetadata(): Promise<Metadata> {
   const url = siteUrl();
-  const title = 'ClinicQ | Smart Clinic Queue Management & Digital OPD Tokens';
-  const description = 'Transform your clinic with ClinicQ. Offer patients digital tokens, live WhatsApp queue updates, and seamless check-ins. No app required.';
+  // Decision 66: ClinicQ is a doctor & clinic directory; online OPD booking is one of its products.
+  const title = 'ClinicQ | Find Doctors & Clinics Near You — Timings, Address & Online OPD Booking';
+  const description = 'Find doctors, clinics and hospitals near you with OPD timings, address and directions. Book an online OPD token at clinics that offer it — no app needed.';
 
   return {
     metadataBase: new URL(url),
     title,
     description,
-    keywords: 'clinic queue management system, digital OPD tokens, patient check-in software, doctor appointment system, smart clinic software',
-    alternates: {
-      canonical: '/',
-    },
+    keywords: 'doctors near me, doctor in Patna, clinic near me, hospitals in Patna, doctors in Sitamarhi, online OPD booking, OPD token, doctor timings',
+    // No site-wide canonical: each page sets its own (a layout canonical of '/' told Google every page was the home page).
     openGraph: {
       title,
       description,
@@ -74,14 +74,28 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-  "@context": "https://schema.org",
-  "@type": "SoftwareApplication",
-  "name": "ClinicQ",
-  "applicationCategory": "HealthApplication",
-  "operatingSystem": "Web",
-  "description": "Smart clinic queue management system enabling digital OPD tokens, live queue tracking, and automated patient alerts.",
-})
+            __html: JSON.stringify([
+              {
+                '@context': 'https://schema.org',
+                '@type': 'WebSite',
+                name: 'ClinicQ',
+                url: process.env.NEXT_PUBLIC_SITE_URL ?? 'https://clinicq.fit',
+                description: 'Doctor and clinic directory with online OPD booking at participating clinics.',
+                potentialAction: {
+                  '@type': 'SearchAction',
+                  target: { '@type': 'EntryPoint', urlTemplate: `${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://clinicq.fit'}/doctors?q={search_term_string}` },
+                  'query-input': 'required name=search_term_string',
+                },
+              },
+              {
+                '@context': 'https://schema.org',
+                '@type': 'Organization',
+                name: 'ClinicQ',
+                url: process.env.NEXT_PUBLIC_SITE_URL ?? 'https://clinicq.fit',
+                logo: `${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://clinicq.fit'}/icons/192`,
+                parentOrganization: { '@type': 'Organization', name: COMPANY_NAME, url: COMPANY_URL },
+              },
+            ]).replace(/</g, '\\u003c')
           }}
         />
         {/* Google Tag Manager */}

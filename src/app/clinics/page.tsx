@@ -11,9 +11,10 @@ export async function generateMetadata({ searchParams }: { searchParams: { q?: s
   const citySuffix = searchParams.city ? ` in ${searchParams.city}` : '';
   const q = searchParams.q ? ` matching "${searchParams.q}"` : '';
   return {
-    title: `Find a Clinic${citySuffix} — Digital OPD Queue | ClinicQ`,
-    description: `Search clinics${citySuffix}${q} offering ClinicQ's digital OPD token queue — no app download, live wait-time tracking.`,
-    alternates: { canonical: '/clinics' },
+    title: `Clinics & Hospitals${citySuffix || ' Near You'} — Doctors, Timings & Directions | ClinicQ`,
+    description: `Search clinics and hospitals${citySuffix}${q}: their doctors, address, OPD timings and directions. Book an online OPD token where the clinic offers it.`,
+    alternates: { canonical: searchParams.city ? `/clinics/in/${searchParams.city.toLowerCase().replace(/[^a-z0-9]+/g, '-')}` : '/clinics' },
+    ...(searchParams.q || searchParams.area ? { robots: { index: false, follow: true } } : {}),
   };
 }
 
@@ -40,9 +41,9 @@ export default function ClinicsIndexPage({ searchParams }: { searchParams: { q?:
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-7 sm:py-10 flex flex-col gap-6">
         <div>
           <h1 className="font-headline-lg text-headline-lg">
-            Find care near you
+            Clinics &amp; hospitals near you
           </h1>
-          <p className="font-body-md text-body-md text-on-surface-variant mt-1">Explore clinics and doctors. Get an online token at participating clinics.</p>
+          <p className="font-body-md text-body-md text-on-surface-variant mt-1">Find clinics and hospitals with their doctors, address and directions. Clinics with online OPD booking are shown first.</p>
         </div>
         <ClinicsSearch initialQ={searchParams.q} initialCity={searchParams.city} initialArea={searchParams.area} initialBookable={searchParams.bookable === '1'} initialToday={searchParams.today === '1'} />
       </div>

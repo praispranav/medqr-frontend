@@ -1,63 +1,37 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
-import { DoctorsSearch } from './DoctorsSearch';
-import { BrandLogo } from '@/components/brand/BrandLogo';
+import { DoctorDirectoryPage } from '@/components/directory/DoctorDirectoryPage';
+import { directoryPath } from '@/lib/directoryServer';
+import { groupBySlug } from '@/lib/specialtyGroups';
 
-export async function generateMetadata({ searchParams }: { searchParams: { q?: string; city?: string } }): Promise<Metadata> {
-  const specialty = searchParams.q ? searchParams.q.charAt(0).toUpperCase() + searchParams.q.slice(1) : 'Doctors';
-  const citySuffix = searchParams.city ? ` in ${searchParams.city}` : '';
+// Decision 66 — the doctor directory search. Filters are in the address (?q=&specialty=&city=&online=1);
+// a city / specialty filter points search engines at its clean landing page (/doctors/in/patna/dentist).
+type Params = { q?: string; specialty?: string; city?: string; online?: string };
 
+export async function generateMetadata({ searchParams }: { searchParams: Params }): Promise<Metadata> {
+  const group = groupBySlug(searchParams.specialty);
+  const city = searchParams.city?.trim() || null;
+  const what = group ? group.plural : 'Doctors';
+  const title = city || group ? `${what}${city ? ` in ${city}` : ' Near You'} — Timings & Online OPD Booking | ClinicQ` : 'Find a Doctor Near You — Doctor & Clinic Directory | ClinicQ';
   return {
-    title: `Best ${specialty}${citySuffix} - Book Online & Live Queue | ClinicQ`,
-    description: `Find ${specialty}${citySuffix}. Get digital tokens, track live OPD waiting times, and skip the waiting room with ClinicQ.`,
-    keywords: `Best ${specialty}${citySuffix}, online doctor appointment, live OPD status, digital token ${specialty}`,
-    alternates: { canonical: '/doctors' },
-    openGraph: {
-      title: `Book ${specialty} Appointments | ClinicQ`,
-      description: `Track live queues and book ${specialty}s instantly.`,
-    }
+    title,
+    description: `Search ${what.toLowerCase()}${city ? ` in ${city}` : ''} by name, specialty or city. See clinic address, OPD timings and directions, and book an online OPD token where available.`,
+    alternates: { canonical: directoryPath(city, group?.slug) },
+    // Free-text searches are for people, not for the index.
+    ...(searchParams.q ? { robots: { index: false, follow: true } } : {}),
   };
 }
 
-export default function DoctorsIndexPage({ searchParams }: { searchParams: { q?: string; city?: string } }) {
-
-  const schemaData = {
-    "@context": "https://schema.org",
-    "@type": "MedicalWebPage",
-    "name": "Find Best Doctors and Clinics | ClinicQ",
-    "description": "Browse doctors and their clinics. Online tokens are available at participating clinics.",
-    "audience": {
-      "@type": "Patient"
-    },
-    "about": {
-      "@type": "MedicalSpecialty",
-      "name": searchParams.q || "General"
-    }
-  };
-
+export default function DoctorsIndexPage({ searchParams }: { searchParams: Params }) {
+  const group = groupBySlug(searchParams.specialty);
+  // Old links used ?q=<specialty name> — treat a q that is exactly a specialty as that specialty.
+  const qGroup = !group && searchParams.q ? groupBySlug(searchParams.q.toLowerCase().replace(/[^a-z0-9]+/g, '-')) : null;
   return (
-    <main className="min-h-screen bg-surface">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaData).replace(/</g, '\\u003c') }}
-      />
-      <header className="border-b border-surface-container">
-        <div className="max-w-5xl mx-auto px-4 h-16 flex items-center gap-4">
-          <BrandLogo />
-          <Link href="/clinics" className="ml-auto font-label-md text-label-md text-on-surface-variant hover:text-on-surface">
-            Find a clinic →
-          </Link>
-        </div>
-      </header>
-      <div className="max-w-5xl mx-auto px-4 py-10 flex flex-col gap-6">
-        <div>
-          <h1 className="font-headline-lg text-headline-lg">
-            {searchParams.q ? `Best ${searchParams.q.charAt(0).toUpperCase() + searchParams.q.slice(1)}${searchParams.city ? ` in ${searchParams.city}` : ''}` : 'Find a doctor'}
-          </h1>
-          <p className="font-body-md text-body-md text-on-surface-variant mt-1">Search doctors by name, specialty or city and see their clinics. Online tokens are available at participating clinics.</p>
-        </div>
-        <DoctorsSearch initialQ={searchParams.q} initialCity={searchParams.city} />
-      </div>
-    </main>
+    <DoctorDirectoryPage
+      q={qGroup ? undefined : searchParams.q}
+      group={group ?? qGroup}
+      city={searchParams.city?.trim() || null}
+      bookable={searchParams.online === '1'}
+      landing={false}
+    />
   );
 }
