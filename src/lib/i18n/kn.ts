@@ -197,6 +197,8 @@ export const kn: Partial<Record<TranslationKey, string>> = {
   "otp_send_failed": "ಕೋಡ್ ಕಳುಹಿಸಲಾಗಲಿಲ್ಲ. ಇಂಟರ್ನೆಟ್ ಪರಿಶೀಲಿಸಿ.",
   "otp_verify_failed": "ಪರಿಶೀಲಿಸಲಾಗಲಿಲ್ಲ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.",
   "otp_test_mode": "ಪರೀಕ್ಷಾ ಮೋಡ್ (WhatsApp ಇನ್ನೂ ಸಂಪರ್ಕಗೊಂಡಿಲ್ಲ): ನಿಮ್ಮ ಕೋಡ್",
+  "otp_change_number": "ಸಂಖ್ಯೆ ಬದಲಿಸಿ",
+  "otp_privacy_note": "ಈ ಕ್ಲಿನಿಕ್‌ನ ಭೇಟಿ ಅಪ್‌ಡೇಟ್‌ಗಳಿಗಾಗಿ ಮಾತ್ರ ನಿಮ್ಮ ಸಂಖ್ಯೆ ಬಳಸುತ್ತೇವೆ. WhatsApp ಇಲ್ಲವೇ? ರಿಸೆಪ್ಶನ್ ಡೆಸ್ಕ್‌ನಲ್ಲಿ ಚೆಕ್-ಇನ್ ಮಾಡಿ.",
   "st_available": "ಲಭ್ಯ",
   "st_on_break": "ವಿರಾಮದಲ್ಲಿ",
   "st_later_today": "ಇಂದು ನಂತರ ಆರಂಭ",

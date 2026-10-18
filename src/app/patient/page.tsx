@@ -102,14 +102,6 @@ export default function PatientHomePage() {
     }
   };
 
-  const changeNumber = () => {
-    patientDevice.clear();
-    setVerified(false);
-    setSummary(null);
-    setSentTo(null);
-    setCode('');
-    setMobile('');
-  };
 
   return (
     <main className="min-h-screen bg-surface pb-16">
@@ -190,13 +182,6 @@ export default function PatientHomePage() {
           <LoadingPage />
         ) : (
           <>
-            <div className="flex items-center justify-between">
-              <p className="font-body-sm text-body-sm text-on-surface-variant">{patientDevice.get()?.mobile}</p>
-              <button onClick={changeNumber} className="font-label-md text-label-md text-primary">
-                {t('ph_change_number')}
-              </button>
-            </div>
-
             <section>
               <h2 className="font-label-lg text-label-lg text-on-surface-variant mb-2">{t('ph_live_tokens')}</h2>
               {summary.live.length === 0 ? (

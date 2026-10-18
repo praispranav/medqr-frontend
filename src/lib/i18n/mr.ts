@@ -197,6 +197,8 @@ export const mr: Partial<Record<TranslationKey, string>> = {
   "otp_send_failed": "कोड पाठवता आला नाही. इंटरनेट तपासा.",
   "otp_verify_failed": "पडताळणी झाली नाही. पुन्हा प्रयत्न करा.",
   "otp_test_mode": "टेस्ट मोड (WhatsApp अजून जोडलेले नाही): तुमचा कोड",
+  "otp_change_number": "नंबर बदला",
+  "otp_privacy_note": "आम्ही तुमचा नंबर फक्त या क्लिनिकच्या भेटीच्या माहितीसाठी वापरतो. WhatsApp नाही? रिसेप्शन डेस्कवर चेक-इन करा.",
   "st_available": "उपलब्ध",
   "st_on_break": "विश्रांतीवर",
   "st_later_today": "आज नंतर सुरू",

@@ -211,6 +211,8 @@ export const hi: Partial<Record<TranslationKey, string>> = {
   "otp_send_failed": "कोड नहीं भेजा जा सका। इंटरनेट जाँचें।",
   "otp_verify_failed": "पुष्टि नहीं हो सकी। फिर से कोशिश करें।",
   "otp_test_mode": "टेस्ट मोड (WhatsApp अभी जुड़ा नहीं): आपका कोड है",
+  "otp_change_number": "नंबर बदलें",
+  "otp_privacy_note": "हम आपका नंबर केवल इस क्लिनिक की विज़िट की जानकारी के लिए उपयोग करते हैं। WhatsApp नहीं है? रिसेप्शन डेस्क से चेक-इन करवाएं।",
   "st_available": "उपलब्ध",
   "st_on_break": "ब्रेक पर",
   "st_later_today": "आज बाद में शुरू",

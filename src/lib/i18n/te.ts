@@ -197,6 +197,8 @@ export const te: Partial<Record<TranslationKey, string>> = {
   "otp_send_failed": "కోడ్ పంపలేకపోయాము. ఇంటర్నెట్ చూడండి.",
   "otp_verify_failed": "ధృవీకరించలేకపోయాము. మళ్ళీ ప్రయత్నించండి.",
   "otp_test_mode": "టెస్ట్ మోడ్ (WhatsApp ఇంకా కనెక్ట్ కాలేదు): మీ కోడ్",
+  "otp_change_number": "నంబర్ మార్చండి",
+  "otp_privacy_note": "ఈ క్లినిక్ సందర్శన నవీకరణల కోసం మాత్రమే మీ నంబర్‌ను ఉపయోగిస్తాము. WhatsApp లేదా? రిసెప్షన్ డెస్క్‌లో చెక్-ఇన్ చేయండి.",
   "st_available": "అందుబాటులో",
   "st_on_break": "విరామంలో",
   "st_later_today": "ఈ రోజు తర్వాత మొదలు",

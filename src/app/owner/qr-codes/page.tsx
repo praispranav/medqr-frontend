@@ -128,7 +128,7 @@ function QrCodes({ api }: { api: AdminApi }) {
     setMsg(null);
     try {
       const nodes = selectedCodes.map((c) => refFor(c.id).current).filter((n): n is HTMLDivElement => !!n);
-      await downloadPostersPdf(nodes, batchKind, `medqr-qr-codes-${selectedCodes.length}-${batchKind}.pdf`);
+      await downloadPostersPdf(nodes, batchKind, `clinicq-qr-codes-${selectedCodes.length}-${batchKind}.pdf`);
     } catch (e) {
       setMsg({ kind: 'error', text: `Couldn't create the PDF: ${(e as Error).message}` });
     } finally {
@@ -316,7 +316,7 @@ function QrCodes({ api }: { api: AdminApi }) {
             {previewId === q.id && preview && (
               <div className="px-4 pb-4 grid grid-cols-1 md:grid-cols-3 gap-4">
                 {POSTER_FORMATS.map((f) => (
-                  <PosterCard key={f.key} kind={f.key} content={posterContentFor(preview)} fileBase={`medqr-MQ-${preview.code}`} />
+                  <PosterCard key={f.key} kind={f.key} content={posterContentFor(preview)} fileBase={`clinicq-MQ-${preview.code}`} />
                 ))}
               </div>
             )}

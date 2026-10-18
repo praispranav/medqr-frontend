@@ -83,7 +83,7 @@ export function ArrivalQrCard({
       {content && (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
           {POSTER_FORMATS.map((f) => (
-            <PosterCard key={`${f.key}-${qr!.code}`} kind={f.key} content={content} fileBase={`medqr-arrival-${qr!.subdomain}`} />
+            <PosterCard key={`${f.key}-${qr!.code}`} kind={f.key} content={content} fileBase={`clinicq-arrival-${qr!.subdomain}`} />
           ))}
         </div>
       )}

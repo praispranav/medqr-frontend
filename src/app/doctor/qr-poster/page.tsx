@@ -111,7 +111,7 @@ function QrSuite({ tenant, doctor }: { tenant: Tenant; doctor: DoctorToday }) {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
           {POSTER_FORMATS.map((f) => (
-            <PosterCard key={f.key} kind={f.key} content={clinicPoster} fileBase={`medqr-${tenant.subdomain}-${doctor.name.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}`} />
+            <PosterCard key={f.key} kind={f.key} content={clinicPoster} fileBase={`clinicq-${tenant.subdomain}-${doctor.name.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}`} />
           ))}
         </div>
       </section>
@@ -168,7 +168,7 @@ function QrSuite({ tenant, doctor }: { tenant: Tenant; doctor: DoctorToday }) {
             {open && (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
                 {POSTER_FORMATS.map((f) => (
-                  <PosterCard key={f.key} kind={f.key} content={posterContentFor(open)} fileBase={`medqr-MQ-${open.code}`} />
+                  <PosterCard key={f.key} kind={f.key} content={posterContentFor(open)} fileBase={`clinicq-MQ-${open.code}`} />
                 ))}
               </div>
             )}

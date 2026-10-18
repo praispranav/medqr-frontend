@@ -1317,7 +1317,7 @@ function VerifyPhone({
                 }}
                 className="text-on-surface-variant"
               >
-                Change number
+                {t('otp_change_number')}
               </button>
               <button type="button" disabled={resendIn > 0 || busy} onClick={send} className="text-primary disabled:text-outline">
                 {resendIn > 0 ? t('otp_resend_in', { s: resendIn }) : t('otp_resend')}
@@ -1330,7 +1330,7 @@ function VerifyPhone({
 
         <p className="font-body-sm text-body-sm text-on-surface-variant flex items-start gap-1.5 mt-2">
           <Icon name="lock" className="text-[16px] mt-0.5" />
-          We only use your number for this clinic&apos;s visit updates. No WhatsApp? Ask the reception desk to check you in.
+          {t('otp_privacy_note')}
         </p>
       </main>
     </div>

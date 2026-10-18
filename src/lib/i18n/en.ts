@@ -226,6 +226,8 @@ export const en = {
   "otp_send_failed": "Couldn't send the code. Check your connection.",
   "otp_verify_failed": "Couldn't verify. Try again.",
   "otp_test_mode": "Test mode (WhatsApp not connected yet): your code is",
+  "otp_change_number": "Change number",
+  "otp_privacy_note": "We only use your number for this clinic's visit updates. No WhatsApp? Ask the reception desk to check you in.",
   "st_available": "Available",
   "st_on_break": "On break",
   "st_later_today": "Starts later today",

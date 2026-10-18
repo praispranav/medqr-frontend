@@ -197,6 +197,8 @@ export const gu: Partial<Record<TranslationKey, string>> = {
   "otp_send_failed": "કોડ મોકલી શકાયો નહીં. ઇન્ટરનેટ તપાસો.",
   "otp_verify_failed": "ચકાસી શકાયું નહીં. ફરી પ્રયાસ કરો.",
   "otp_test_mode": "ટેસ્ટ મોડ (WhatsApp હજી જોડાયું નથી): તમારો કોડ",
+  "otp_change_number": "નંબર બદલો",
+  "otp_privacy_note": "અમે તમારો નંબર ફક્ત આ ક્લિનિકની મુલાકાતની માહિતી માટે ઉપયોગ કરીએ છીએ. WhatsApp નથી? રિસેપ્શન ડેસ્ક પર ચેક-ઇન કરો.",
   "st_available": "ઉપલબ્ધ",
   "st_on_break": "વિરામ પર",
   "st_later_today": "આજે પછી શરૂ",

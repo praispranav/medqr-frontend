@@ -128,7 +128,7 @@ export function QrStandees({
       {(doctor || wholeClinic) && open && (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
           {POSTER_FORMATS.map((f) => (
-            <PosterCard key={f.key} kind={f.key} content={posterContentFor(open)} fileBase={`medqr-MQ-${open.code}`} />
+            <PosterCard key={f.key} kind={f.key} content={posterContentFor(open)} fileBase={`clinicq-MQ-${open.code}`} />
           ))}
         </div>
       )}

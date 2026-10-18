@@ -16,7 +16,7 @@ self.addEventListener('push', (event) => {
   event.waitUntil(
     self.registration.showNotification(n.title || 'ClinicQ', {
       body: n.body || '',
-      tag: data.tag || n.tag || 'medqr',
+      tag: data.tag || n.tag || 'clinicq',
       renotify: true,
       requireInteraction: true,
       data: { url },
