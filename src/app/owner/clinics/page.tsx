@@ -19,7 +19,7 @@ const PAGE_SIZE = 30;
 function Clinics({ api, referrer }: { api: AdminApi; referrer: boolean }) {
   const router = useRouter();
   const [list, setList] = useState<AdminTenant[] | null>(null);
-  const [product, setProduct] = useState('qr-token-system');
+  const [picked, setPicked] = useState<string[]>([]); // empty = all products
   const [products, setProducts] = useState([{ key: 'qr-token-system', name: 'QR Token System' }]);
   useEffect(() => {
     if (!referrer) api.directoryProducts().then(setProducts).catch((e: Error) => setError(e.message));
@@ -44,7 +44,7 @@ function Clinics({ api, referrer }: { api: AdminApi; referrer: boolean }) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const pageOpts = { q: search.trim() || undefined, product: referrer ? undefined : product, limit: PAGE_SIZE };
+  const pageOpts = { q: search.trim() || undefined, product: referrer || !picked.length ? undefined : picked.join(','), limit: PAGE_SIZE };
   useEffect(() => {
     const id = ++pageId.current;
     setList(null);
@@ -56,7 +56,7 @@ function Clinics({ api, referrer }: { api: AdminApi; referrer: boolean }) {
     }, 250);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [api, search, product, referrer]);
+  }, [api, search, picked.join(','), referrer]);
 
   const loadMore = async () => {
     if (!list || !hasMore || loadingMore) return;
@@ -187,16 +187,16 @@ function Clinics({ api, referrer }: { api: AdminApi; referrer: boolean }) {
       <label className="flex flex-col gap-1 flex-1 min-w-[220px] text-label-md">Search clinics
         <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Name, clinic code or city" className="h-12 rounded-xl bg-surface-container-lowest px-3 font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-primary/30" />
       </label>
-      {!referrer && <label className="flex flex-col gap-1 self-start text-label-md">Product
-        <select aria-label="Product" value={product} onChange={e => setProduct(e.target.value)} className="h-12 rounded-xl bg-surface-container-lowest px-3">
-          {products.map(p => <option key={p.key} value={p.key}>{p.name}</option>)}
-          <option value="all">All products</option>
-        </select>
-      </label>}
+      {!referrer && <div className="flex flex-col gap-1 text-label-md">Products
+        <div className="flex flex-wrap gap-2">
+          <button type="button" onClick={() => setPicked([])} className={`h-10 px-3 rounded-full ${!picked.length ? 'bg-primary text-on-primary' : 'bg-surface-container-lowest'}`}>All products</button>
+          {products.map(p => <button key={p.key} type="button" aria-pressed={picked.includes(p.key)} onClick={() => setPicked(picked.includes(p.key) ? picked.filter(k => k !== p.key) : [...picked, p.key])} className={`h-10 px-3 rounded-full ${picked.includes(p.key) ? 'bg-primary text-on-primary' : 'bg-surface-container-lowest'}`}>{p.name}</button>)}
+        </div>
+      </div>}
       </div>
       <section className="bg-surface-container-lowest rounded-2xl shadow-sm overflow-hidden">
         {list === null && !error && <p className="p-5 font-body-md text-body-md text-on-surface-variant">Loading…</p>}
-        {visibleClinics?.length === 0 && <p className="p-5 font-body-md text-body-md text-on-surface-variant">{search.trim() ? 'No clinics match this search.' : referrer || product === 'all' ? 'No clinics yet — add the first one above.' : 'No clinics match this product.'}</p>}
+        {visibleClinics?.length === 0 && <p className="p-5 font-body-md text-body-md text-on-surface-variant">{search.trim() ? 'No clinics match this search.' : referrer || !picked.length ? 'No clinics yet — add the first one above.' : 'No clinics match this product.'}</p>}
         {visibleClinics?.map((t) => (
           <Link key={t.id} href={`/owner/clinics/${t.id}`} className="flex items-center gap-4 px-5 py-4 border-b border-surface-container last:border-0 hover:bg-surface-container-low">
             <div className="w-10 h-10 rounded-xl bg-primary-fixed/50 text-primary flex items-center justify-center shrink-0">

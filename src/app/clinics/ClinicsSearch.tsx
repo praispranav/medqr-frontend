@@ -133,6 +133,7 @@ function ClinicCard({ clinic: c, host }: { clinic: DirectoryClinicSummary; host:
     <div className="flex flex-col gap-3">
     <div className="flex items-start gap-3">
       <span className="w-11 h-11 shrink-0 rounded-xl bg-primary-fixed/40 text-primary flex items-center justify-center"><Icon name="local_hospital" className="text-2xl" /></span>
+      <Icon name="chevron_right" className="order-last ml-auto self-center text-[28px] text-on-surface-variant" aria-hidden />
       <div className="min-w-0">
         <Link href={href} className="font-headline text-headline-sm hover:text-primary hover:underline break-words after:absolute after:inset-0 after:rounded-2xl">{c.clinic_name}</Link>
         {(c.address || c.city) && <p className="mt-1 text-body-md text-on-surface-variant flex gap-1.5"><Icon name="location_on" className="text-lg shrink-0" /><span className="line-clamp-2">{c.address}{c.address && c.city && !c.address.toLowerCase().includes(c.city.toLowerCase()) ? `, ${c.city}` : !c.address ? c.city : ''}</span></p>}
@@ -147,7 +148,6 @@ function ClinicCard({ clinic: c, host }: { clinic: DirectoryClinicSummary; host:
     </div>
     <div className="relative z-10 mt-auto md:my-auto pt-1 flex flex-col gap-2">
       {c.booking_open && c.subdomain && <Link href={patientUrl(`/patient/${encodeURIComponent(c.subdomain)}`, host)} className="min-h-12 rounded-xl bg-primary text-on-primary text-label-lg flex items-center justify-center gap-2">Get a token<Icon name="arrow_forward" className="text-lg" /></Link>}
-      <Link href={href} className={`min-h-12 rounded-xl text-label-lg flex items-center justify-center gap-2 ${c.booking_open ? 'border border-primary/30 text-primary' : 'bg-primary text-on-primary'}`}>View clinic &amp; doctors<Icon name="arrow_forward" className="text-lg" /></Link>
       <div className="flex items-center gap-3 justify-between">
         {c.public_phone ? <a href={`tel:${c.public_phone.replace(/[^+\d]/g, '')}`} className="min-h-11 inline-flex items-center gap-1.5 text-label-md text-primary"><Icon name="call" className="text-lg" />Call clinic</a> : <span />}
         {directions && <a href={directions} target="_blank" rel="noopener noreferrer" className="min-h-11 inline-flex items-center gap-1.5 text-label-md text-primary"><Icon name="near_me" className="text-lg" />Directions</a>}
