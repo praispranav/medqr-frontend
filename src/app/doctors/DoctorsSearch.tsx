@@ -7,6 +7,7 @@ import { Icon } from '@/components/patient/ui';
 import { AskOnlineBooking } from '@/components/directory/AskOnlineBooking';
 import { groupOf } from '@/lib/specialtyGroups';
 import { InfiniteFooter, useInfiniteScroll } from '@/lib/useInfiniteScroll';
+import { nearestDirectoryCity } from '@/lib/nearestCity';
 
 // A screenful at a time; the next page loads as the visitor scrolls near the end (infinite scroll).
 export const DOCTORS_PAGE_SIZE = 24;
@@ -46,8 +47,24 @@ export function DoctorsSearch({
   const firstRun = useRef(!!initialResults);
   const filters = { q: q.trim() || undefined, group: group || undefined, city: city || undefined, bookable: bookable ? '1' : undefined };
 
+  const [nearMe, setNearMe] = useState(false);
   useEffect(() => {
-    api.directoryCities().then(setCities).catch(() => undefined);
+    api
+      .directoryCities()
+      .then((list) => {
+        setCities(list);
+        // Decision 67: on the plain /doctors page, open on the visitor's nearest city (browser location, free).
+        if (syncUrl && !initialCity && !initialQ && !initialGroup) {
+          nearestDirectoryCity(list).then((c) => {
+            if (c) {
+              setCity((cur) => cur || c);
+              setNearMe(true);
+            }
+          });
+        }
+      })
+      .catch(() => undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   useEffect(() => {
     api.directorySpecialtyGroups(city || undefined).then(setGroups).catch(() => undefined);
@@ -132,6 +149,7 @@ export function DoctorsSearch({
             ))}
           </select>
         </div>
+        {nearMe && city && <p className="font-body-sm text-body-sm text-on-surface-variant flex items-center gap-1"><Icon name="near_me" className="text-[16px] text-primary" /> Showing doctors near you in {city}</p>}
         <label className="self-start flex items-center gap-2 font-label-md text-label-md text-on-surface cursor-pointer">
           <input type="checkbox" checked={bookable} onChange={(e) => setBookable(e.target.checked)} className="w-4 h-4" />
           Only doctors with online OPD booking
