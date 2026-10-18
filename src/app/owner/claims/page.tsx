@@ -20,6 +20,7 @@ function Claims({ api }: { api: AdminApi }) {
   const [status, setStatus] = useState('new');
   const [rows, setRows] = useState<ListingClaimView[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [logins, setLogins] = useState<Record<string, { username: string; setup_link: string; whatsapp: string; mobile: string; name: string }>>({});
 
   useEffect(() => {
     setRows(null);
@@ -31,7 +32,9 @@ function Claims({ api }: { api: AdminApi }) {
     if (!window.confirm(approve ? `Approve — ${what}?` : `Reject this request from ${c.name}?`)) return;
     try {
       const saved = await api.decideClaim(c.id, approve);
-      setRows((r) => (status === 'new' ? (r ?? []).filter((x) => x.id !== c.id) : (r ?? []).map((x) => (x.id === c.id ? { ...x, ...saved, documents: x.documents } : x))));
+      // Decision 67: an approved claim gets a clinic-admin login; show it so the link can be shared by hand too.
+      if (saved.login) setLogins((l) => ({ ...l, [c.id]: { ...saved.login!, mobile: c.mobile, name: c.name } }));
+      setRows((r) => (status === 'new' && !saved.login ? (r ?? []).filter((x) => x.id !== c.id) : (r ?? []).map((x) => (x.id === c.id ? { ...x, ...saved, documents: x.documents } : x))));
     } catch (e) {
       setError((e as Error).message);
     }
@@ -77,6 +80,22 @@ function Claims({ api }: { api: AdminApi }) {
               </a>
             ))}
           </div>
+          {logins[c.id] && (
+            <div className="rounded-xl bg-primary-fixed/30 p-3 flex flex-col gap-2 font-body-md text-body-md">
+              <p>
+                Clinic-admin login created: <strong>{logins[c.id].username}</strong> (or their mobile {logins[c.id].mobile}).{' '}
+                {logins[c.id].whatsapp === 'sent' ? 'Sign-in link sent on WhatsApp.' : 'WhatsApp not sent — share the link below.'}
+              </p>
+              <a
+                href={`https://wa.me/91${logins[c.id].mobile}?text=${encodeURIComponent(`Hello ${logins[c.id].name}, your request to manage your clinic on ClinicQ is approved. Set your password and sign in here: ${logins[c.id].setup_link}`)}`}
+                target="_blank"
+                rel="noreferrer"
+                className="self-start h-10 px-4 rounded-xl bg-[#25D366] text-white font-label-md text-label-md inline-flex items-center"
+              >
+                Share sign-in link on WhatsApp
+              </a>
+            </div>
+          )}
           {c.status === 'new' ? (
             <div className="flex gap-2">
               <button onClick={() => decide(c, true)} className="h-10 px-4 rounded-xl bg-primary text-on-primary font-label-md text-label-md">Approve</button>
@@ -85,7 +104,7 @@ function Claims({ api }: { api: AdminApi }) {
           ) : (
             <p className="font-body-sm text-body-sm text-on-surface-variant">
               {c.status === 'approved' ? 'Approved' : 'Rejected'}{c.decided_at ? ` on ${new Date(c.decided_at).toLocaleDateString('en-IN')}` : ''}{c.admin_note ? ` — ${c.admin_note}` : ''}
-              {c.status === 'approved' && c.kind === 'claim' && <> · <Link href={`/owner/clinics/${c.tenant_id}`} className="text-primary">create their login</Link></>}
+              {c.status === 'approved' && c.kind === 'claim' && <> · <Link href={`/owner/clinics/${c.tenant_id}`} className="text-primary">open clinic</Link></>}
             </p>
           )}
         </article>

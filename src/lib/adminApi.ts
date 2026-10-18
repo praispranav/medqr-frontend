@@ -222,7 +222,7 @@ export const adminApi = (key: string) => ({
   // Decision 64 — claim / removal requests (super admin).
   claims: (status: string) => request<ListingClaimView[]>(key, `/claims?status=${encodeURIComponent(status)}`),
   decideClaim: (id: string, approve: boolean, note?: string) =>
-    request<ListingClaimView>(key, `/claims/${id}/${approve ? 'approve' : 'reject'}`, { method: 'POST', body: JSON.stringify({ note }) }),
+    request<ListingClaimView & { login?: { username: string; setup_link: string; whatsapp: string } }>(key, `/claims/${id}/${approve ? 'approve' : 'reject'}`, { method: 'POST', body: JSON.stringify({ note }) }),
   claimDocumentUrl: (id: string, index: number) => `${apiBase()}/owner/claims/${id}/documents/${index}`,
   /** One page of Owner › Clinics (search + product filter), so 1,000+ clinics never load at once. */
   tenantsPage: (opts: { q?: string; product?: string; limit: number; offset: number }) =>
