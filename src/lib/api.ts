@@ -795,6 +795,11 @@ export interface PayoutView {
 export type SetupTarget = 'hours' | 'profile' | 'fee' | 'clinic_details' | 'online_payments' | 'billing' | 'password';
 export type SetupConfirmItem = 'hours' | 'fee' | 'hours_na' | 'fee_na';
 
+/** Decision 67: the same username / mobile has logins at several clinics — pick one. */
+export interface LoginChoice {
+  choose: { user_id: string; name: string; role: string; clinic_code: string; clinic_name: string }[];
+}
+
 export interface SetupItem {
   key: string;
   scope: 'clinic' | 'doctor';
@@ -836,8 +841,12 @@ export const api = {
   myQrCodes: () => request<QrCodeView[]>('/qr-codes/mine'),
 
   // Staff login (reception and doctors have separate accounts)
-  login: (body: { clinic: string; username: string; password: string }) =>
-    request<Me>('/auth/login', { method: 'POST', body: JSON.stringify(body) }),
+  login: (body: { clinic?: string; username: string; password: string; user_id?: string }) =>
+    request<Me | LoginChoice>('/auth/login', { method: 'POST', body: JSON.stringify(body) }),
+  // Decision 67 — WhatsApp code sign-in / forgot password.
+  staffOtpStart: (mobile: string) => request<{ sent: true; dev_code?: string }>('/auth/otp/start', { method: 'POST', body: JSON.stringify({ mobile }) }),
+  staffOtpVerify: (body: { mobile: string; code: string; user_id?: string; forgot?: boolean }) =>
+    request<Me | LoginChoice>('/auth/otp/verify', { method: 'POST', body: JSON.stringify(body) }),
   demoLogin: () => request<Me>('/auth/demo-login', { method: 'POST' }),
   logout: () => request('/auth/logout', { method: 'POST' }),
   me: () => request<Me>('/auth/me'),

@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { api, ApiError } from '@/lib/api';
+import { api, ApiError, type LoginChoice, type Me } from '@/lib/api';
 import { HOME_FOR_ROLE } from '@/lib/staffRoutes';
 import { apiBase, clinicFromHost, rootOf, ROOT_DOMAIN } from '@/lib/clinicHost';
 import { useHost } from '@/lib/useHost';
@@ -140,40 +140,73 @@ function LoginForm() {
     setRecentClinics(loadRecentClinics());
   };
 
-  const submit = async () => {
+  // Decision 67: sign in with username or mobile + password, or a WhatsApp code; no clinic code needed.
+  const [mode, setMode] = useState<'password' | 'code'>('password');
+  const [forgot, setForgot] = useState(false);
+  const [code, setCode] = useState('');
+  const [codeSent, setCodeSent] = useState(false);
+  const [choices, setChoices] = useState<LoginChoice['choose'] | null>(null);
+
+  const finish = (me: Me) => {
+    try {
+      localStorage.setItem(LAST_CLINIC_KEY, me.tenant.subdomain);
+    } catch {
+      /* ignore */
+    }
+    rememberClinic(me.tenant.subdomain);
+    // Decision 15: a random or just-reset password must be changed before anything else.
+    if (me.user.must_change_password) {
+      router.replace(`/change-password?next=${encodeURIComponent(params.get('next') ?? HOME_FOR_ROLE[me.user.role])}`);
+      return;
+    }
+    const next = params.get('next');
+    // Only follow ?next= to a same-site path the role can actually use.
+    const allowed =
+      me.user.role === 'doctor'
+        ? ['/doctor/', '/q/', ...(me.user.is_owner ? ['/manage'] : [])]
+        : me.user.role === 'owner'
+          ? ['/manage']
+          : ['/reception'];
+    router.replace(next && allowed.some((a) => next.startsWith(a)) ? next : HOME_FOR_ROLE[me.user.role]);
+  };
+
+  const run = async (fn: () => Promise<Me | LoginChoice>) => {
     setBusy(true);
     setError(null);
     try {
-      const me = await api.login({
-        clinic: clinic.trim(),
-        username: username.trim(),
-        password,
-      });
-      try {
-        localStorage.setItem(LAST_CLINIC_KEY, me.tenant.subdomain);
-      } catch {
-        /* ignore */
-      }
-      rememberClinic(me.tenant.subdomain);
-      // Decision 15: a random or just-reset password must be changed before anything else.
-      if (me.user.must_change_password) {
-        router.replace(`/change-password?next=${encodeURIComponent(params.get('next') ?? HOME_FOR_ROLE[me.user.role])}`);
+      const r = await fn();
+      if ('choose' in r) {
+        setChoices(r.choose);
+        setBusy(false);
         return;
       }
-      const next = params.get('next');
-      // Only follow ?next= to a same-site path the role can actually use.
-      const allowed =
-        me.user.role === 'doctor'
-          ? ['/doctor/', '/q/', ...(me.user.is_owner ? ['/manage'] : [])]
-          : me.user.role === 'owner'
-            ? ['/manage']
-            : ['/reception'];
-      router.replace(next && allowed.some((a) => next.startsWith(a)) ? next : HOME_FOR_ROLE[me.user.role]);
+      finish(r);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Can't reach ClinicQ. Check your connection.");
       setBusy(false);
     }
   };
+
+  const submit = (userId?: string) =>
+    mode === 'password'
+      ? run(() => api.login({ clinic: hostClinic?.code, username: username.trim(), password, user_id: userId }))
+      : run(() => api.staffOtpVerify({ mobile: username.trim(), code, user_id: userId, forgot }));
+
+  const sendCode = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const r = await api.staffOtpStart(username.trim());
+      setCodeSent(true);
+      if (r.dev_code) setCode(r.dev_code);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Can't reach ClinicQ. Check your connection.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const field = 'h-12 rounded-xl bg-surface-container-low px-3 font-body-lg text-body-lg focus:outline-none focus:ring-2 focus:ring-primary/30';
 
   return (
     <main className="min-h-screen flex items-center justify-center bg-surface p-4">
@@ -197,110 +230,90 @@ function LoginForm() {
           </p>
         </div>
 
-        {hostClinic ? (
+        {hostClinic && (
           <div className="flex items-center gap-3 bg-surface-container-low rounded-xl px-3 py-2.5">
             <Icon name="local_hospital" className="text-[22px] text-primary" />
-            <div className="flex-1 min-w-0">
-              <p className="font-label-lg text-label-lg text-on-surface truncate">{hostClinic.name}</p>
-              <p className="font-body-sm text-body-sm text-on-surface-variant truncate">Clinic code: {hostClinic.code}</p>
-            </div>
-            <button type="button" onClick={() => setHostClinic(null)} className="font-label-md text-label-md text-primary shrink-0">
-              Change
-            </button>
+            <p className="flex-1 min-w-0 font-label-lg text-label-lg text-on-surface truncate">{hostClinic.name}</p>
+          </div>
+        )}
+
+        {choices ? (
+          <div className="flex flex-col gap-2">
+            <p className="font-label-lg text-label-lg">Which clinic?</p>
+            {choices.map((c) => (
+              <button
+                key={c.user_id}
+                type="button"
+                disabled={busy}
+                onClick={() => submit(c.user_id)}
+                className="text-left rounded-xl bg-surface-container-low px-3 py-3 flex items-center gap-3 hover:bg-surface-container disabled:opacity-50"
+              >
+                <Icon name="local_hospital" className="text-[22px] text-primary" />
+                <span className="flex-1 min-w-0">
+                  <span className="block font-label-lg text-label-lg truncate">{c.clinic_name}</span>
+                  <span className="block font-body-sm text-body-sm text-on-surface-variant capitalize">{c.name} · {c.role}</span>
+                </span>
+                <Icon name="chevron_right" className="text-on-surface-variant" />
+              </button>
+            ))}
+            <button type="button" onClick={() => setChoices(null)} className="font-label-md text-label-md text-primary self-start">Back</button>
           </div>
         ) : (
-          <label className="flex flex-col gap-1 relative">
-            <span className="font-label-md text-label-md">Clinic code</span>
-            <div className="flex items-center bg-surface-container-low rounded-xl px-3 h-12 focus-within:ring-2 focus-within:ring-primary/30">
+          <>
+            {forgot && <p className="font-body-md text-body-md text-on-surface-variant">We&apos;ll send a code to your mobile on WhatsApp. After signing in you&apos;ll set a new password.</p>}
+            <label className="flex flex-col gap-1">
+              <span className="font-label-md text-label-md">{mode === 'code' ? 'Mobile number' : 'Username or mobile number'}</span>
               <input
-                value={clinic}
+                ref={usernameRef}
+                autoFocus={!params.get('username')}
+                value={username}
                 onChange={(e) => {
-                  setClinic(e.target.value.toLowerCase());
-                  setShowSuggestions(true);
-                  setHighlighted(0);
-                }}
-                onFocus={() => setShowSuggestions(true)}
-                onBlur={() => setTimeout(() => setShowSuggestions(false), 120)}
-                onKeyDown={(e) => {
-                  if (!showSuggestions || suggestions.length === 0) return;
-                  if (e.key === 'ArrowDown') {
-                    e.preventDefault();
-                    setHighlighted((i) => (i + 1) % suggestions.length);
-                  } else if (e.key === 'ArrowUp') {
-                    e.preventDefault();
-                    setHighlighted((i) => (i - 1 + suggestions.length) % suggestions.length);
-                  } else if (e.key === 'Enter') {
-                    e.preventDefault();
-                    pickSuggestion(suggestions[highlighted]);
-                  } else if (e.key === 'Escape') {
-                    setShowSuggestions(false);
-                  }
+                  setUsername(e.target.value.toLowerCase());
+                  setCodeSent(false);
                 }}
                 autoCapitalize="none"
-                autoCorrect="off"
-                autoComplete="off"
-                spellCheck={false}
-                inputMode="text"
-                placeholder="drkumar"
-                role="combobox"
-                aria-expanded={showSuggestions && suggestions.length > 0}
-                aria-autocomplete="list"
-                className="flex-1 min-w-0 bg-transparent font-body-lg text-body-lg focus:outline-none"
+                autoComplete="username"
+                inputMode={mode === 'code' ? 'tel' : 'text'}
+                placeholder={mode === 'code' ? '10-digit mobile' : 'e.g. ravi or 98765 43210'}
+                className={field}
               />
-              <span className="font-body-md text-body-md text-on-surface-variant">.{codeSuffix}</span>
-            </div>
-            {showSuggestions && suggestions.length > 0 && (
-              <ul className="absolute left-0 right-0 top-full mt-1 z-10 bg-surface-container-lowest rounded-xl shadow-md overflow-hidden border border-surface-container-low">
-                {suggestions.map((code, i) => (
-                  <li key={code}>
-                    <button
-                      type="button"
-                      onMouseDown={(e) => e.preventDefault()}
-                      onClick={() => pickSuggestion(code)}
-                      className={`w-full text-left px-3 min-h-11 flex items-center gap-2 font-body-lg text-body-lg ${
-                        i === highlighted ? 'bg-surface-container-low' : ''
-                      }`}
-                    >
-                      <Icon name="history" className="text-[18px] text-on-surface-variant" />
-                      {code}
-                    </button>
-                  </li>
-                ))}
-              </ul>
+            </label>
+            {mode === 'password' ? (
+              <label className="flex flex-col gap-1">
+                <span className="font-label-md text-label-md">Password</span>
+                <input type="password" autoFocus={!!params.get('username')} value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" className={field} />
+              </label>
+            ) : codeSent ? (
+              <label className="flex flex-col gap-1">
+                <span className="font-label-md text-label-md">Code from WhatsApp</span>
+                <input value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))} inputMode="numeric" autoComplete="one-time-code" placeholder="6 digits" className={field} />
+              </label>
+            ) : null}
+            {error && <p className="font-body-sm text-body-sm text-error">{error}</p>}
+            {mode === 'code' && !codeSent ? (
+              <button type="button" onClick={sendCode} disabled={busy || username.replace(/\D/g, '').length < 10} className="h-12 bg-primary text-on-primary rounded-xl font-label-lg text-label-lg disabled:opacity-40">
+                {busy ? 'Sending…' : 'Send code on WhatsApp'}
+              </button>
+            ) : (
+              <button
+                disabled={busy || !username.trim() || (mode === 'password' ? !password : code.length !== 6)}
+                className="h-12 bg-primary text-on-primary rounded-xl font-label-lg text-label-lg disabled:opacity-40"
+              >
+                {busy ? 'Signing in…' : 'Sign in'}
+              </button>
             )}
-          </label>
+            <div className="flex flex-wrap justify-between gap-2 font-label-md text-label-md">
+              <button type="button" className="text-primary" onClick={() => { setMode(mode === 'password' ? 'code' : 'password'); setForgot(false); setCodeSent(false); setError(null); }}>
+                {mode === 'password' ? 'Sign in with WhatsApp code' : 'Sign in with password'}
+              </button>
+              {mode === 'password' && (
+                <button type="button" className="text-on-surface-variant" onClick={() => { setMode('code'); setForgot(true); setCodeSent(false); setError(null); }}>
+                  Forgot password?
+                </button>
+              )}
+            </div>
+          </>
         )}
-        <label className="flex flex-col gap-1">
-          <span className="font-label-md text-label-md">Username</span>
-          <input
-            ref={usernameRef}
-            autoFocus={!params.get('username')}
-            value={username}
-            onChange={(e) => setUsername(e.target.value.toLowerCase())}
-            autoCapitalize="none"
-            autoComplete="username"
-            className="h-12 rounded-xl bg-surface-container-low px-3 font-body-lg text-body-lg focus:outline-none focus:ring-2 focus:ring-primary/30"
-          />
-        </label>
-        <label className="flex flex-col gap-1">
-          <span className="font-label-md text-label-md">Password</span>
-          <input
-            type="password"
-            autoFocus={!!params.get('username')}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            autoComplete="current-password"
-            className="h-12 rounded-xl bg-surface-container-low px-3 font-body-lg text-body-lg focus:outline-none focus:ring-2 focus:ring-primary/30"
-          />
-        </label>
-        {error && <p className="font-body-sm text-body-sm text-error">{error}</p>}
-        <button
-          disabled={busy || !clinic.trim() || !username.trim() || !password}
-          className="h-12 bg-primary text-on-primary rounded-xl font-label-lg text-label-lg disabled:opacity-40"
-        >
-          {busy ? 'Logging in…' : 'Log in'}
-        </button>
-        <p className="font-body-sm text-body-sm text-outline">Forgot your password? Ask your clinic admin to send you a new password link.</p>
       </form>
     </main>
   );

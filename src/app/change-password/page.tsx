@@ -93,8 +93,9 @@ function ChangePasswordForm() {
           </p>
         </div>
 
-        <label className="flex flex-col gap-1">
-          <span className="font-label-md text-label-md">{me.user.must_change_password ? 'Temporary password' : 'Current password'}</span>
+        {/* Decision 67: when a new password is required (new login, reset, or signed in with a WhatsApp code), no old one is asked. */}
+        {!me.user.must_change_password && <label className="flex flex-col gap-1">
+          <span className="font-label-md text-label-md">Current password</span>
           <input
             type="password"
             autoFocus
@@ -103,7 +104,7 @@ function ChangePasswordForm() {
             autoComplete="current-password"
             className="h-12 rounded-xl bg-surface-container-low px-3 font-body-lg text-body-lg focus:outline-none focus:ring-2 focus:ring-primary/30"
           />
-        </label>
+        </label>}
         <label className="flex flex-col gap-1">
           <span className="font-label-md text-label-md">New password (min 8)</span>
           <input
@@ -126,7 +127,7 @@ function ChangePasswordForm() {
         </label>
         {error && <p className="font-body-sm text-body-sm text-error">{error}</p>}
         <button
-          disabled={busy || !currentPassword || newPassword.length < 8 || !confirm}
+          disabled={busy || (!me.user.must_change_password && !currentPassword) || newPassword.length < 8 || !confirm}
           className="h-12 bg-primary text-on-primary rounded-xl font-label-lg text-label-lg disabled:opacity-40"
         >
           {busy ? 'Saving…' : 'Save password'}
