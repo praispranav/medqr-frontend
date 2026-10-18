@@ -109,52 +109,55 @@ export function DoctorsTab({ api }: { api: TeamApi }) {
             <div
               key={d.id}
               onClick={() => setSelectedId(d.id)}
-              className={`rounded-2xl p-4 cursor-pointer flex items-start gap-3 ${d.id === selectedId ? 'bg-primary-fixed/20 ring-2 ring-primary' : 'bg-surface-container-lowest shadow-sm'}`}
+              className={`rounded-2xl p-4 cursor-pointer flex flex-col gap-2 ${d.id === selectedId ? 'bg-primary-fixed/20 ring-2 ring-primary' : 'bg-surface-container-lowest shadow-sm'}`}
             >
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <p className="font-label-lg text-label-lg truncate">{d.name}</p>
+              {/* Name gets the full width (it wraps); the actions sit on their own row below. */}
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="font-label-lg text-label-lg break-words">{d.name}</p>
                   {api.directoryFields && d.is_publicly_listed && (
                     <span className="px-2 py-0.5 rounded-full bg-tertiary-container text-white font-label-sm text-label-sm shrink-0">Listed</span>
                   )}
                 </div>
-                <p className="font-body-sm text-body-sm text-on-surface-variant truncate">
+                <p className="font-body-sm text-body-sm text-on-surface-variant break-words">
                   {[d.qualification, d.specialty, d.cabin_label].filter(Boolean).join(' · ') || 'No details yet'}
                 </p>
               </div>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setEditingId(d.id);
-                }}
-                aria-label={`Edit ${d.name}`}
-                className="w-9 h-9 rounded-lg hover:bg-surface-container flex items-center justify-center text-on-surface-variant"
-              >
-                <Icon name="edit" className="text-[18px]" />
-              </button>
-              {api.directoryFields && d.is_publicly_listed && (
-                <button type="button" disabled={listingBusy === d.id} aria-label={`Remove ${d.name} from public directory`}
-                  className="px-2 py-1 rounded-lg text-error text-label-sm disabled:opacity-50"
-                  onClick={async (e) => {
-                    e.stopPropagation(); setListingBusy(d.id); setListingError(null);
-                    try { await api.updateDoctor(d.id, { name: d.name, qualification: d.qualification ?? '', specialty: d.specialty ?? '', cabin_label: d.cabin_label ?? '', is_publicly_listed: false }); await load(); }
-                    catch (error) { setListingError((error as Error).message); } finally { setListingBusy(null); }
-                  }}>Remove public listing</button>
-              )}
-              {api.deleteDoctor && (
+              <div className="flex flex-wrap items-center gap-1 -ml-2">
                 <button
-                  onClick={async (e) => {
+                  onClick={(e) => {
                     e.stopPropagation();
-                    if (!window.confirm(`Remove ${d.name} and their schedule? Past visits are kept.`)) return;
-                    await api.deleteDoctor!(d.id);
-                    await load();
+                    setEditingId(d.id);
                   }}
-                  aria-label={`Remove ${d.name}`}
-                  className="w-9 h-9 rounded-lg hover:bg-error-container hover:text-error flex items-center justify-center text-on-surface-variant"
+                  className="h-9 px-2 rounded-lg hover:bg-surface-container flex items-center gap-1.5 text-on-surface-variant font-label-md text-label-md"
                 >
-                  <Icon name="delete" className="text-[18px]" />
+                  <Icon name="edit" className="text-[18px]" /> Edit
                 </button>
-              )}
+                {api.directoryFields && d.is_publicly_listed && (
+                  <button type="button" disabled={listingBusy === d.id} aria-label={`Remove ${d.name} from public directory`}
+                    className="h-9 px-2 rounded-lg text-error font-label-md text-label-md hover:bg-error-container/50 disabled:opacity-50"
+                    onClick={async (e) => {
+                      e.stopPropagation(); setListingBusy(d.id); setListingError(null);
+                      // Only the listing flag changes, so an old name never blocks unlisting (Decision 65 name rules).
+                      try { await api.updateDoctor(d.id, { is_publicly_listed: false } as DoctorBody); await load(); }
+                      catch (error) { setListingError((error as Error).message); } finally { setListingBusy(null); }
+                    }}>Remove public listing</button>
+                )}
+                {api.deleteDoctor && (
+                  <button
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      if (!window.confirm(`Remove ${d.name} and their schedule? Past visits are kept.`)) return;
+                      await api.deleteDoctor!(d.id);
+                      await load();
+                    }}
+                    aria-label={`Remove ${d.name}`}
+                    className="ml-auto w-9 h-9 rounded-lg hover:bg-error-container hover:text-error flex items-center justify-center text-on-surface-variant"
+                  >
+                    <Icon name="delete" className="text-[18px]" />
+                  </button>
+                )}
+              </div>
             </div>
           ),
         )}
