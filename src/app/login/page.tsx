@@ -289,7 +289,7 @@ function LoginForm() {
                 <input value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))} inputMode="numeric" autoComplete="one-time-code" placeholder="6 digits" className={field} />
               </label>
             ) : null}
-            {error && <p className="font-body-sm text-body-sm text-error">{error}</p>}
+            {error && <p className="font-body-sm text-body-sm text-error">{error}{error.startsWith('No staff login') && <> <a href="/signin" className="text-primary underline">Go to Sign in</a></>}</p>}
             {mode === 'code' && !codeSent ? (
               <button type="button" onClick={sendCode} disabled={busy || username.replace(/\D/g, '').length < 10} className="h-12 bg-primary text-on-primary rounded-xl font-label-lg text-label-lg disabled:opacity-40">
                 {busy ? 'Sending…' : 'Send code on WhatsApp'}
