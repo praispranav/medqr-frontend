@@ -5,6 +5,7 @@ import Link from 'next/link';
 import type { AdminApi, ListingCandidate } from '@/lib/adminApi';
 import { Icon } from '@/components/patient/ui';
 import { AdminShell } from '@/components/admin/AdminShell';
+import { api as publicApi, fileUrl } from '@/lib/api';
 
 // Decision 60 — Google Maps exports (Apify) land here. Pick listings, then Import turns them into
 // ordinary clinics. Unticked rows stay in this list until you delete them on purpose.
@@ -353,7 +354,7 @@ function Listings({ api, marketer }: { api: AdminApi; marketer: boolean }) {
 }
 
 function ListingForm({ api, onSaved }: { api: AdminApi; onSaved: () => Promise<void> }) {
-  const empty = { title: '', doctorName: '', categoryName: 'Medical clinic', city: '', address: '', phone: '', url: '' };
+  const empty = { title: '', doctorName: '', doctorPhotoUrl: '', categoryName: 'Medical clinic', city: '', address: '', phone: '', url: '' };
   const [form, setForm] = useState(empty);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
@@ -368,6 +369,17 @@ function ListingForm({ api, onSaved }: { api: AdminApi; onSaved: () => Promise<v
       {([['title', 'Clinic name', true], ['doctorName', 'Doctor name (optional)', false], ['categoryName', 'Category / specialty', false], ['city', 'City / district', true], ['address', 'Clinic address', true], ['phone', 'Public clinic phone (optional)', false], ['url', 'Google Maps link (optional)', false]] as const).map(([key, label, required]) => <label key={key} className="flex flex-col gap-1 text-label-md">{label}
         <input aria-label={label} required={required} value={form[key]} onChange={(e) => setForm({ ...form, [key]: e.target.value })} className="h-11 bg-surface-container-low rounded-xl px-3" />
       </label>)}
+    </div>
+    <div className="flex items-center gap-3">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      {form.doctorPhotoUrl ? <img src={fileUrl(form.doctorPhotoUrl)} alt="" className="w-14 h-14 rounded-full object-cover" /> : <span className="w-14 h-14 rounded-full bg-surface-container-low flex items-center justify-center text-on-surface-variant"><Icon name="add_a_photo" className="text-[22px]" /></span>}
+      <label className="h-10 px-3 rounded-xl bg-surface-container text-primary text-label-md inline-flex items-center cursor-pointer">
+        {form.doctorPhotoUrl ? 'Change doctor photo' : 'Doctor photo (optional)'}
+        <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+          const file = e.target.files?.[0]; if (!file) return;
+          try { const up = await publicApi.uploadFile(file); setForm((f) => ({ ...f, doctorPhotoUrl: up.url })); } catch (error) { setNote((error as Error).message); }
+        }} />
+      </label>
     </div>
     {note && <p role="status">{note}</p>}
     <button disabled={busy} className="h-11 px-5 self-start rounded-xl bg-primary text-on-primary disabled:opacity-50">{busy ? 'Submitting…' : 'Submit clinic for approval'}</button>

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import type { AdminDoctor, StaffLogin } from '@/lib/adminApi';
 import { HoursEditor, type HoursApi } from '@/components/schedule/HoursEditor';
 import { Icon } from '@/components/patient/ui';
-import type { QueueSettings, StaffLinkResult } from '@/lib/api';
+import { api as publicApi, fileUrl, type QueueSettings, type StaffLinkResult } from '@/lib/api';
 import { ShareLinkCard, WhatsAppIcon, whatsappHref, type ShareTarget } from '@/components/team/ShareLinkCard';
 import { inr } from '@/components/staff/bits';
 import { DoctorSettingsCard } from '@/components/doctor/DoctorSettingsCard';
@@ -15,7 +15,7 @@ import { DoctorSettingsCard } from '@/components/doctor/DoctorSettingsCard';
 // the platform admin can grant clinic-admin (owner) access.
 
 export type LoginRole = 'reception' | 'doctor' | 'owner';
-type DoctorBody = { name: string; qualification: string; specialty: string; cabin_label: string; bio?: string; is_publicly_listed?: boolean };
+type DoctorBody = { name: string; qualification: string; specialty: string; cabin_label: string; bio?: string; photo_url?: string; is_publicly_listed?: boolean };
 
 export interface TeamApi {
   doctors: () => Promise<AdminDoctor[]>;
@@ -56,8 +56,8 @@ export interface TeamApi {
 const ROLE_ICON: Record<LoginRole, string> = { reception: 'desk', doctor: 'stethoscope', owner: 'admin_panel_settings' };
 
 
-type DoctorForm = { name: string; qualification: string; specialty: string; cabin_label: string; bio: string; is_publicly_listed: boolean };
-const emptyDoctor: DoctorForm = { name: '', qualification: '', specialty: '', cabin_label: '', bio: '', is_publicly_listed: false };
+type DoctorForm = { name: string; qualification: string; specialty: string; cabin_label: string; bio: string; photo_url: string; is_publicly_listed: boolean };
+const emptyDoctor: DoctorForm = { name: '', qualification: '', specialty: '', cabin_label: '', bio: '', photo_url: '', is_publicly_listed: false };
 
 export function DoctorsTab({ api }: { api: TeamApi }) {
   const [doctors, setDoctors] = useState<AdminDoctor[] | null>(null);
@@ -94,6 +94,7 @@ export function DoctorsTab({ api }: { api: TeamApi }) {
                 specialty: d.specialty ?? '',
                 cabin_label: d.cabin_label ?? '',
                 bio: d.bio ?? '',
+                photo_url: d.photo_url ?? '',
                 is_publicly_listed: d.is_publicly_listed,
               }}
               directoryFields={api.directoryFields}
@@ -257,6 +258,35 @@ function DoctorEditor({
       }}
       className="bg-surface-container-lowest rounded-2xl p-4 shadow-sm flex flex-col gap-3"
     >
+      {/* Doctor photo — shown on the doctor's public page and the patient's doctor choice. */}
+      <div className="flex items-center gap-3">
+        {f.photo_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={fileUrl(f.photo_url)} alt="" className="w-14 h-14 rounded-full object-cover" />
+        ) : (
+          <span className="w-14 h-14 rounded-full bg-surface-container-low flex items-center justify-center text-on-surface-variant"><Icon name="add_a_photo" className="text-[22px]" /></span>
+        )}
+        <label className="h-9 px-3 rounded-lg bg-surface-container text-primary font-label-md text-label-md inline-flex items-center cursor-pointer">
+          {f.photo_url ? 'Change photo' : 'Upload photo'}
+          <input
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={async (e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              setError(null);
+              try {
+                const up = await publicApi.uploadFile(file);
+                setF((x) => ({ ...x, photo_url: up.url }));
+              } catch (err) {
+                setError((err as Error).message);
+              }
+            }}
+          />
+        </label>
+        {f.photo_url && <button type="button" onClick={() => setF((x) => ({ ...x, photo_url: '' }))} className="font-label-md text-label-md text-on-surface-variant">Remove</button>}
+      </div>
       {field('name', 'Name *', 'Dr. Meera Sharma')}
       <div className="grid grid-cols-2 gap-2">
         {field('qualification', 'Qualification', 'MBBS, MD')}
