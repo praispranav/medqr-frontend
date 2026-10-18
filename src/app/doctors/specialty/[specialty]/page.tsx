@@ -12,16 +12,27 @@ async function resolve(slug: string) {
   return count ? { group, count } : null;
 }
 
-export async function generateMetadata({ params }: { params: { specialty: string } }): Promise<Metadata> {
+type SearchParams = { q?: string; city?: string; online?: string };
+
+export async function generateMetadata({ params, searchParams }: { params: { specialty: string }; searchParams?: SearchParams }): Promise<Metadata> {
   const r = await resolve(params.specialty);
   if (!r) return { title: 'Not found | ClinicQ', robots: { index: false } };
-  const title = `${r.group.plural} Near You — Clinic Timings & Online OPD Booking | ClinicQ`;
-  const description = `Find a ${r.group.name.toLowerCase()} near you: ${r.count} listed with clinic address, OPD timings and directions. Take an online OPD token where available.`;
-  return { title, description, alternates: { canonical: directoryPath(null, r.group.slug) }, openGraph: { title, description } };
+  const qSuffix = searchParams?.q ? ` matching "${searchParams.q}"` : '';
+  const citySuffix = searchParams?.city ? ` in ${searchParams.city}` : '';
+  const title = `${r.group.plural}${citySuffix || ' Near You'}${qSuffix} — Clinic Timings & Online OPD Booking | ClinicQ`;
+  const description = `Find a ${r.group.name.toLowerCase()}${citySuffix || ' near you'}${qSuffix}: ${r.count} listed with clinic address, OPD timings and directions. Take an online OPD token where available.`;
+  return {
+    title,
+    description,
+    alternates: { canonical: directoryPath(searchParams?.city ?? null, r.group.slug) },
+    openGraph: { title, description },
+    ...(searchParams?.q ? { robots: { index: false, follow: true } } : {}),
+  };
 }
 
-export default async function SpecialtyPage({ params }: { params: { specialty: string } }) {
+export default async function SpecialtyPage({ params, searchParams }: { params: { specialty: string }; searchParams?: SearchParams }) {
   const r = await resolve(params.specialty);
   if (!r) notFound();
-  return <DoctorDirectoryPage group={r.group} landing />;
+  return <DoctorDirectoryPage group={r.group} city={searchParams?.city} q={searchParams?.q} bookable={searchParams?.online === '1'} landing={!searchParams?.q} />;
 }
+

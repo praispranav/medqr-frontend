@@ -4,16 +4,20 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Icon } from '@/components/patient/ui';
 
-/** Decision 58 — the home page's one search box: doctors or clinics, then the existing search pages. */
-export function HomeSearch() {
+/** Decision 58 — the home page's search box: All, Doctors or Clinics, searching directly to URL. */
+export function HomeSearch({ initialQ = '', initialKind = 'all' }: { initialQ?: string; initialKind?: 'all' | 'doctors' | 'clinics' }) {
   const router = useRouter();
-  const [kind, setKind] = useState<'doctors' | 'clinics'>('doctors');
-  const [q, setQ] = useState('');
+  const [kind, setKind] = useState<'all' | 'doctors' | 'clinics'>(initialKind);
+  const [q, setQ] = useState(initialQ);
 
   const go = (e: React.FormEvent) => {
     e.preventDefault();
     const term = q.trim();
-    router.push(`/${kind}${term ? `?q=${encodeURIComponent(term)}` : ''}`);
+    if (kind === 'all') {
+      router.push(`/search${term ? `?q=${encodeURIComponent(term)}` : ''}`);
+    } else {
+      router.push(`/${kind}${term ? `?q=${encodeURIComponent(term)}` : ''}`);
+    }
   };
 
   const tab = (value: typeof kind, label: string) => (
@@ -32,6 +36,7 @@ export function HomeSearch() {
   return (
     <form onSubmit={go} className="w-full max-w-2xl bg-surface-container-lowest rounded-2xl shadow-md p-3 flex flex-col gap-3">
       <div className="flex gap-1">
+        {tab('all', 'All')}
         {tab('doctors', 'Doctors')}
         {tab('clinics', 'Clinics')}
       </div>

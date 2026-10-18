@@ -1,8 +1,9 @@
 import type { Metadata } from 'next';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { headers } from 'next/headers';
 import type { DirectoryClinicProfile } from '@/lib/api';
 import { ClinicLanding } from '@/components/landing/ClinicLanding';
+import { cityFromSlug } from '@/lib/directoryServer';
 
 // Public, server-rendered clinic page — for polyclinics/multi-doctor setups, listing every doctor
 // there who has opted into the directory. Same server-component approach as /doctors/[slug], for SEO.
@@ -15,9 +16,14 @@ async function getClinic(slug: string): Promise<DirectoryClinicProfile | null> {
   return res.json();
 }
 
-export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
+export async function generateMetadata({ params, searchParams }: { params: { slug: string }; searchParams?: { q?: string; preview?: string } }): Promise<Metadata> {
+  if (params.slug === 'search') return { title: 'Search Clinics & Hospitals | ClinicQ', robots: { index: false } };
   const clinic = await getClinic(params.slug);
-  if (!clinic) return { title: 'Clinic not found — ClinicQ' };
+  if (!clinic) {
+    const city = await cityFromSlug(params.slug);
+    if (city) return { title: `Clinics & Hospitals in ${city} | ClinicQ` };
+    return { title: 'Find a Clinic — ClinicQ' };
+  }
   const place = [clinic.clinic_name, clinic.city].filter(Boolean).join(', ');
   const title = `${place} — Doctors, Timings & Address | ClinicQ`;
   // Decision 66: say plainly whether online OPD booking is available here.
@@ -33,10 +39,22 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   };
 }
 
-export default async function ClinicProfilePage({ params, searchParams }: { params: { slug: string }; searchParams: { preview?: string } }) {
+export default async function ClinicProfilePage({ params, searchParams }: { params: { slug: string }; searchParams?: { q?: string; preview?: string } }) {
+  if (params.slug === 'search') {
+    redirect(`/clinics${searchParams?.q ? `?q=${encodeURIComponent(searchParams.q)}` : ''}`);
+  }
+  const city = await cityFromSlug(params.slug);
+  if (city) {
+    redirect(`/clinics/in/${params.slug}`);
+  }
+
   const clinic = await getClinic(params.slug);
-  if (!clinic) notFound();
+  if (!clinic) {
+    // URL search fallback: if the slug is not a known clinic, search by term
+    redirect(`/clinics?q=${encodeURIComponent(params.slug.replace(/[-_]+/g, ' '))}`);
+  }
   // ?preview=playful|editorial shows the other look before choosing it in Public Profile.
-  const preview = searchParams.preview === 'playful' || searchParams.preview === 'editorial' ? searchParams.preview : null;
+  const preview = searchParams?.preview === 'playful' || searchParams?.preview === 'editorial' ? searchParams.preview : null;
   return <ClinicLanding clinic={preview ? { ...clinic, landing_template: preview } : clinic} host={headers().get('host')} />;
 }
+

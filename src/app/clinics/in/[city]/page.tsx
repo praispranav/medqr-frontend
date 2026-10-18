@@ -5,16 +5,25 @@ import { BrandLogo } from '@/components/brand/BrandLogo';
 import { ClinicsSearch } from '@/app/clinics/ClinicsSearch';
 import { cityFromSlug, directoryPath } from '@/lib/directoryServer';
 
-// Decision 66 — SEO landing page: "clinics in Patna", "hospitals in Sitamarhi".
-export async function generateMetadata({ params }: { params: { city: string } }): Promise<Metadata> {
+type SearchParams = { q?: string; area?: string; bookable?: string; today?: string };
+
+// Decision 66 — SEO landing page: "clinics in Patna", "hospitals in Sitamarhi". Supports ?q= search from URL.
+export async function generateMetadata({ params, searchParams }: { params: { city: string }; searchParams?: SearchParams }): Promise<Metadata> {
   const city = await cityFromSlug(params.city);
   if (!city) return { title: 'Not found | ClinicQ', robots: { index: false } };
-  const title = `Clinics & Hospitals in ${city} — Doctors, Timings & Directions | ClinicQ`;
-  const description = `Clinics and hospitals in ${city} with their doctors, address, OPD timings, phone and directions. Book an online OPD token at clinics that offer it.`;
-  return { title, description, alternates: { canonical: `/clinics/in/${params.city.toLowerCase()}` }, openGraph: { title, description } };
+  const qSuffix = searchParams?.q ? ` matching "${searchParams.q}"` : '';
+  const title = `Clinics & Hospitals in ${city}${qSuffix} — Doctors, Timings & Directions | ClinicQ`;
+  const description = `Clinics and hospitals in ${city}${qSuffix} with their doctors, address, OPD timings, phone and directions. Book an online OPD token at clinics that offer it.`;
+  return {
+    title,
+    description,
+    alternates: { canonical: `/clinics/in/${params.city.toLowerCase()}` },
+    openGraph: { title, description },
+    ...(searchParams?.q ? { robots: { index: false, follow: true } } : {}),
+  };
 }
 
-export default async function ClinicsInCityPage({ params }: { params: { city: string } }) {
+export default async function ClinicsInCityPage({ params, searchParams }: { params: { city: string }; searchParams?: SearchParams }) {
   const city = await cityFromSlug(params.city);
   if (!city) notFound();
   return (
@@ -34,8 +43,15 @@ export default async function ClinicsInCityPage({ params }: { params: { city: st
             Clinics and hospitals in {city} with their doctors, address and directions. Those offering online OPD booking are shown first.
           </p>
         </div>
-        <ClinicsSearch initialCity={city} />
+        <ClinicsSearch
+          initialCity={city}
+          initialQ={searchParams?.q}
+          initialArea={searchParams?.area}
+          initialBookable={searchParams?.bookable === '1'}
+          initialToday={searchParams?.today === '1'}
+        />
       </div>
     </main>
   );
 }
+

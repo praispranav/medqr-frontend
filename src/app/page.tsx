@@ -34,7 +34,7 @@ export const metadata: Metadata = {
   alternates: { canonical: '/' },
 };
 
-export default async function HomePage() {
+export default async function HomePage({ searchParams }: { searchParams?: { q?: string; type?: 'all' | 'doctors' | 'clinics' } }) {
   const host = headers().get('host');
   const [groups, clinics, cities] = await Promise.all([
     specialtyGroupsIn(),
@@ -76,7 +76,7 @@ export default async function HomePage() {
         <p className="font-body-lg text-body-lg text-on-surface-variant max-w-xl">
           Doctors, clinics and hospitals with OPD timings, address and directions. Where a clinic offers online OPD booking, take your token from your phone and wait from home.
         </p>
-        <HomeSearch />
+        <HomeSearch initialQ={searchParams?.q} initialKind={searchParams?.type} />
         {groups.length > 0 && (
           <div className="flex flex-wrap justify-center gap-2 max-w-3xl">
             {groups.slice(0, 10).map((g) => (

@@ -1,12 +1,13 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { headers } from 'next/headers';
 import { fileUrl, type DirectoryClinicProfile, type DirectoryDoctorProfile } from '@/lib/api';
 import { ClinicLanding } from '@/components/landing/ClinicLanding';
 import { BrandLogo } from '@/components/brand/BrandLogo';
 import { patientUrl } from '@/lib/clinicHost';
-import { groupOf } from '@/lib/specialtyGroups';
+import { groupBySlug, groupOf } from '@/lib/specialtyGroups';
+import { cityFromSlug } from '@/lib/directoryServer';
 import { AskOnlineBooking } from '@/components/directory/AskOnlineBooking';
 import { VerifiedBadge } from '@/components/directory/VerifiedBadge';
 
@@ -27,9 +28,16 @@ async function getClinic(slug: string): Promise<DirectoryClinicProfile | null> {
   return res.ok ? res.json() : null;
 }
 
-export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
+export async function generateMetadata({ params, searchParams }: { params: { slug: string }; searchParams?: { q?: string } }): Promise<Metadata> {
+  if (params.slug === 'search') return { title: 'Search Doctors | ClinicQ', robots: { index: false } };
   const doctor = await getDoctor(params.slug);
-  if (!doctor) return { title: 'Doctor not found — ClinicQ' };
+  if (!doctor) {
+    const city = await cityFromSlug(params.slug);
+    if (city) return { title: `Doctors in ${city} | ClinicQ` };
+    const group = groupBySlug(params.slug);
+    if (group) return { title: `${group.plural} Near You | ClinicQ` };
+    return { title: 'Find a Doctor — ClinicQ' };
+  }
   const place = [doctor.clinic_name, doctor.city].filter(Boolean).join(', ');
   const specialty = groupOf(doctor.specialty)?.name ?? doctor.specialty;
   const title = `${doctor.name}${specialty ? `, ${specialty}` : ''}${doctor.city ? ` in ${doctor.city}` : ''} — Timings, Address & Fees | ClinicQ`;
@@ -43,9 +51,24 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   };
 }
 
-export default async function DoctorProfilePage({ params }: { params: { slug: string } }) {
+export default async function DoctorProfilePage({ params, searchParams }: { params: { slug: string }; searchParams?: { q?: string } }) {
+  if (params.slug === 'search') {
+    redirect(`/doctors${searchParams?.q ? `?q=${encodeURIComponent(searchParams.q)}` : ''}`);
+  }
+  const city = await cityFromSlug(params.slug);
+  if (city) {
+    redirect(`/doctors/in/${params.slug}`);
+  }
+  const group = groupBySlug(params.slug);
+  if (group) {
+    redirect(`/doctors/specialty/${params.slug}`);
+  }
+
   const doctor = await getDoctor(params.slug);
-  if (!doctor) notFound();
+  if (!doctor) {
+    // URL search fallback: if the slug is not a known doctor, search by term
+    redirect(`/doctors?q=${encodeURIComponent(params.slug.replace(/[-_]+/g, ' '))}`);
+  }
 
   // Decision 50: when the doctor's clinic is listed, the doctor's page is the clinic's landing page with this doctor first.
   const clinic = doctor.clinic_public_slug ? await getClinic(doctor.clinic_public_slug) : null;

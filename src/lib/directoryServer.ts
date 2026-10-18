@@ -35,6 +35,16 @@ export function searchDoctors(opts: { q?: string; group?: string; city?: string;
   return getJson<DirectoryDoctorSummary[]>(`/directory/doctors?${p}`, []);
 }
 
+export function searchClinicsServer(opts: { q?: string; city?: string; area?: string; bookable?: boolean; limit: number }) {
+  const p = new URLSearchParams({ limit: String(opts.limit) });
+  if (opts.q) p.set('q', opts.q);
+  if (opts.city) p.set('city', opts.city);
+  if (opts.area) p.set('area', opts.area);
+  if (opts.bookable) p.set('bookable', '1');
+  return getJson<import('@/lib/api').DirectoryClinicSummary[]>(`/directory/clinics?${p}`, []);
+}
+
+
 /** Clean landing address for a filter combination — the canonical URL search engines should index. */
 export function directoryPath(city?: string | null, group?: string | null): string {
   if (city && group) return `/doctors/in/${placeSlug(city)}/${group}`;
