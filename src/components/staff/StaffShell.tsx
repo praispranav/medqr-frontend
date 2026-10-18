@@ -93,7 +93,32 @@ const ROLE_LABEL: Record<Me['user']['role'], string> = { doctor: 'Doctor', recep
 // Decision 18: the public read-only demo never shows payments or admin-ish config screens.
 const DEMO_HIDDEN_HREFS = new Set(['/doctor/payments', '/doctor/online-payments', '/manage/online-payments', '/doctor/settings', '/doctor/billing', '/doctor/profile', '/doctor/notifications', '/doctor/intake-form', '/reception/payments', '/doctor/support', '/reception/support', '/manage/support']);
 
+/**
+ * Decision 68: a clinic listed in the directory but without the QR Token System sees a short, plain menu —
+ * its public page, timings, team and how to get online OPD booking. The queue menus appear once QR is on.
+ */
+const DIRECTORY_ONLY: Record<'doctor' | 'manage', NavItem[]> = {
+  doctor: [
+    { href: '/doctor/profile', label: 'My public page', icon: 'badge' },
+    { href: '/doctor/hours', label: 'My timings', icon: 'schedule' },
+    { href: '/manage/team', label: 'Doctors & staff', icon: 'group', managersOnly: true },
+    { href: '/manage/clinic', label: 'Clinic details', icon: 'apartment', managersOnly: true },
+    { href: '/doctor/billing', label: 'Get online OPD booking', icon: 'confirmation_number', managersOnly: true },
+    { href: '/doctor/support', label: 'Help & support', icon: 'support_agent' },
+  ],
+  manage: [
+    { href: '/manage/clinic', label: 'Clinic details', icon: 'apartment' },
+    { href: '/manage/team', label: 'Doctors & staff', icon: 'group' },
+    { href: '/manage/billing', label: 'Get online OPD booking', icon: 'confirmation_number' },
+    { href: '/manage/support', label: 'Help & support', icon: 'support_agent' },
+  ],
+};
+
 function navFor(variant: Variant, me: Me, isDemo: boolean): NavItem[] {
+  if (me.tenant.qr_enabled === false && (variant === 'doctor' || variant === 'manage')) {
+    const canManage = me.user.is_owner || me.user.role === "owner"; // /manage pages need clinic-admin access (Decision 14)
+    return DIRECTORY_ONLY[variant].filter((i) => !i.managersOnly || canManage);
+  }
   let items: NavItem[];
   if (variant === 'doctor') {
     // In a multi-doctor clinic, a doctor with owner access finds these under Clinic admin instead.

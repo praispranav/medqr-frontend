@@ -28,7 +28,7 @@ function Claims({ api }: { api: AdminApi }) {
   }, [api, status]);
 
   const decide = async (c: ListingClaimView, approve: boolean) => {
-    const what = c.kind === 'claim' ? `mark ${c.clinic_name} as claimed by ${c.name}` : `remove ${c.doctor_name ?? c.clinic_name} from the public directory`;
+    const what = c.kind === 'claim' ? `mark ${c.clinic_name} as claimed by ${c.name}` : c.kind === 'signup' ? `list ${c.clinic_name} publicly as Verified` : c.kind === 'join' ? `add ${c.name} as a doctor at ${c.clinic_name}` : `remove ${c.doctor_name ?? c.clinic_name} from the public directory`;
     if (!window.confirm(approve ? `Approve — ${what}?` : `Reject this request from ${c.name}?`)) return;
     try {
       const saved = await api.decideClaim(c.id, approve);
@@ -59,8 +59,8 @@ function Claims({ api }: { api: AdminApi }) {
       {rows?.map((c) => (
         <article key={c.id} className="bg-surface-container-lowest rounded-2xl shadow-sm p-5 flex flex-col gap-3">
           <div className="flex flex-wrap items-center gap-2">
-            <span className={`px-2.5 py-0.5 rounded-full font-label-sm text-label-sm ${c.kind === 'claim' ? 'bg-primary-fixed text-on-primary-fixed-variant' : 'bg-error-container text-on-error-container'}`}>
-              {c.kind === 'claim' ? 'Claim' : 'Remove'}
+            <span className={`px-2.5 py-0.5 rounded-full font-label-sm text-label-sm ${c.kind === 'remove' ? 'bg-error-container text-on-error-container' : 'bg-primary-fixed text-on-primary-fixed-variant'}`}>
+              {({ claim: 'Claim', remove: 'Remove', signup: 'New clinic signup', join: 'Doctor wants to join' } as const)[c.kind]}
             </span>
             <Link href={`/owner/clinics/${c.tenant_id}`} className="font-label-lg text-label-lg text-primary">{c.clinic_name ?? c.clinic_code}</Link>
             {c.doctor_name && <span className="font-body-md text-body-md text-on-surface-variant">· only {c.doctor_name}</span>}

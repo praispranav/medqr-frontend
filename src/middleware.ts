@@ -62,7 +62,7 @@ export function middleware(req: NextRequest) {
       return NextResponse.redirect(url, 308);
     }
     // Public main-site pages (doctor search, policies) belong on the main site.
-    if (MAIN_SITE_URL && /^\/(doctors|clinics|claim|privacy|terms|contact|login)(\/|$)/.test(pathname)) {
+    if (MAIN_SITE_URL && /^\/(doctors|clinics|claim|signin|privacy|terms|contact|login)(\/|$)/.test(pathname)) {
       return redirect(mainUrl(pathname + search, host));
     }
     const url = req.nextUrl.clone();

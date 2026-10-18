@@ -57,13 +57,9 @@ export default async function HomePage() {
             <Link href="/for-clinics" className="hover:text-on-surface">For clinics</Link>
           </nav>
           <div className="ml-auto flex items-center gap-2">
-            <a href={patientHome} className="h-10 px-4 inline-flex items-center whitespace-nowrap rounded-xl bg-surface-container-low text-primary font-label-md text-label-md">
-              <span className="sm:hidden">Patient</span>
-              <span className="hidden sm:inline">Patient Login</span>
-            </a>
-            <Link href="/login" className="h-10 px-4 inline-flex items-center whitespace-nowrap rounded-xl bg-primary text-on-primary font-label-md text-label-md">
-              <span className="sm:hidden">Staff</span>
-              <span className="hidden sm:inline">Doctor/Staff Login</span>
+            {/* Decision 68: one sign-in for patients, doctors and clinic owners. */}
+            <Link href="/signin" className="h-10 px-5 inline-flex items-center whitespace-nowrap rounded-xl bg-primary text-on-primary font-label-md text-label-md">
+              Sign in
             </Link>
           </div>
         </div>
@@ -116,7 +112,7 @@ export default async function HomePage() {
             <span className="font-body-sm text-body-sm text-on-surface-variant">Scan the QR code at the counter to take your token — no forms at the desk.</span>
           </span>
         </div>
-        <Link href="/login" className={card}>
+        <Link href="/signin" className={card}>
           <span className="w-11 h-11 rounded-xl bg-primary-fixed/50 text-primary flex items-center justify-center shrink-0">
             <Icon name="stethoscope" className="text-[22px]" />
           </span>
@@ -202,8 +198,8 @@ export default async function HomePage() {
             <Link href="/terms">Terms</Link>
             <Link href="/privacy">Privacy</Link>
             <Link href="/contact">Contact &amp; help</Link>
-            <a href={patientHome}>Patient Login</a>
-            <Link href="/login">Doctor/Staff Login</Link>
+            <Link href="/signin">Sign in</Link>
+            <Link href="/signin">List your clinic</Link>
           </div>
         </div>
       </footer>

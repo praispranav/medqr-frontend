@@ -556,7 +556,8 @@ export interface Me {
     must_change_password: boolean;
   };
   doctor_count: number;
-  tenant: { id: string; subdomain: string; display_name: string | null };
+  /** qr_enabled (Decision 68): the clinic has the QR Token System, so queue/token menus show. */
+  tenant: { id: string; subdomain: string; display_name: string | null; qr_enabled?: boolean };
 }
 
 export interface MonthlyPlan {
@@ -801,6 +802,14 @@ export interface PayoutView {
 export type SetupTarget = 'hours' | 'profile' | 'fee' | 'clinic_details' | 'online_payments' | 'billing' | 'password';
 export type SetupConfirmItem = 'hours' | 'fee' | 'hours_na' | 'fee_na';
 
+/** Decision 68: what a mobile verified at /signin can do next. */
+export interface AccountOverview {
+  ticket: string;
+  mobile: string;
+  logins: { user_id: string; name: string; role: string; clinic_code: string; clinic_name: string }[];
+  pending: { kind: 'signup' | 'join'; clinic_name: string }[];
+}
+
 /** Decision 67: the same username / mobile has logins at several clinics — pick one. */
 export interface LoginChoice {
   choose: { user_id: string; name: string; role: string; clinic_code: string; clinic_name: string }[];
@@ -849,6 +858,21 @@ export const api = {
   // Staff login (reception and doctors have separate accounts)
   login: (body: { clinic?: string; username: string; password: string; user_id?: string }) =>
     request<Me | LoginChoice>('/auth/login', { method: 'POST', body: JSON.stringify(body) }),
+  // Decision 68 — one sign-in for patients, doctors and clinic owners.
+  accountStart: (mobile: string) => request<{ sent: true; dev_code?: string }>('/account/start', { method: 'POST', body: JSON.stringify({ mobile }) }),
+  accountVerify: (mobile: string, code: string) => request<AccountOverview>('/account/verify', { method: 'POST', body: JSON.stringify({ mobile, code }) }),
+  accountPatient: (ticket: string) => request<{ code: string }>('/account/patient', { method: 'POST', body: JSON.stringify({ ticket }) }),
+  accountStaff: (ticket: string, user_id: string) => request<Me>('/account/staff', { method: 'POST', body: JSON.stringify({ ticket, user_id }) }),
+  accountJoin: (body: { ticket: string; clinic_code: string; your_name: string; specialty?: string; qualification?: string }) =>
+    request<{ ok: true }>('/account/join', { method: 'POST', body: JSON.stringify(body) }),
+  accountSignupClinic: async (form: FormData) => {
+    const res = await fetch(`${apiBase()}/account/signup-clinic`, { method: 'POST', body: form, credentials: 'include' });
+    if (!res.ok) {
+      const body = await res.json().catch(() => null);
+      throw new ApiError(res.status, typeof body?.message === 'string' ? body.message : `Couldn't sign up (${res.status})`);
+    }
+    return res.json() as Promise<Me>;
+  },
   // Decision 67 — WhatsApp code sign-in / forgot password.
   staffOtpStart: (mobile: string) => request<{ sent: true; dev_code?: string }>('/auth/otp/start', { method: 'POST', body: JSON.stringify({ mobile }) }),
   staffOtpVerify: (body: { mobile: string; code: string; user_id?: string; forgot?: boolean }) =>
@@ -1082,7 +1106,7 @@ export const api = {
   directoryDoctor: (slug: string) => request<DirectoryDoctorProfile>(`/directory/doctors/${encodeURIComponent(slug)}`),
   directoryClinic: (slug: string) => request<DirectoryClinicProfile>(`/directory/clinics/${encodeURIComponent(slug)}`),
   // Decision 51 — clinics are searchable too (clinicq.fit/clinics), not just reachable via a doctor's page.
-  directoryClinicsSearch: (opts: { q?: string; city?: string; area?: string; bookable?: string; today?: string; offset?: string; limit?: string } = {}) =>
+  directoryClinicsSearch: (opts: { q?: string; city?: string; area?: string; bookable?: string; today?: string; offset?: string; limit?: string; any?: string } = {}) =>
     request<DirectoryClinicSummary[]>(`/directory/clinics${toQuery(opts)}`),
   directorySpecialties: () => request<string[]>('/directory/specialties'),
   // Decision 64 — "Is this your clinic?": claim it or ask for removal, with proof documents.
@@ -1129,6 +1153,9 @@ export const api = {
     doctorSettings: (id: string, patch: Record<string, unknown>) =>
       request<ManagedDoctor>(`/manage/doctors/${id}/settings`, { method: 'PATCH', body: JSON.stringify(patch) }),
     users: () => request<ManagedLogin[]>('/manage/users'),
+    // Decision 68 — doctors asking to join this clinic.
+    joinRequests: () => request<{ id: string; name: string; mobile: string; specialty: string | null; qualification: string | null; created_at: string }[]>('/manage/join-requests'),
+    decideJoin: (id: string, accept: boolean) => request<{ ok: true }>(`/manage/join-requests/${id}/${accept ? 'accept' : 'reject'}`, { method: 'POST' }),
     createUser: (body: { role: 'reception' | 'doctor'; name: string; username: string; mobile_number: string; doctor_id: string | null }) =>
       request<ManagedLogin & StaffLinkResult>('/manage/users', { method: 'POST', body: JSON.stringify(body) }),
     updateUser: (id: string, body: { name?: string; is_active?: boolean; password?: string; mobile_number?: string | null }) =>

@@ -32,7 +32,24 @@ export default function PatientHomePage() {
   const host = useHost();
 
   // Browser-only saved sessions must be read after hydration, not during the server render.
-  useEffect(() => { setVerified(!!patientDevice.get()); }, []);
+  useEffect(() => {
+    // Decision 68: arriving from clinicq.fit/signin with ?h=<code> — the WhatsApp-verified session is handed over once.
+    const h = new URLSearchParams(window.location.search).get('h');
+    if (h) {
+      window.history.replaceState(null, '', window.location.pathname);
+      api
+        .redeemHandoff(h)
+        .then(({ data }) => {
+          const token = data['medqr:patient-token'];
+          const phone = data['medqr:mobile'];
+          if (token && phone) patientDevice.set(token, phone);
+        })
+        .catch(() => undefined)
+        .finally(() => setVerified(!!patientDevice.get()));
+      return;
+    }
+    setVerified(!!patientDevice.get());
+  }, []);
 
   useEffect(() => {
     if (resendIn <= 0) return;

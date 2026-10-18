@@ -38,7 +38,7 @@ export interface ChangeRequestView {
 
 export interface ListingClaimView {
   id: string;
-  kind: 'claim' | 'remove';
+  kind: 'claim' | 'remove' | 'signup' | 'join';
   status: 'new' | 'approved' | 'rejected';
   name: string;
   mobile: string;

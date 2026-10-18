@@ -99,7 +99,44 @@ function Team({
           </button>
         ))}
       </div>
+      <JoinRequests onAccepted={onDoctorsChanged} />
       {tab === 'doctors' ? <DoctorsTab api={team} /> : <LoginsTab api={team} clinicCode={clinicCode} />}
     </div>
+  );
+}
+
+/** Decision 68 — doctors who signed up and asked to join this clinic. Accept = doctor profile + their own login. */
+function JoinRequests({ onAccepted }: { onAccepted: () => Promise<void> }) {
+  const [rows, setRows] = useState<Awaited<ReturnType<typeof api.manage.joinRequests>>>([]);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    api.manage.joinRequests().then(setRows).catch(() => undefined);
+  }, []);
+  if (!rows.length) return null;
+  const decide = async (id: string, accept: boolean) => {
+    if (!window.confirm(accept ? 'Add this doctor to your clinic?' : 'Decline this request?')) return;
+    try {
+      await api.manage.decideJoin(id, accept);
+      setRows((r) => r.filter((x) => x.id !== id));
+      if (accept) await onAccepted();
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  };
+  return (
+    <section className="bg-primary-fixed/20 rounded-2xl p-4 flex flex-col gap-3">
+      <h2 className="font-label-lg text-label-lg">Doctors asking to join</h2>
+      {rows.map((r) => (
+        <div key={r.id} className="flex flex-wrap items-center gap-3 bg-surface-container-lowest rounded-xl px-3 py-2.5">
+          <div className="flex-1 min-w-0">
+            <p className="font-label-lg text-label-lg">{r.name}</p>
+            <p className="font-body-sm text-body-sm text-on-surface-variant">{[r.qualification, r.specialty, r.mobile].filter(Boolean).join(' · ')}</p>
+          </div>
+          <button onClick={() => decide(r.id, true)} className="h-9 px-3 rounded-lg bg-primary text-on-primary font-label-md text-label-md">Accept</button>
+          <button onClick={() => decide(r.id, false)} className="h-9 px-3 rounded-lg text-on-surface-variant font-label-md text-label-md">Decline</button>
+        </div>
+      ))}
+      {error && <p className="text-error">{error}</p>}
+    </section>
   );
 }

@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { api, ApiError, type LoginChoice, type Me } from '@/lib/api';
-import { HOME_FOR_ROLE } from '@/lib/staffRoutes';
+import { HOME_FOR_ROLE, homeFor } from '@/lib/staffRoutes';
 import { apiBase, clinicFromHost, rootOf, ROOT_DOMAIN } from '@/lib/clinicHost';
 import { useHost } from '@/lib/useHost';
 import { Icon, LoadingPage } from '@/components/patient/ui';
@@ -167,7 +167,7 @@ function LoginForm() {
         : me.user.role === 'owner'
           ? ['/manage']
           : ['/reception'];
-    router.replace(next && allowed.some((a) => next.startsWith(a)) ? next : HOME_FOR_ROLE[me.user.role]);
+    router.replace(next && allowed.some((a) => next.startsWith(a)) ? next : homeFor(me));
   };
 
   const run = async (fn: () => Promise<Me | LoginChoice>) => {
