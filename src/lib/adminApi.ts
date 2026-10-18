@@ -300,7 +300,7 @@ export const adminApi = (key: string) => ({
   landingDraft: (tenantId: string) => request<{ tagline: string; about: string; highlights: string[] }>(key, `/tenants/${tenantId}/landing-draft`, { method: 'POST' }),
   bioDraft: (doctorId: string) => request<{ bio: string }>(key, `/doctors/${doctorId}/bio-draft`, { method: 'POST' }),
   tenantSetup: (tenantId: string) => request<SetupView | null>(key, `/tenants/${tenantId}/setup`),
-  confirmDoctorSetup: (doctorId: string, item: 'hours' | 'fee') =>
+  confirmDoctorSetup: (doctorId: string, item: 'hours' | 'fee' | 'hours_na' | 'fee_na') =>
     request<SetupView | null>(key, `/doctors/${doctorId}/setup/confirm`, { method: 'POST', body: JSON.stringify({ item }) }),
   // Decision 44: Razorpay Route payout accounts (super admin only; dormant)
   payoutAccount: (doctorId: string) => request<PayoutView>(key, `/doctors/${doctorId}/payout-account`),

@@ -783,6 +783,8 @@ export interface PayoutView {
 
 /** Decision 47 — the setup checklist (percentage of the clinic / doctor setup done). */
 export type SetupTarget = 'hours' | 'profile' | 'fee' | 'clinic_details' | 'online_payments' | 'billing' | 'password';
+export type SetupConfirmItem = 'hours' | 'fee' | 'hours_na' | 'fee_na';
+
 export interface SetupItem {
   key: string;
   scope: 'clinic' | 'doctor';
@@ -793,6 +795,8 @@ export interface SetupItem {
   done: boolean;
   value: string | null;
   confirm: 'hours' | 'fee' | null;
+  /** Decision 65: can be marked "Not available" instead. */
+  can_mark_unavailable?: 'hours' | 'fee' | null;
   link: SetupTarget | null;
 }
 export interface SetupView {
@@ -931,7 +935,7 @@ export const api = {
     request<ClinicGatewayView>('/payments/clinic-gateway', { method: 'PUT', body: JSON.stringify({ key_id, key_secret }) }),
   disconnectClinicGateway: () => request<ClinicGatewayView>('/payments/clinic-gateway', { method: 'DELETE' }),
   setupChecklist: (all = false) => request<SetupView | null>(`/setup/checklist${all ? '?all=1' : ''}`),
-  confirmSetup: (item: 'hours' | 'fee') => request<SetupView | null>('/setup/confirm', { method: 'POST', body: JSON.stringify({ item }) }),
+  confirmSetup: (item: SetupConfirmItem) => request<SetupView | null>('/setup/confirm', { method: 'POST', body: JSON.stringify({ item }) }),
   payoutStatus: () => request<PayoutView>('/payments/payout-status'),
   paymentConfig: () => request<{ gateway: 'razorpay' | 'mock'; online_available: boolean }>('/payments/config'),
   staffQr: (visitId: string) => request<PaymentQrView>(`/payments/visits/${visitId}/qr`, { method: 'POST' }),

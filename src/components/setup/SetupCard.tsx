@@ -15,7 +15,7 @@ interface Props {
   title: string;
   load: () => Promise<SetupView | null>;
   /** Confirm a doctor's hours / fee (the doctor, or a helper in the admin panel). Omit to hide Confirm buttons. */
-  confirm?: (item: 'hours' | 'fee', doctorId: string) => Promise<SetupView | null>;
+  confirm?: (item: 'hours' | 'fee' | 'hours_na' | 'fee_na', doctorId: string) => Promise<SetupView | null>;
   /** Where "Set up / Change" goes for this viewer; null = not theirs to change (shown as plain text). */
   resolve: (target: SetupTarget, item: SetupItem) => SetupAction;
   /** Only the doctor's own items are confirmable by the doctor. */
@@ -38,12 +38,13 @@ export function SetupCard({ title, load, confirm, resolve, canConfirm }: Props) 
   // The progress is always visible; the list of what is left opens only when the header is tapped.
   const expanded = open ?? false;
 
-  const doConfirm = async (item: SetupItem) => {
-    if (!confirm || !item.confirm || !item.doctor_id) return;
+  const doConfirm = async (item: SetupItem, unavailable = false) => {
+    const what = unavailable ? (item.can_mark_unavailable ? (`${item.can_mark_unavailable}_na` as const) : null) : item.confirm;
+    if (!confirm || !what || !item.doctor_id) return;
     setBusy(item.key);
     setError(null);
     try {
-      const next = await confirm(item.confirm, item.doctor_id);
+      const next = await confirm(what, item.doctor_id);
       if (next) setView(next);
     } catch (e) {
       setError((e as Error).message);
@@ -112,6 +113,16 @@ export function SetupCard({ title, load, confirm, resolve, canConfirm }: Props) 
                             className="h-9 px-3 rounded-full bg-primary text-on-primary font-label-md text-label-md disabled:opacity-60"
                           >
                             {busy === item.key ? '…' : 'Confirm'}
+                          </button>
+                        )}
+                        {/* Decision 65: hours / fee not known (e.g. a directory listing) — stop asking. */}
+                        {!!item.can_mark_unavailable && !!confirm && (canConfirm ? canConfirm(item) : true) && (
+                          <button
+                            disabled={busy === item.key}
+                            onClick={() => doConfirm(item, true)}
+                            className="h-9 px-3 rounded-full bg-surface-container text-on-surface-variant font-label-md text-label-md disabled:opacity-60"
+                          >
+                            Not available
                           </button>
                         )}
                         {action?.href ? (
