@@ -122,6 +122,8 @@ export interface Tenant {
   city?: string | null;
   address?: string | null;
   public_phone?: string | null;
+  /** Billing/transactional contact email — never public. */
+  contact_email?: string | null;
   public_slug?: string | null;
   /** Decision 41 — a pasted Google Maps link to the clinic's exact pin; opened as-is for "Get Directions". */
   maps_url?: string | null;
@@ -1031,6 +1033,9 @@ export const api = {
     tenantId: string,
     patch: { is_publicly_listed?: boolean; city?: string | null; address?: string | null; public_phone?: string | null; maps_url?: string | null; landing_template?: LandingTemplate; landing_tagline?: string | null; landing_about?: string | null; landing_highlights?: string[] },
   ) => request<Tenant>(`/tenants/${tenantId}/public-profile`, { method: 'PATCH', body: JSON.stringify(patch) }),
+  /** Billing/transactional contact email — private, skips the public-profile moderation path. */
+  updateTenantContactEmail: (tenantId: string, contact_email: string | null) =>
+    request<{ contact_email: string | null }>(`/tenants/${tenantId}/contact-email`, { method: 'PATCH', body: JSON.stringify({ contact_email }) }),
   /** Decision 50 — AI drafts for the landing page (they only propose text; nothing is saved). */
   landingClinicDraft: () => request<{ tagline: string; about: string; highlights: string[] }>('/landing/clinic-draft', { method: 'POST' }),
   landingDoctorBio: (doctorId: string) => request<{ bio: string }>('/landing/doctor-bio', { method: 'POST', body: JSON.stringify({ doctor_id: doctorId }) }),

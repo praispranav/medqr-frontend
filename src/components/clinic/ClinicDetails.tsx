@@ -134,7 +134,9 @@ export function ClinicDetails({
   }
 
   return (
-    <Section title="Clinic details" subtitle="Your clinic's address and phone, and whether it's listed on clinicq.fit/doctors for patients searching online.">
+    <>
+      <BillingEmail tenant={tenant} onSaved={onSaved} />
+      <Section title="Clinic details" subtitle="Your clinic's address and phone, and whether it's listed on clinicq.fit/doctors for patients searching online.">
       <div className="flex flex-col gap-4">
         <label className="flex items-center justify-between gap-3">
           <div>
@@ -309,6 +311,62 @@ export function ClinicDetails({
             {state === 'saving' ? 'Saving…' : 'Save clinic details'}
           </button>
           {state === 'saved' && !dirty && (reviewNote ? <p className="font-body-sm text-body-sm text-on-surface-variant">{reviewNote}</p> : <p className="font-body-sm text-body-sm text-tertiary">Saved ✓</p>)}
+        </div>
+      </div>
+      </Section>
+    </>
+  );
+}
+
+/**
+ * Billing/transactional email (invoices, payment confirmations, billing-due reminders, verification
+ * mail) — a separate small form with its own private endpoint, deliberately NOT bundled into the
+ * public-profile save above: this address is never shown publicly and must never go through content
+ * moderation (which exists only to check public-facing listing text).
+ */
+function BillingEmail({ tenant, onSaved }: { tenant: Tenant; onSaved: () => Promise<void> }) {
+  const [email, setEmail] = useState(tenant.contact_email ?? '');
+  const [state, setState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [error, setError] = useState<string | null>(null);
+  const dirty = email !== (tenant.contact_email ?? '');
+
+  const save = async () => {
+    setState('saving');
+    setError(null);
+    try {
+      await api.updateTenantContactEmail(tenant.id, email.trim() || null);
+      await onSaved();
+      setState('saved');
+    } catch (e) {
+      setState('error');
+      setError(e instanceof ApiError ? e.message : 'Could not save right now.');
+    }
+  };
+
+  return (
+    <Section title="Billing email" subtitle="Where invoices, payment confirmations, and billing-due reminders go. Private — never shown to patients.">
+      <div className="flex flex-col gap-3">
+        <label className="flex flex-col gap-1 max-w-sm">
+          <span className="font-label-sm text-label-sm text-on-surface-variant">Email address</span>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="clinic@example.com"
+            className="h-11 rounded-lg bg-surface-container-low px-3 font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-primary/30"
+          />
+        </label>
+        {error && <p className="font-body-sm text-body-sm text-error">{error}</p>}
+        <div className="flex items-center gap-3">
+          <button
+            disabled={!dirty || state === 'saving'}
+            onClick={save}
+            className="h-10 px-4 rounded-xl bg-primary text-on-primary font-label-md text-label-md flex items-center gap-2 disabled:opacity-40 self-start"
+          >
+            <Icon name="save" className="text-[18px]" />
+            {state === 'saving' ? 'Saving…' : 'Save'}
+          </button>
+          {state === 'saved' && !dirty && <p className="font-body-sm text-body-sm text-tertiary">Saved ✓</p>}
         </div>
       </div>
     </Section>
