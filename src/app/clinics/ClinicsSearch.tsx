@@ -105,7 +105,7 @@ export function ClinicsSearch({ initialQ = '', initialCity = '', initialArea = '
           <p className="text-body-md text-on-surface-variant mt-2">Try another location or remove a filter to see more clinics.</p>
           <button onClick={clear} className="min-h-11 mt-5 rounded-xl bg-primary px-5 text-on-primary text-label-lg">Clear filters</button>
         </div>}
-        <div className="grid md:grid-cols-2 gap-4 sm:gap-5">{results.map(c => <ClinicCard key={c.slug} clinic={c} host={host} />)}</div>
+        <div className="flex flex-col gap-4 sm:gap-5">{results.map(c => <ClinicCard key={c.slug} clinic={c} host={host} />)}</div>
         {more && <button disabled={loadingMore} onClick={loadMore} className="min-h-12 self-center rounded-xl bg-primary px-6 text-label-lg text-on-primary disabled:opacity-50">{loadingMore ? 'Loading clinics…' : 'Show more clinics'}</button>}
       </>}
     </section>
@@ -122,7 +122,8 @@ function ClinicCard({ clinic: c, host }: { clinic: DirectoryClinicSummary; host:
   const href = `/clinics/${c.slug}`;
   const directions = c.maps_url && /^https?:\/\//i.test(c.maps_url) ? c.maps_url : c.address || c.city ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([c.clinic_name, c.address, c.city].filter(Boolean).join(', '))}` : null;
   const doctors = c.doctors ?? [];
-  return <article className="rounded-2xl bg-surface-container-lowest p-5 sm:p-6 flex flex-col gap-4">
+  return <article className="rounded-2xl bg-surface-container-lowest p-5 sm:p-6 flex flex-col md:grid md:grid-cols-[minmax(0,1fr)_220px] gap-4 md:gap-8">
+    <div className="flex flex-col gap-3">
     <div className="flex items-start gap-3">
       <span className="w-11 h-11 shrink-0 rounded-xl bg-primary-fixed/40 text-primary flex items-center justify-center"><Icon name="local_hospital" className="text-2xl" /></span>
       <div className="min-w-0">
@@ -136,7 +137,8 @@ function ClinicCard({ clinic: c, host }: { clinic: DirectoryClinicSummary; host:
       <span className="rounded-full bg-primary-fixed/40 px-3 py-1 text-label-md text-primary inline-flex items-center gap-1.5"><Icon name="confirmation_number" className="text-base" />Online booking</span>
       {c.available_today && <span className="inline-flex items-center gap-1.5 text-label-md text-tertiary"><span className="h-2 w-2 rounded-full bg-tertiary" />Available today</span>}
     </div>}
-    <div className="mt-auto pt-1 flex flex-col gap-2">
+    </div>
+    <div className="mt-auto md:my-auto pt-1 flex flex-col gap-2">
       {c.booking_open && c.subdomain ? <Link href={patientUrl(`/patient/${encodeURIComponent(c.subdomain)}`, host)} className="min-h-12 rounded-xl bg-primary text-on-primary text-label-lg flex items-center justify-center gap-2">Get a token<Icon name="arrow_forward" className="text-lg" /></Link> : <Link href={href} className="min-h-12 rounded-xl bg-surface-container-low text-primary text-label-lg flex items-center justify-center">View clinic</Link>}
       <div className="flex items-center gap-3 justify-between">
         {c.booking_open ? <Link href={href} className="min-h-11 inline-flex items-center text-label-md text-primary">{c.doctor_count > 0 ? 'View doctors' : 'Clinic details'}</Link> : c.public_phone ? <a href={`tel:${c.public_phone.replace(/[^+\d]/g, '')}`} className="min-h-11 inline-flex items-center gap-1.5 text-label-md text-primary"><Icon name="call" className="text-lg" />Call clinic</a> : <span />}
