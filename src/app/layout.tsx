@@ -1,7 +1,31 @@
 import type { Metadata, Viewport } from 'next';
+import { Inter, Manrope, Newsreader } from 'next/font/google';
 import { COMPANY_NAME, COMPANY_URL } from '@/components/support/contactInfo';
 import { headers } from 'next/headers';
 import './globals.css';
+
+const inter = Inter({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-inter',
+  weight: ['400', '500', '600', '700'],
+});
+
+const manrope = Manrope({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-manrope',
+  weight: ['400', '600', '700', '800'],
+});
+
+const newsreader = Newsreader({
+  subsets: ['latin'],
+  display: 'swap',
+  style: ['normal', 'italic'],
+  variable: '--font-newsreader',
+  weight: ['400', '500', '600'],
+  adjustFontFallback: false,
+});
 
 // Google Tag Manager container (as given by GTM: script high in <head>, noscript iframe right after <body>).
 const GTM_ID = 'GTM-WZFZQ5L6';
@@ -65,7 +89,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className={`${inter.variable} ${manrope.variable} ${newsreader.variable}`}>
       <head>
         {/* JSON-LD Schema for SaaS Product — only true, non-fabricated facts (Google's Review Snippet /
             structured-data policy treats made-up ratings as spam and can trigger a manual action; this
@@ -101,17 +125,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* Google Tag Manager */}
         <script dangerouslySetInnerHTML={{ __html: GTM_SNIPPET }} />
         {/* End Google Tag Manager */}
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        {/* Preconnect to font CDN for asynchronous Material Symbols glyph download */}
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-        <link
-          rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@400;600;700;800&family=Newsreader:ital,wght@0,400;0,500;0,600;1,500&display=swap"
-        />
-        {/* Icon font: display=swap prevents render blocking */}
-        <link
-          rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0..1,0&display=swap"
-        />
       </head>
       <body className="font-body-md antialiased">
         {/* Google Tag Manager (noscript) */}

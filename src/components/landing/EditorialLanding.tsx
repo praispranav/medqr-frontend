@@ -8,7 +8,7 @@ import { VerifiedBadge } from '@/components/directory/VerifiedBadge';
 // Template 1 — "Warm Clinical Editorial": paper-toned canvas, serif (Newsreader) headlines, cream cards with hairline
 // borders, evergreen teal buttons and amber trust badges. Calm, spacious, a little literary.
 
-const serif = { fontFamily: "'Newsreader', Georgia, serif" } as const;
+const serif = { fontFamily: "var(--font-newsreader), 'Newsreader', Georgia, serif" } as const;
 const btn = 'h-12 px-6 rounded-xl bg-[#0F766E] hover:bg-[#115E59] text-[#FBFAF7] font-label-lg text-label-lg flex items-center justify-center gap-2 transition-colors';
 const ghost = 'h-12 px-5 rounded-xl bg-[#F4F1EA] border border-[#0F766E]/20 text-[#0F766E] font-label-lg text-label-lg flex items-center justify-center gap-2';
 const card = 'bg-[#F4F1EA] border border-[#1E293B]/[0.07] rounded-3xl shadow-[0_4px_20px_-2px_rgba(30,41,59,0.05)]';
