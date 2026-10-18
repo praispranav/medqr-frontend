@@ -3,6 +3,7 @@ import { BrandLogo } from '@/components/brand/BrandLogo';
 import { fileUrl, type DirectoryLandingDoctor } from '@/lib/api';
 import { WHY, VISIT_TIPS, directionsUrl, initials, orderedDoctors, telHref, tokenHref, type LandingProps } from './landingData';
 import { ClaimBox } from './ClaimBox';
+import { VerifiedBadge } from '@/components/directory/VerifiedBadge';
 
 // Template 1 — "Warm Clinical Editorial": paper-toned canvas, serif (Newsreader) headlines, cream cards with hairline
 // borders, evergreen teal buttons and amber trust badges. Calm, spacious, a little literary.
@@ -39,6 +40,7 @@ export function EditorialLanding({ clinic, focusSlug, staffLoginHref, host }: La
         <section className="flex flex-col gap-5 max-w-3xl">
           {clinic.city && <p className="font-label-sm text-label-sm uppercase tracking-[0.14em] text-[#0F766E]">{clinic.city}</p>}
           <h1 className="text-[40px] leading-[46px] md:text-[56px] md:leading-[62px] font-medium tracking-[-0.015em]" style={serif}>{clinic.clinic_name}</h1>
+          {clinic.verified && <div><VerifiedBadge size="md" /></div>}
           {clinic.tagline && <p className="text-[22px] leading-[32px] italic text-[#1E293B]/75" style={serif}>{clinic.tagline}</p>}
           {clinic.about && <p className="font-body-lg text-body-lg text-[#1E293B]/80">{clinic.about}</p>}
           {clinic.highlights.length > 0 && (

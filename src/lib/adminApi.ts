@@ -280,7 +280,7 @@ export const adminApi = (key: string) => ({
       queue_settings?: Partial<QueueSettings>;
       /** Decision 60 — super admin only. */
       subdomain?: string;
-      public_booking?: 'auto' | 'on' | 'off'; directory_products?: string[];
+      public_booking?: 'auto' | 'on' | 'off'; directory_products?: string[]; verified?: boolean;
     },
   ) => request<Tenant>(key, `/tenants/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
   /** Help a doctor set up: profile fields, Patient Notifications toggles, Intake Form. */

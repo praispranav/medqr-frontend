@@ -267,7 +267,7 @@ function ClinicCodeAndBooking({ api, tenant, onSaved }: { api: AdminApi; tenant:
   const [saved, setSaved] = useState<string | null>(null);
   useEffect(() => setCode(tenant.subdomain), [tenant.subdomain]);
 
-  const save = async (body: { subdomain?: string; public_booking?: 'auto' | 'on' | 'off' }, msg: string) => {
+  const save = async (body: { subdomain?: string; public_booking?: 'auto' | 'on' | 'off'; verified?: boolean }, msg: string) => {
     setBusy(true);
     setError(null);
     setSaved(null);
@@ -339,6 +339,11 @@ function ClinicCodeAndBooking({ api, tenant, onSaved }: { api: AdminApi; tenant:
           Auto = shown while the clinic is on a free trial or the paid plan; hidden on the free plan and when a trial ends unpaid.
         </p>
       </div>
+      {/* Decision 68: Verified = ClinicQ checked the clinic's documents (set automatically when a claim/signup is approved). */}
+      <label className="md:col-span-2 flex items-center gap-2 font-label-md text-label-md">
+        <input type="checkbox" className="w-4 h-4" checked={!!tenant.verified_at} disabled={busy} onChange={(e) => save({ verified: e.target.checked }, e.target.checked ? 'Marked Verified.' : 'Verified badge removed.')} />
+        Verified clinic (documents checked) — shows the badge and comes first in search
+      </label>
       {(error || saved) && <p className={`md:col-span-2 font-body-sm text-body-sm ${error ? 'text-error' : 'text-tertiary'}`}>{error ?? saved}</p>}
     </div>
   );

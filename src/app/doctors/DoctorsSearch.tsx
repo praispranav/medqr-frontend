@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { api, fileUrl, type DirectoryDoctorSummary } from '@/lib/api';
 import { Icon } from '@/components/patient/ui';
 import { AskOnlineBooking } from '@/components/directory/AskOnlineBooking';
+import { VerifiedBadge } from '@/components/directory/VerifiedBadge';
 import { groupOf } from '@/lib/specialtyGroups';
 import { InfiniteFooter, useInfiniteScroll } from '@/lib/useInfiniteScroll';
 import { nearestDirectoryCity } from '@/lib/nearestCity';
@@ -198,7 +199,7 @@ export function DoctorsSearch({
                 </div>
               )}
               <div className="flex-1 min-w-0">
-                <h3 className="font-label-lg text-label-lg truncate">{d.name}</h3>
+                <h3 className="font-label-lg text-label-lg flex items-center gap-1.5 min-w-0"><span className="truncate">{d.name}</span>{d.verified && <VerifiedBadge />}</h3>
                 <p className="font-body-sm text-body-sm text-on-surface-variant truncate">
                   {[groupOf(d.specialty)?.name ?? d.specialty, d.city].filter(Boolean).join(' · ')}
                 </p>

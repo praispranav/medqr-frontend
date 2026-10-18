@@ -3,6 +3,7 @@ import { BrandLogo } from '@/components/brand/BrandLogo';
 import { fileUrl, type DirectoryLandingDoctor } from '@/lib/api';
 import { WHY, VISIT_TIPS, directionsUrl, initials, orderedDoctors, telHref, tokenHref, type LandingProps } from './landingData';
 import { ClaimBox } from './ClaimBox';
+import { VerifiedBadge } from '@/components/directory/VerifiedBadge';
 
 // Template 2 — "Playful": bright, rounded, pastel-tinted tiles and friendly icons. Same content as the editorial
 // template, a lighter and more energetic look. Green is the brand colour here (no blue / indigo); amber and peach
@@ -40,6 +41,7 @@ export function PlayfulLanding({ clinic, focusSlug, staffLoginHref, host }: Land
           <div className="flex-1 flex flex-col gap-4">
             {clinic.city && <span className="self-start px-3 py-1 rounded-full bg-[#CCFBF1] text-[#0F766E] font-label-sm text-label-sm flex items-center gap-1"><span className="material-symbols-outlined text-[16px]">location_on</span>{clinic.city}</span>}
             <h1 className="font-headline-lg text-[34px] leading-[40px] md:text-[46px] md:leading-[52px] font-extrabold tracking-tight">{clinic.clinic_name}</h1>
+            {clinic.verified && <div><VerifiedBadge size="md" /></div>}
             {clinic.tagline && <p className="font-body-lg text-body-lg text-[#0F2A24]/75">{clinic.tagline}</p>}
             {clinic.about && <p className="font-body-md text-body-md text-[#0F2A24]/70">{clinic.about}</p>}
             {clinic.highlights.length > 0 && (

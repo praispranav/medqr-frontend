@@ -8,6 +8,7 @@ import { patientUrl } from '@/lib/clinicHost';
 import { useHost } from '@/lib/useHost';
 import { InfiniteFooter, useInfiniteScroll } from '@/lib/useInfiniteScroll';
 import { groupOf } from '@/lib/specialtyGroups';
+import { VerifiedBadge } from '@/components/directory/VerifiedBadge';
 
 const PAGE_SIZE = 24;
 
@@ -136,6 +137,7 @@ function ClinicCard({ clinic: c, host }: { clinic: DirectoryClinicSummary; host:
       <Icon name="chevron_right" className="order-last ml-auto self-center text-[28px] text-on-surface-variant" aria-hidden />
       <div className="min-w-0">
         <Link href={href} className="font-headline text-headline-sm hover:text-primary hover:underline break-words after:absolute after:inset-0 after:rounded-2xl">{c.clinic_name}</Link>
+        {c.verified && <span className="ml-2 align-middle"><VerifiedBadge /></span>}
         {(c.address || c.city) && <p className="mt-1 text-body-md text-on-surface-variant flex gap-1.5"><Icon name="location_on" className="text-lg shrink-0" /><span className="line-clamp-2">{c.address}{c.address && c.city && !c.address.toLowerCase().includes(c.city.toLowerCase()) ? `, ${c.city}` : !c.address ? c.city : ''}</span></p>}
       </div>
     </div>

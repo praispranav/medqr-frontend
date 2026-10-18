@@ -8,6 +8,7 @@ import { BrandLogo } from '@/components/brand/BrandLogo';
 import { patientUrl } from '@/lib/clinicHost';
 import { groupOf } from '@/lib/specialtyGroups';
 import { AskOnlineBooking } from '@/components/directory/AskOnlineBooking';
+import { VerifiedBadge } from '@/components/directory/VerifiedBadge';
 
 // Public, server-rendered doctor profile — the actual target of clinicq.fit/doctors search results and
 // of Google search. Deliberately a server component (not 'use client' like the rest of the app) so
@@ -89,6 +90,7 @@ export default async function DoctorProfilePage({ params }: { params: { slug: st
             )}
             <div>
               <h1 className="font-headline-lg text-headline-lg">{doctor.name}</h1>
+              {doctor.verified && <VerifiedBadge size="md" />}
               <p className="font-body-md text-body-md text-on-surface-variant">{[doctor.qualification, doctor.specialty].filter(Boolean).join(' · ')}</p>
             </div>
           </div>

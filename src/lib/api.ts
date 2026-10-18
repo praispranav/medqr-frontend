@@ -101,6 +101,8 @@ export interface Entitlements {
 export interface DirectoryProduct { key: string; name: string }
 
 export interface Tenant {
+  /** Decision 68 */
+  verified_at?: string | null;
   directory_products?: string[];
   id: string;
   subdomain: string;
@@ -584,6 +586,8 @@ export interface DirectorySitemap {
 }
 
 export interface DirectoryDoctorSummary {
+  /** Decision 68: ClinicQ checked the clinic's documents. */
+  verified?: boolean;
   /** Decision 60: "Get a token" is offered only by clinics on a free trial or the paid plan (or switched on by ClinicQ). */
   booking_open?: boolean;
   slug: string;
@@ -624,6 +628,7 @@ export interface DirectoryLandingDoctor {
 }
 
 export interface DirectoryClinicProfile {
+  verified?: boolean;
   /** Decision 60: "Get a token" is offered only by clinics on a free trial or the paid plan (or switched on by ClinicQ). */
   booking_open?: boolean;
   clinic_name: string | null;
@@ -642,6 +647,7 @@ export interface DirectoryClinicProfile {
 
 /** One row of the clinics directory/search list (Decision 51) — the clinic page itself has the full profile. */
 export interface DirectoryClinicSummary {
+  verified?: boolean;
   /** Decision 60: "Get a token" is offered only by clinics on a free trial or the paid plan (or switched on by ClinicQ). */
   booking_open?: boolean;
   slug: string;
