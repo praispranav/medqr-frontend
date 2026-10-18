@@ -7,6 +7,7 @@ import { Icon } from '@/components/patient/ui';
 import { patientUrl } from '@/lib/clinicHost';
 import { useHost } from '@/lib/useHost';
 import { InfiniteFooter, useInfiniteScroll } from '@/lib/useInfiniteScroll';
+import { groupOf } from '@/lib/specialtyGroups';
 
 const PAGE_SIZE = 24;
 
@@ -125,26 +126,30 @@ function ClinicCard({ clinic: c, host }: { clinic: DirectoryClinicSummary; host:
   const href = `/clinics/${c.slug}`;
   const directions = c.maps_url && /^https?:\/\//i.test(c.maps_url) ? c.maps_url : c.address || c.city ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([c.clinic_name, c.address, c.city].filter(Boolean).join(', '))}` : null;
   const doctors = c.doctors ?? [];
-  return <article className="rounded-2xl bg-surface-container-lowest p-5 sm:p-6 flex flex-col md:grid md:grid-cols-[minmax(0,1fr)_220px] gap-4 md:gap-8">
+  // Patient-facing specialty names ("ENT Specialist", not "Otolaryngologist"), without repeats.
+  const specialties = [...new Set((c.specialties ?? []).map((s) => groupOf(s)?.name ?? s))];
+  // The whole card opens the clinic page (it is also every doctor's page there — Decision 50); buttons sit above it.
+  return <article className="relative rounded-2xl bg-surface-container-lowest p-5 sm:p-6 flex flex-col md:grid md:grid-cols-[minmax(0,1fr)_220px] gap-4 md:gap-8 hover:shadow-md transition-shadow">
     <div className="flex flex-col gap-3">
     <div className="flex items-start gap-3">
       <span className="w-11 h-11 shrink-0 rounded-xl bg-primary-fixed/40 text-primary flex items-center justify-center"><Icon name="local_hospital" className="text-2xl" /></span>
       <div className="min-w-0">
-        <Link href={href} className="font-headline text-headline-sm hover:text-primary break-words">{c.clinic_name}</Link>
+        <Link href={href} className="font-headline text-headline-sm hover:text-primary hover:underline break-words after:absolute after:inset-0 after:rounded-2xl">{c.clinic_name}</Link>
         {(c.address || c.city) && <p className="mt-1 text-body-md text-on-surface-variant flex gap-1.5"><Icon name="location_on" className="text-lg shrink-0" /><span className="line-clamp-2">{c.address}{c.address && c.city && !c.address.toLowerCase().includes(c.city.toLowerCase()) ? `, ${c.city}` : !c.address ? c.city : ''}</span></p>}
       </div>
     </div>
-    {c.specialties?.length ? <p className="text-body-md text-on-surface-variant line-clamp-2">{c.specialties.slice(0, 3).join(' · ')}</p> : null}
+    {specialties.length ? <p className="text-body-md text-on-surface-variant line-clamp-2">{specialties.slice(0, 3).join(' · ')}</p> : null}
     {doctors.length > 0 && <p className="text-body-md flex items-start gap-2"><Icon name="stethoscope" className="text-lg text-primary" /><span>{doctors[0].name}{c.doctor_count > 1 ? ` + ${c.doctor_count - 1} more` : ''}</span></p>}
     {c.booking_open && <div className="flex flex-wrap gap-2 items-center">
       <span className="rounded-full bg-primary-fixed/40 px-3 py-1 text-label-md text-primary inline-flex items-center gap-1.5"><Icon name="confirmation_number" className="text-base" />Online booking</span>
       {c.available_today && <span className="inline-flex items-center gap-1.5 text-label-md text-tertiary"><span className="h-2 w-2 rounded-full bg-tertiary" />Available today</span>}
     </div>}
     </div>
-    <div className="mt-auto md:my-auto pt-1 flex flex-col gap-2">
-      {c.booking_open && c.subdomain ? <Link href={patientUrl(`/patient/${encodeURIComponent(c.subdomain)}`, host)} className="min-h-12 rounded-xl bg-primary text-on-primary text-label-lg flex items-center justify-center gap-2">Get a token<Icon name="arrow_forward" className="text-lg" /></Link> : <Link href={href} className="min-h-12 rounded-xl bg-surface-container-low text-primary text-label-lg flex items-center justify-center">View clinic</Link>}
+    <div className="relative z-10 mt-auto md:my-auto pt-1 flex flex-col gap-2">
+      {c.booking_open && c.subdomain && <Link href={patientUrl(`/patient/${encodeURIComponent(c.subdomain)}`, host)} className="min-h-12 rounded-xl bg-primary text-on-primary text-label-lg flex items-center justify-center gap-2">Get a token<Icon name="arrow_forward" className="text-lg" /></Link>}
+      <Link href={href} className={`min-h-12 rounded-xl text-label-lg flex items-center justify-center gap-2 ${c.booking_open ? 'border border-primary/30 text-primary' : 'bg-primary text-on-primary'}`}>View clinic &amp; doctors<Icon name="arrow_forward" className="text-lg" /></Link>
       <div className="flex items-center gap-3 justify-between">
-        {c.booking_open ? <Link href={href} className="min-h-11 inline-flex items-center text-label-md text-primary">{c.doctor_count > 0 ? 'View doctors' : 'Clinic details'}</Link> : c.public_phone ? <a href={`tel:${c.public_phone.replace(/[^+\d]/g, '')}`} className="min-h-11 inline-flex items-center gap-1.5 text-label-md text-primary"><Icon name="call" className="text-lg" />Call clinic</a> : <span />}
+        {c.public_phone ? <a href={`tel:${c.public_phone.replace(/[^+\d]/g, '')}`} className="min-h-11 inline-flex items-center gap-1.5 text-label-md text-primary"><Icon name="call" className="text-lg" />Call clinic</a> : <span />}
         {directions && <a href={directions} target="_blank" rel="noopener noreferrer" className="min-h-11 inline-flex items-center gap-1.5 text-label-md text-primary"><Icon name="near_me" className="text-lg" />Directions</a>}
       </div>
     </div>
