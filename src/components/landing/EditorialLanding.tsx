@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { BrandLogo } from '@/components/brand/BrandLogo';
 import { fileUrl, type DirectoryLandingDoctor } from '@/lib/api';
-import { WHY, directionsUrl, initials, orderedDoctors, telHref, tokenHref, type LandingProps } from './landingData';
+import { WHY, VISIT_TIPS, directionsUrl, initials, orderedDoctors, telHref, tokenHref, type LandingProps } from './landingData';
 import { ClaimBox } from './ClaimBox';
 
 // Template 1 — "Warm Clinical Editorial": paper-toned canvas, serif (Newsreader) headlines, cream cards with hairline
@@ -71,9 +71,9 @@ export function EditorialLanding({ clinic, focusSlug, staffLoginHref, host }: La
 
         {/* Why */}
         <section className="flex flex-col gap-6">
-          <h2 className="text-[30px] leading-[38px] font-medium" style={serif}>How a token helps you</h2>
+          <h2 className="text-[30px] leading-[38px] font-medium" style={serif}>{canBook ? 'How a token helps you' : 'Before you visit'}</h2>
           <ol className="grid md:grid-cols-2 gap-x-10 gap-y-6">
-            {WHY.map((w, i) => (
+            {(canBook ? WHY : VISIT_TIPS).map((w, i) => (
               <li key={w.title} className="flex gap-4 border-t border-[#1E293B]/10 pt-5">
                 <span className="text-[#0F766E] text-[28px] leading-none w-8 shrink-0" style={serif}>{i + 1}</span>
                 <div>

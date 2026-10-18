@@ -51,6 +51,17 @@ export const WHY = [
   { icon: 'receipt_long', title: 'Clear and simple', body: 'Your token, your doctor and the clinic’s details stay together on one page you can open any time.' },
 ] as const;
 
+/**
+ * Decision 66 — clinics WITHOUT online OPD booking: practical visit tips instead of token benefits we can't
+ * deliver, and what the patient would gain if the clinic switched it on (the "Ask for online booking" box follows).
+ */
+export const VISIT_TIPS = [
+  { icon: 'call', title: 'Call before you go', body: 'Timings can change on the day. A quick call to the clinic saves a wasted trip.' },
+  { icon: 'near_me', title: 'Get directions', body: 'Open the clinic in Google Maps from this page for the exact route.' },
+  { icon: 'description', title: 'Carry your papers', body: 'Bring old prescriptions and reports so the doctor sees your history.' },
+  { icon: 'hourglass_top', title: 'Want to skip the queue?', body: 'With online OPD booking you could take a token from home and come when your turn is near. Ask the clinic below.' },
+] as const;
+
 export function jsonLd(c: DirectoryClinicProfile) {
   return {
     '@context': 'https://schema.org',

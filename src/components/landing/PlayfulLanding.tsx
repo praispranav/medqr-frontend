@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { BrandLogo } from '@/components/brand/BrandLogo';
 import { fileUrl, type DirectoryLandingDoctor } from '@/lib/api';
-import { WHY, directionsUrl, initials, orderedDoctors, telHref, tokenHref, type LandingProps } from './landingData';
+import { WHY, VISIT_TIPS, directionsUrl, initials, orderedDoctors, telHref, tokenHref, type LandingProps } from './landingData';
 import { ClaimBox } from './ClaimBox';
 
 // Template 2 — "Playful": bright, rounded, pastel-tinted tiles and friendly icons. Same content as the editorial
@@ -96,9 +96,9 @@ export function PlayfulLanding({ clinic, focusSlug, staffLoginHref, host }: Land
 
         {/* Why */}
         <section className="flex flex-col gap-4">
-          <h2 className="font-headline-md text-headline-md font-extrabold">Why patients like tokens</h2>
+          <h2 className="font-headline-md text-headline-md font-extrabold">{canBook ? 'Why patients like tokens' : 'Before you visit'}</h2>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {WHY.map((w, i) => (
+            {(canBook ? WHY : VISIT_TIPS).map((w, i) => (
               <div key={w.title} className={`rounded-[1.75rem] ${TILE_TONES[i % TILE_TONES.length]} p-5 flex flex-col gap-2`}>
                 <span className="w-11 h-11 rounded-2xl bg-white/70 flex items-center justify-center material-symbols-outlined text-[#0F766E] !text-[26px]">{w.icon}</span>
                 <p className="font-title-lg text-title-lg font-bold">{w.title}</p>
