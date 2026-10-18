@@ -6,6 +6,7 @@ import { api, type DirectoryClinicSummary } from '@/lib/api';
 import { Icon } from '@/components/patient/ui';
 import { patientUrl } from '@/lib/clinicHost';
 import { useHost } from '@/lib/useHost';
+import { InfiniteFooter, useInfiniteScroll } from '@/lib/useInfiniteScroll';
 
 const PAGE_SIZE = 24;
 
@@ -61,6 +62,8 @@ export function ClinicsSearch({ initialQ = '', initialCity = '', initialArea = '
     finally { if (generation.current === version) setLoadingMore(false); }
   };
 
+  const sentinel = useInfiniteScroll(loadMore, more && !error);
+
   return <div className="flex flex-col gap-6" data-ui>
     <section aria-label="Find clinics" className="flex flex-col gap-4">
       <div className="rounded-2xl bg-surface-container-lowest p-4 sm:p-5 grid grid-cols-2 lg:grid-cols-[2fr_1fr_1fr] gap-3 sm:gap-4">
@@ -106,7 +109,7 @@ export function ClinicsSearch({ initialQ = '', initialCity = '', initialArea = '
           <button onClick={clear} className="min-h-11 mt-5 rounded-xl bg-primary px-5 text-on-primary text-label-lg">Clear filters</button>
         </div>}
         <div className="flex flex-col gap-4 sm:gap-5">{results.map(c => <ClinicCard key={c.slug} clinic={c} host={host} />)}</div>
-        {more && <button disabled={loadingMore} onClick={loadMore} className="min-h-12 self-center rounded-xl bg-primary px-6 text-label-lg text-on-primary disabled:opacity-50">{loadingMore ? 'Loading clinics…' : 'Show more clinics'}</button>}
+        <InfiniteFooter sentinel={sentinel} hasMore={more && !error} loading={loadingMore} />
       </>}
     </section>
   </div>;

@@ -6,6 +6,7 @@ import { api, fileUrl, type DirectoryDoctorSummary } from '@/lib/api';
 import { Icon } from '@/components/patient/ui';
 import { AskOnlineBooking } from '@/components/directory/AskOnlineBooking';
 import { groupOf } from '@/lib/specialtyGroups';
+import { InfiniteFooter, useInfiniteScroll } from '@/lib/useInfiniteScroll';
 
 // A screenful at a time; the next page loads as the visitor scrolls near the end (infinite scroll).
 export const DOCTORS_PAGE_SIZE = 24;
@@ -41,7 +42,6 @@ export function DoctorsSearch({
   const [results, setResults] = useState<DirectoryDoctorSummary[] | null>(initialResults ?? null);
   const [hasMore, setHasMore] = useState((initialResults?.length ?? 0) === DOCTORS_PAGE_SIZE);
   const [loadingMore, setLoadingMore] = useState(false);
-  const sentinel = useRef<HTMLDivElement>(null);
   const searchId = useRef(0);
   const firstRun = useRef(!!initialResults);
   const filters = { q: q.trim() || undefined, group: group || undefined, city: city || undefined, bookable: bookable ? '1' : undefined };
@@ -94,14 +94,7 @@ export function DoctorsSearch({
     }
   };
 
-  // Load the next page when the marker under the list scrolls into view.
-  useEffect(() => {
-    const el = sentinel.current;
-    if (!el || !hasMore) return;
-    const io = new IntersectionObserver((entries) => entries[0].isIntersecting && loadMore(), { rootMargin: '600px' });
-    io.observe(el);
-    return () => io.disconnect();
-  });
+  const sentinel = useInfiniteScroll(loadMore, hasMore);
 
   const active = !!(q || group || city || bookable);
   const clearFilters = () => {
@@ -216,13 +209,7 @@ export function DoctorsSearch({
         ))}
       </ul>
 
-      {hasMore && (
-        <div ref={sentinel} className="flex justify-center">
-          <button onClick={loadMore} disabled={loadingMore} className="h-11 px-5 rounded-xl bg-surface-container-lowest shadow-sm font-label-md text-label-md text-primary disabled:opacity-60">
-            {loadingMore ? 'Loading…' : 'Show more doctors'}
-          </button>
-        </div>
-      )}
+      <InfiniteFooter sentinel={sentinel} hasMore={hasMore} loading={loadingMore} />
     </div>
   );
 }

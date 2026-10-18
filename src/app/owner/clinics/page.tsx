@@ -8,6 +8,7 @@ import { describeCoupon } from '@/lib/coupons';
 import { Icon } from '@/components/patient/ui';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { inr } from '@/components/staff/bits';
+import { InfiniteFooter, useInfiniteScroll } from '@/lib/useInfiniteScroll';
 
 export default function AdminClinicsPage() {
   return <AdminShell active="/owner/clinics">{(api, me) => <Clinics api={api} referrer={me.role === 'referrer'} />}</AdminShell>;
@@ -28,7 +29,6 @@ function Clinics({ api, referrer }: { api: AdminApi; referrer: boolean }) {
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const pageId = useRef(0);
-  const sentinel = useRef<HTMLDivElement>(null);
   const visibleClinics = list;
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
@@ -73,13 +73,7 @@ function Clinics({ api, referrer }: { api: AdminApi; referrer: boolean }) {
       setLoadingMore(false);
     }
   };
-  useEffect(() => {
-    const el = sentinel.current;
-    if (!el || !hasMore) return;
-    const io = new IntersectionObserver((entries) => entries[0].isIntersecting && loadMore(), { rootMargin: '600px' });
-    io.observe(el);
-    return () => io.disconnect();
-  });
+  const sentinel = useInfiniteScroll(loadMore, hasMore);
 
   // Suggest a clinic code from the name until the admin edits it themselves.
   const suggested = name
@@ -259,13 +253,7 @@ function Clinics({ api, referrer }: { api: AdminApi; referrer: boolean }) {
             <Icon name="chevron_right" className="text-on-surface-variant" />
           </Link>
         ))}
-        {hasMore && (
-          <div ref={sentinel} className="p-4 flex justify-center">
-            <button onClick={loadMore} disabled={loadingMore} className="h-10 px-4 rounded-xl bg-surface-container-low text-primary font-label-md text-label-md disabled:opacity-60">
-              {loadingMore ? 'Loading…' : 'Show more clinics'}
-            </button>
-          </div>
-        )}
+        <InfiniteFooter sentinel={sentinel} hasMore={hasMore} loading={loadingMore} />
       </section>
     </div>
   );
