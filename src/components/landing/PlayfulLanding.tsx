@@ -141,7 +141,7 @@ export function PlayfulLanding({ clinic, focusSlug, staffLoginHref, host }: Land
             <Link href={mainHref} className={btn}>Get my token <span className="material-symbols-outlined text-[20px]">arrow_forward</span></Link>
           </section>
         ) : (
-          <ClaimBox />
+          <ClaimBox code={clinic.subdomain} />
         )}
       </div>
 
@@ -149,7 +149,7 @@ export function PlayfulLanding({ clinic, focusSlug, staffLoginHref, host }: Land
         <div className="max-w-5xl mx-auto px-5 py-6 flex flex-wrap gap-4 items-center text-[#0F2A24]/60 font-body-sm text-body-sm">
           <BrandLogo />
           <span>Digital queue for clinics</span>
-          <span className="ml-auto flex gap-4"><Link href="/privacy">Privacy</Link><Link href="/terms">Terms</Link><Link href="/contact">Contact</Link></span>
+          <span className="ml-auto flex flex-wrap gap-4"><Link href={`/claim/${clinic.subdomain}`}>Own this clinic? Claim it</Link><Link href={`/claim/${clinic.subdomain}?kind=remove`}>Remove listing</Link><Link href="/privacy">Privacy</Link><Link href="/terms">Terms</Link><Link href="/contact">Contact</Link></span>
         </div>
       </footer>
     </main>

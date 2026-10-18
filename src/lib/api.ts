@@ -491,7 +491,7 @@ export const fileUrl = (url: string) => (url.startsWith('/') ? `${API_BASE}${url
 // report photo stays perfectly readable at that size. PDFs and anything that cannot be shrunk are sent as they are.
 const UPLOAD_TARGET_BYTES = 900 * 1024;
 
-async function shrinkImage(file: File): Promise<File> {
+export async function shrinkImage(file: File): Promise<File> {
   if (!/^image\/(jpeg|png|webp|heic|heif)$/.test(file.type) || file.size <= UPLOAD_TARGET_BYTES) return file;
   try {
     const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
@@ -1056,6 +1056,17 @@ export const api = {
   directoryClinicsSearch: (opts: { q?: string; city?: string; area?: string; bookable?: string; today?: string; offset?: string; limit?: string } = {}) =>
     request<DirectoryClinicSummary[]>(`/directory/clinics${toQuery(opts)}`),
   directorySpecialties: () => request<string[]>('/directory/specialties'),
+  // Decision 64 — "Is this your clinic?": claim it or ask for removal, with proof documents.
+  listingClaimTarget: (code: string) =>
+    request<{ code: string; clinic_name: string; city: string | null; claimed: boolean; listed: boolean; doctors: { id: string; name: string }[] }>(`/listing-claims/${encodeURIComponent(code)}`),
+  submitListingClaim: async (code: string, form: FormData) => {
+    const res = await fetch(`${apiBase()}/listing-claims/${encodeURIComponent(code)}`, { method: 'POST', body: form });
+    if (!res.ok) {
+      const body = await res.json().catch(() => null);
+      throw new ApiError(res.status, typeof body?.message === 'string' ? body.message : `Couldn't send (${res.status})`);
+    }
+    return res.json() as Promise<{ ok: true }>;
+  },
   directoryCities: () => request<string[]>('/directory/cities'),
   directorySitemap: () => request<{ doctors: { slug: string; updated_at: string }[]; clinics: { slug: string }[] }>('/directory/sitemap'),
   billingPlan: () => request<MonthlyPlan>('/billing/plan'),

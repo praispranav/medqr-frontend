@@ -22,6 +22,26 @@ async function request<T>(key: string, path: string, options?: RequestInit): Pro
   return res.json();
 }
 
+export interface ListingClaimView {
+  id: string;
+  kind: 'claim' | 'remove';
+  status: 'new' | 'approved' | 'rejected';
+  name: string;
+  mobile: string;
+  email: string | null;
+  role: 'owner' | 'doctor' | 'manager' | 'other';
+  message: string | null;
+  admin_note: string | null;
+  created_at: string;
+  decided_at: string | null;
+  tenant_id: string;
+  clinic_name: string | null;
+  clinic_code: string | null;
+  clinic_listed: boolean;
+  doctor_name: string | null;
+  documents: { kind: 'id_proof' | 'registration' | 'clinic_proof'; name: string; mimetype: string; size: number; index: number }[];
+}
+
 export type SubscriptionStatus = 'free' | 'trial' | 'active' | 'grace' | 'read_only'; // 'free' = Decision 59
 
 export interface SubscriptionStatusView {
@@ -199,6 +219,11 @@ export const adminApi = (key: string) => ({
   ping: () => request<{ ok: true }>(key, '/ping'),
   activity: () => request<Activity>(key, '/activity'),
   tenants: () => request<AdminTenant[]>(key, '/tenants'),
+  // Decision 64 — claim / removal requests (super admin).
+  claims: (status: string) => request<ListingClaimView[]>(key, `/claims?status=${encodeURIComponent(status)}`),
+  decideClaim: (id: string, approve: boolean, note?: string) =>
+    request<ListingClaimView>(key, `/claims/${id}/${approve ? 'approve' : 'reject'}`, { method: 'POST', body: JSON.stringify({ note }) }),
+  claimDocumentUrl: (id: string, index: number) => `${apiBase()}/owner/claims/${id}/documents/${index}`,
   /** One page of Owner › Clinics (search + product filter), so 1,000+ clinics never load at once. */
   tenantsPage: (opts: { q?: string; product?: string; limit: number; offset: number }) =>
     request<AdminTenant[]>(key, `/tenants?${new URLSearchParams(Object.entries(opts).filter(([, v]) => v !== undefined && v !== '').map(([k, v]) => [k, String(v)])).toString()}`),

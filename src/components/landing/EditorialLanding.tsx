@@ -122,7 +122,7 @@ export function EditorialLanding({ clinic, focusSlug, staffLoginHref, host }: La
             </Link>
           </section>
         ) : (
-          <ClaimBox />
+          <ClaimBox code={clinic.subdomain} />
         )}
       </div>
 
@@ -130,7 +130,7 @@ export function EditorialLanding({ clinic, focusSlug, staffLoginHref, host }: La
         <div className="max-w-5xl mx-auto px-5 py-6 flex flex-wrap gap-4 items-center text-[#1E293B]/60 font-body-sm text-body-sm">
           <BrandLogo />
           <span>Digital queue for clinics</span>
-          <span className="ml-auto flex gap-4"><Link href="/privacy">Privacy</Link><Link href="/terms">Terms</Link><Link href="/contact">Contact</Link></span>
+          <span className="ml-auto flex flex-wrap gap-4"><Link href={`/claim/${clinic.subdomain}`}>Own this clinic? Claim it</Link><Link href={`/claim/${clinic.subdomain}?kind=remove`}>Remove listing</Link><Link href="/privacy">Privacy</Link><Link href="/terms">Terms</Link><Link href="/contact">Contact</Link></span>
         </div>
       </footer>
     </main>
