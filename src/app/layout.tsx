@@ -125,8 +125,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* Google Tag Manager */}
         <script dangerouslySetInnerHTML={{ __html: GTM_SNIPPET }} />
         {/* End Google Tag Manager */}
-        {/* Preconnect to font CDN for asynchronous Material Symbols glyph download */}
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+        {/* Preload self-hosted Material Symbols font to eliminate critical request chain and FOUT */}
+        <link
+          rel="preload"
+          href="/fonts/material-symbols-outlined.woff2"
+          as="font"
+          type="font/woff2"
+          crossOrigin="anonymous"
+        />
       </head>
       <body className="font-body-md antialiased">
         {/* Google Tag Manager (noscript) */}

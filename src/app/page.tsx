@@ -70,10 +70,10 @@ export default async function HomePage({ searchParams }: { searchParams?: { q?: 
         <span className="px-3 py-1 rounded-full bg-primary-fixed/50 text-on-primary-fixed-variant font-label-sm text-label-sm uppercase">
           Doctor &amp; clinic directory · Free to search
         </span>
-        <h1 className="font-headline-lg text-[34px] leading-[40px] sm:text-[44px] sm:leading-[50px] tracking-tight font-extrabold max-w-3xl">
+        <h1 className="font-headline-lg text-[32px] leading-[38px] sm:text-[44px] sm:leading-[50px] tracking-tight font-extrabold max-w-3xl min-h-[76px] sm:min-h-[50px] flex items-center justify-center">
           Find the right doctor near you.
         </h1>
-        <p className="font-body-lg text-body-lg text-on-surface-variant max-w-xl">
+        <p className="font-body-lg text-body-lg text-on-surface-variant max-w-xl min-h-[72px] sm:min-h-[48px]">
           Doctors, clinics and hospitals with OPD timings, address and directions. Where a clinic offers online OPD booking, take your token from your phone and wait from home.
         </p>
         <HomeSearch initialQ={searchParams?.q} initialKind={searchParams?.type} />
