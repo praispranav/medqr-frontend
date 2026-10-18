@@ -1048,7 +1048,7 @@ export const api = {
     request<{ id: string }>('/leads', { method: 'POST', body: JSON.stringify(body) }),
   // Public doctor/clinic directory (clinicq.fit/doctors) — only clinics/doctors that opted in ever show up here.
   directoryProducts: () => request<DirectoryProduct[]>('/directory/products'),
-  directorySearch: (opts: { q?: string; specialty?: string; city?: string } = {}) =>
+  directorySearch: (opts: { q?: string; specialty?: string; city?: string; limit?: string; offset?: string } = {}) =>
     request<DirectoryDoctorSummary[]>(`/directory/doctors${toQuery(opts)}`),
   directoryDoctor: (slug: string) => request<DirectoryDoctorProfile>(`/directory/doctors/${encodeURIComponent(slug)}`),
   directoryClinic: (slug: string) => request<DirectoryClinicProfile>(`/directory/clinics/${encodeURIComponent(slug)}`),

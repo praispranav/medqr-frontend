@@ -199,6 +199,9 @@ export const adminApi = (key: string) => ({
   ping: () => request<{ ok: true }>(key, '/ping'),
   activity: () => request<Activity>(key, '/activity'),
   tenants: () => request<AdminTenant[]>(key, '/tenants'),
+  /** One page of Owner › Clinics (search + product filter), so 1,000+ clinics never load at once. */
+  tenantsPage: (opts: { q?: string; product?: string; limit: number; offset: number }) =>
+    request<AdminTenant[]>(key, `/tenants?${new URLSearchParams(Object.entries(opts).filter(([, v]) => v !== undefined && v !== '').map(([k, v]) => [k, String(v)])).toString()}`),
   createTenant: (body: { subdomain: string; display_name: string; trial_days?: number; city?: string; address?: string; coupon_code?: string }) =>
     request<Tenant>(key, '/tenants', { method: 'POST', body: JSON.stringify(body) }),
   tenant: (id: string) => request<Tenant>(key, `/tenants/${id}`),

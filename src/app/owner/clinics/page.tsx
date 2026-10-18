@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { AdminApi, AdminTenant, Coupon } from '@/lib/adminApi';
 import { describeCoupon } from '@/lib/coupons';
 import { Icon } from '@/components/patient/ui';
@@ -13,6 +13,8 @@ export default function AdminClinicsPage() {
   return <AdminShell active="/owner/clinics">{(api, me) => <Clinics api={api} referrer={me.role === 'referrer'} />}</AdminShell>;
 }
 
+const PAGE_SIZE = 30;
+
 function Clinics({ api, referrer }: { api: AdminApi; referrer: boolean }) {
   const router = useRouter();
   const [list, setList] = useState<AdminTenant[] | null>(null);
@@ -21,7 +23,13 @@ function Clinics({ api, referrer }: { api: AdminApi; referrer: boolean }) {
   useEffect(() => {
     if (!referrer) api.directoryProducts().then(setProducts).catch((e: Error) => setError(e.message));
   }, [api, referrer]);
-  const visibleClinics = list?.filter(t => referrer || product === 'all' || (t.directory_products ?? ['qr-token-system']).includes(product));
+  // Paged from the server (search + product filter there); the next page loads as you scroll.
+  const [search, setSearch] = useState('');
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const pageId = useRef(0);
+  const sentinel = useRef<HTMLDivElement>(null);
+  const visibleClinics = list;
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
   const [codeTouched, setCodeTouched] = useState(false);
@@ -36,9 +44,42 @@ function Clinics({ api, referrer }: { api: AdminApi; referrer: boolean }) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  const pageOpts = { q: search.trim() || undefined, product: referrer ? undefined : product, limit: PAGE_SIZE };
   useEffect(() => {
-    api.tenants().then(setList).catch((e: Error) => setError(e.message));
-  }, [api]);
+    const id = ++pageId.current;
+    setList(null);
+    const t = setTimeout(() => {
+      api
+        .tenantsPage({ ...pageOpts, offset: 0 })
+        .then((rows) => { if (id === pageId.current) { setList(rows); setHasMore(rows.length === PAGE_SIZE); } })
+        .catch((e: Error) => setError(e.message));
+    }, 250);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [api, search, product, referrer]);
+
+  const loadMore = async () => {
+    if (!list || !hasMore || loadingMore) return;
+    const id = pageId.current;
+    setLoadingMore(true);
+    try {
+      const rows = await api.tenantsPage({ ...pageOpts, offset: list.length });
+      if (id !== pageId.current) return;
+      setList((prev) => [...(prev ?? []), ...rows.filter((r) => !prev?.some((p) => p.id === r.id))]);
+      setHasMore(rows.length === PAGE_SIZE);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+  useEffect(() => {
+    const el = sentinel.current;
+    if (!el || !hasMore) return;
+    const io = new IntersectionObserver((entries) => entries[0].isIntersecting && loadMore(), { rootMargin: '600px' });
+    io.observe(el);
+    return () => io.disconnect();
+  });
 
   // Suggest a clinic code from the name until the admin edits it themselves.
   const suggested = name
@@ -148,15 +189,20 @@ function Clinics({ api, referrer }: { api: AdminApi; referrer: boolean }) {
         </button>
       </form>
 
+      <div className="flex flex-wrap gap-3 items-end">
+      <label className="flex flex-col gap-1 flex-1 min-w-[220px] text-label-md">Search clinics
+        <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Name, clinic code or city" className="h-12 rounded-xl bg-surface-container-lowest px-3 font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-primary/30" />
+      </label>
       {!referrer && <label className="flex flex-col gap-1 self-start text-label-md">Product
         <select aria-label="Product" value={product} onChange={e => setProduct(e.target.value)} className="h-12 rounded-xl bg-surface-container-lowest px-3">
           {products.map(p => <option key={p.key} value={p.key}>{p.name}</option>)}
           <option value="all">All products</option>
         </select>
       </label>}
+      </div>
       <section className="bg-surface-container-lowest rounded-2xl shadow-sm overflow-hidden">
         {list === null && !error && <p className="p-5 font-body-md text-body-md text-on-surface-variant">Loading…</p>}
-        {visibleClinics?.length === 0 && <p className="p-5 font-body-md text-body-md text-on-surface-variant">{referrer || product === 'all' ? 'No clinics yet — add the first one above.' : 'No clinics match this product.'}</p>}
+        {visibleClinics?.length === 0 && <p className="p-5 font-body-md text-body-md text-on-surface-variant">{search.trim() ? 'No clinics match this search.' : referrer || product === 'all' ? 'No clinics yet — add the first one above.' : 'No clinics match this product.'}</p>}
         {visibleClinics?.map((t) => (
           <Link key={t.id} href={`/owner/clinics/${t.id}`} className="flex items-center gap-4 px-5 py-4 border-b border-surface-container last:border-0 hover:bg-surface-container-low">
             <div className="w-10 h-10 rounded-xl bg-primary-fixed/50 text-primary flex items-center justify-center shrink-0">
@@ -213,6 +259,13 @@ function Clinics({ api, referrer }: { api: AdminApi; referrer: boolean }) {
             <Icon name="chevron_right" className="text-on-surface-variant" />
           </Link>
         ))}
+        {hasMore && (
+          <div ref={sentinel} className="p-4 flex justify-center">
+            <button onClick={loadMore} disabled={loadingMore} className="h-10 px-4 rounded-xl bg-surface-container-low text-primary font-label-md text-label-md disabled:opacity-60">
+              {loadingMore ? 'Loading…' : 'Show more clinics'}
+            </button>
+          </div>
+        )}
       </section>
     </div>
   );

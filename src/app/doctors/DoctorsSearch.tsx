@@ -1,9 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { api, fileUrl, type DirectoryDoctorSummary } from '@/lib/api';
 import { Icon } from '@/components/patient/ui';
+
+// A screenful at a time; the next page loads as the visitor scrolls near the end (infinite scroll).
+const PAGE_SIZE = 24;
 
 export function DoctorsSearch({ initialQ, initialCity }: { initialQ?: string; initialCity?: string }) {
   const [q, setQ] = useState(initialQ ?? '');
@@ -12,6 +15,10 @@ export function DoctorsSearch({ initialQ, initialCity }: { initialQ?: string; in
   const [specialties, setSpecialties] = useState<string[]>([]);
   const [cities, setCities] = useState<string[]>([]);
   const [results, setResults] = useState<DirectoryDoctorSummary[] | null>(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const sentinel = useRef<HTMLDivElement>(null);
+  const searchId = useRef(0);
 
   useEffect(() => {
     api.directorySpecialties().then(setSpecialties).catch(() => undefined);
@@ -19,12 +26,40 @@ export function DoctorsSearch({ initialQ, initialCity }: { initialQ?: string; in
   }, []);
 
   useEffect(() => {
-    let cancelled = false;
+    const id = ++searchId.current;
     const t = setTimeout(() => {
-      api.directorySearch({ q, specialty, city }).then((rows) => { if (!cancelled) setResults(rows); }).catch(() => { if (!cancelled) setResults([]); });
+      api
+        .directorySearch({ q, specialty, city, limit: String(PAGE_SIZE) })
+        .then((rows) => { if (id === searchId.current) { setResults(rows); setHasMore(rows.length === PAGE_SIZE); } })
+        .catch(() => { if (id === searchId.current) { setResults([]); setHasMore(false); } });
     }, 250);
-    return () => { cancelled = true; clearTimeout(t); };
+    return () => clearTimeout(t);
   }, [q, specialty, city]);
+
+  const loadMore = async () => {
+    if (!results || !hasMore || loadingMore) return;
+    const id = searchId.current;
+    setLoadingMore(true);
+    try {
+      const rows = await api.directorySearch({ q, specialty, city, limit: String(PAGE_SIZE), offset: String(results.length) });
+      if (id !== searchId.current) return; // the search changed while this page was loading
+      setResults((prev) => [...(prev ?? []), ...rows.filter((r) => !prev?.some((p) => p.slug === r.slug))]);
+      setHasMore(rows.length === PAGE_SIZE);
+    } catch {
+      setHasMore(false);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
+  // Load the next page when the marker under the list scrolls into view.
+  useEffect(() => {
+    const el = sentinel.current;
+    if (!el || !hasMore) return;
+    const io = new IntersectionObserver((entries) => entries[0].isIntersecting && loadMore(), { rootMargin: '600px' });
+    io.observe(el);
+    return () => io.disconnect();
+  });
 
   const clearFilters = () => {
     setQ('');
@@ -128,6 +163,14 @@ export function DoctorsSearch({ initialQ, initialCity }: { initialQ?: string; in
           </div>
         ))}
       </div>
+
+      {hasMore && (
+        <div ref={sentinel} className="flex justify-center">
+          <button onClick={loadMore} disabled={loadingMore} className="h-11 px-5 rounded-xl bg-surface-container-lowest shadow-sm font-label-md text-label-md text-primary disabled:opacity-60">
+            {loadingMore ? 'Loading…' : 'Show more doctors'}
+          </button>
+        </div>
+      )}
 
       {/* Browse by city — real values from the directory, fills the page usefully before a search. */}
       {!q && !city && cities.length > 0 && (

@@ -36,7 +36,7 @@ export default function AdminClinicPage() {
 function ClinicDetail({ api, referrer }: { api: AdminApi; referrer: boolean }) {
   const { id } = useParams<{ id: string }>();
   const [tenant, setTenant] = useState<Tenant | null>(null);
-  const [tab, setTab] = useState<'doctors' | 'setup' | 'clinic' | 'logins' | 'payments' | 'modules'>('doctors');
+  const [tab, setTab] = useState<'doctors' | 'setup' | 'clinic' | 'logins' | 'payments' | 'products' | 'modules'>('doctors');
   const [error, setError] = useState<string | null>(null);
   const queueRulesRef = useRef<QueueRulesHandle>(null);
   const team = useMemo(() => adminTeamApi(api, id, referrer, tenant?.queue_settings), [api, id, referrer, tenant?.queue_settings]);
@@ -68,7 +68,7 @@ function ClinicDetail({ api, referrer }: { api: AdminApi; referrer: boolean }) {
           {!referrer && (
           <button
             onClick={async () => {
-              if (window.prompt(`Type ${tenant.subdomain} to delete this clinic and ALL its data (doctors, logins, queue, past patients):`) === tenant.subdomain) {
+              if (window.confirm(`Delete ${tenant.display_name || tenant.subdomain}? This removes the clinic and ALL its data (doctors, logins, queue, past patients).`)) {
                 await api.deleteTenant(tenant.id);
                 window.location.href = '/owner/clinics';
               }
@@ -93,9 +93,10 @@ function ClinicDetail({ api, referrer }: { api: AdminApi; referrer: boolean }) {
             ['clinic', 'Clinic & queue rules'],
             ['logins', 'Doctor/Staff Logins'],
             ['payments', 'Online payments'],
+            ['products', 'Products'],
             ['modules', 'Settings, modules & wallet'],
           ] as const
-        ).filter(([k]) => !(referrer && (k === 'modules' || k === 'payments'))).map(([k, label]) => (
+        ).filter(([k]) => !(referrer && (k === 'modules' || k === 'payments' || k === 'products'))).map(([k, label]) => (
           <button
             key={k}
             onClick={() => setTab(k)}
@@ -107,6 +108,7 @@ function ClinicDetail({ api, referrer }: { api: AdminApi; referrer: boolean }) {
       </div>
 
       {tab === 'doctors' && <DoctorsTab api={team} />}
+      {tab === 'products' && !referrer && <ProductsTab api={api} tenant={tenant} onSaved={setTenant} />}
       {tab === 'setup' && <DoctorSetupTab api={api} tenant={tenant} />}
       {tab === 'clinic' && (
         <div className="flex flex-col gap-6 pb-24">
@@ -260,16 +262,12 @@ function adminTeamApi(api: AdminApi, tenantId: string, referrer: boolean, clinic
  */
 function ClinicCodeAndBooking({ api, tenant, onSaved }: { api: AdminApi; tenant: Tenant; onSaved: (t: Tenant) => void }) {
   const [code, setCode] = useState(tenant.subdomain);
-  const [products, setProducts] = useState<{ key: string; name: string }[]>([]);
-  const [chosen, setChosen] = useState<string[]>(tenant.directory_products ?? ['qr-token-system']);
-  useEffect(() => { api.directoryProducts().then(setProducts).catch(() => undefined); }, [api]);
-  useEffect(() => setChosen(tenant.directory_products ?? ['qr-token-system']), [tenant.directory_products]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState<string | null>(null);
   useEffect(() => setCode(tenant.subdomain), [tenant.subdomain]);
 
-  const save = async (body: { subdomain?: string; public_booking?: 'auto' | 'on' | 'off'; directory_products?: string[] }, msg: string) => {
+  const save = async (body: { subdomain?: string; public_booking?: 'auto' | 'on' | 'off' }, msg: string) => {
     setBusy(true);
     setError(null);
     setSaved(null);
@@ -341,14 +339,81 @@ function ClinicCodeAndBooking({ api, tenant, onSaved }: { api: AdminApi; tenant:
           Auto = shown while the clinic is on a free trial or the paid plan; hidden on the free plan and when a trial ends unpaid.
         </p>
       </div>
-      <section className="md:col-span-2 flex flex-col gap-2">
-        <h3 className="font-label-md text-label-md">ClinicQ products</h3>
-        <p className="text-body-sm text-on-surface-variant">Used for super-admin clinic filtering. Public directory visibility is controlled separately.</p>
-        <div className="flex flex-wrap gap-4">{products.map((p) => <label key={p.key} className="flex items-center gap-2"><input type="checkbox" checked={chosen.includes(p.key)} onChange={(e) => setChosen(e.target.checked ? [...chosen, p.key] : chosen.filter(k => k !== p.key))} />{p.name}</label>)}</div>
-        <button type="button" disabled={busy || !chosen.length} className="h-10 self-start px-4 rounded-xl bg-primary text-on-primary disabled:opacity-50" onClick={() => save({ directory_products: chosen }, 'Clinic products saved.')}>Save clinic products</button>
-      </section>
       {(error || saved) && <p className={`md:col-span-2 font-body-sm text-body-sm ${error ? 'text-error' : 'text-tertiary'}`}>{error ?? saved}</p>}
     </div>
+  );
+}
+
+/**
+ * Decision 62 — super admin only: which ClinicQ products this clinic has opted for (QR Token System,
+ * follow-ups, …). A tag for the Owner › Clinics product filter; it does not switch features or billing on.
+ */
+function ProductsTab({ api, tenant, onSaved }: { api: AdminApi; tenant: Tenant; onSaved: (t: Tenant) => void }) {
+  const [products, setProducts] = useState<{ key: string; name: string }[]>([]);
+  const [chosen, setChosen] = useState<string[]>(tenant.directory_products ?? ['qr-token-system']);
+  const [newName, setNewName] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState<{ ok: boolean; text: string } | null>(null);
+  useEffect(() => { api.directoryProducts().then(setProducts).catch((e: Error) => setNote({ ok: false, text: e.message })); }, [api]);
+  useEffect(() => setChosen(tenant.directory_products ?? ['qr-token-system']), [tenant.directory_products]);
+
+  const run = async (fn: () => Promise<void>, ok: string) => {
+    setBusy(true);
+    setNote(null);
+    try {
+      await fn();
+      setNote({ ok: true, text: ok });
+    } catch (e) {
+      setNote({ ok: false, text: (e as Error).message });
+    } finally {
+      setBusy(false);
+    }
+  };
+  const saved = [...(tenant.directory_products ?? ['qr-token-system'])].sort().join() === [...chosen].sort().join();
+  const keyFor = (name: string) => name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);
+
+  return (
+    <section className="bg-surface-container-lowest rounded-2xl p-5 shadow-sm flex flex-col gap-4 pb-6">
+      <div>
+        <h2 className="font-headline-sm text-headline-sm">Products this clinic uses</h2>
+        <p className="font-body-sm text-body-sm text-on-surface-variant">Tick every ClinicQ product the clinic has opted for. Used to filter Owner › Clinics; it doesn&apos;t turn features or billing on.</p>
+      </div>
+      <div className="flex flex-col gap-2">
+        {products.map((p) => (
+          <label key={p.key} className="flex items-center gap-3 h-11 px-3 rounded-xl bg-surface-container-low font-body-md text-body-md cursor-pointer">
+            <input type="checkbox" className="w-4 h-4" checked={chosen.includes(p.key)} onChange={(e) => setChosen(e.target.checked ? [...chosen, p.key] : chosen.filter((k) => k !== p.key))} />
+            {p.name}
+          </label>
+        ))}
+      </div>
+      <button
+        type="button"
+        disabled={busy || saved || !chosen.length}
+        className="h-11 self-start px-5 rounded-xl bg-primary text-on-primary font-label-lg text-label-lg disabled:opacity-50"
+        onClick={() => run(async () => onSaved(await api.updateTenant(tenant.id, { directory_products: chosen })), 'Products saved.')}
+      >
+        Save products
+      </button>
+      {!chosen.length && <p className="font-body-sm text-body-sm text-error">Keep at least one product ticked.</p>}
+      <form
+        className="flex flex-wrap gap-2 items-center border-t border-surface-container pt-4"
+        onSubmit={(e) => {
+          e.preventDefault();
+          const name = newName.trim();
+          if (!name || !keyFor(name)) return;
+          run(async () => {
+            const p = await api.createDirectoryProduct({ key: keyFor(name), name });
+            setProducts(await api.directoryProducts());
+            setChosen((c) => [...c, p.key]);
+            setNewName('');
+          }, `"${name}" added and ticked — press Save products.`);
+        }}
+      >
+        <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="New product, e.g. Follow-up System" className="h-11 flex-1 min-w-[220px] rounded-xl bg-surface-container-low px-3 font-body-md text-body-md focus:outline-none" />
+        <button disabled={busy || !keyFor(newName)} className="h-11 px-4 rounded-xl bg-surface-container text-primary font-label-md text-label-md disabled:opacity-50">Add product</button>
+      </form>
+      {note && <p className={`font-body-sm text-body-sm ${note.ok ? 'text-tertiary' : 'text-error'}`}>{note.text}</p>}
+    </section>
   );
 }
 
