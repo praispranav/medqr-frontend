@@ -355,12 +355,12 @@ function ClinicCodeAndBooking({ api, tenant, onSaved }: { api: AdminApi; tenant:
  */
 function ProductsTab({ api, tenant, onSaved }: { api: AdminApi; tenant: Tenant; onSaved: (t: Tenant) => void }) {
   const [products, setProducts] = useState<{ key: string; name: string }[]>([]);
-  const [chosen, setChosen] = useState<string[]>(tenant.directory_products ?? ['qr-token-system']);
+  const [chosen, setChosen] = useState<string[]>(tenant.directory_products ?? []);
   const [newName, setNewName] = useState('');
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<{ ok: boolean; text: string } | null>(null);
   useEffect(() => { api.directoryProducts().then(setProducts).catch((e: Error) => setNote({ ok: false, text: e.message })); }, [api]);
-  useEffect(() => setChosen(tenant.directory_products ?? ['qr-token-system']), [tenant.directory_products]);
+  useEffect(() => setChosen(tenant.directory_products ?? []), [tenant.directory_products]);
 
   const run = async (fn: () => Promise<void>, ok: string) => {
     setBusy(true);
@@ -374,7 +374,7 @@ function ProductsTab({ api, tenant, onSaved }: { api: AdminApi; tenant: Tenant; 
       setBusy(false);
     }
   };
-  const saved = [...(tenant.directory_products ?? ['qr-token-system'])].sort().join() === [...chosen].sort().join();
+  const saved = [...(tenant.directory_products ?? [])].sort().join() === [...chosen].sort().join();
   const keyFor = (name: string) => name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);
 
   return (
@@ -393,13 +393,13 @@ function ProductsTab({ api, tenant, onSaved }: { api: AdminApi; tenant: Tenant; 
       </div>
       <button
         type="button"
-        disabled={busy || saved || !chosen.length}
+        disabled={busy || saved}
         className="h-11 self-start px-5 rounded-xl bg-primary text-on-primary font-label-lg text-label-lg disabled:opacity-50"
         onClick={() => run(async () => onSaved(await api.updateTenant(tenant.id, { directory_products: chosen })), 'Products saved.')}
       >
         Save products
       </button>
-      {!chosen.length && <p className="font-body-sm text-body-sm text-error">Keep at least one product ticked.</p>}
+      {!chosen.length && <p className="font-body-sm text-body-sm text-on-surface-variant">No product ticked: the clinic is a directory listing only (simple menu, no queue).</p>}
       <form
         className="flex flex-wrap gap-2 items-center border-t border-surface-container pt-4"
         onSubmit={(e) => {
