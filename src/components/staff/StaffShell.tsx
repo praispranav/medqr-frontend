@@ -41,6 +41,8 @@ const NAV: Record<Variant, NavItem[]> = {
     { label: 'Doctor', isCategory: true },
     { href: '/doctor/hours', label: 'My Hours', icon: 'schedule' },
     { href: '/doctor/profile', label: 'Public Profile', icon: 'badge' },
+    { label: 'Tools', isCategory: true },
+    { href: '/doctor/products', label: 'Products & Tools', icon: 'apps' },
     // Every setting lives under one fold-away heading, so the sidebar stays short and the daily screens are easy to find.
     { label: 'Settings', isCategory: true, collapsible: true },
     { href: '/doctor/settings', label: 'Queue Rules', icon: 'tune', managersOnly: true },
@@ -65,6 +67,9 @@ const NAV: Record<Variant, NavItem[]> = {
     { label: 'Clinic', isCategory: true },
     { href: '/manage/team', label: 'Doctors & Staff', icon: 'group' },
     { href: '/manage/clinic', label: 'Clinic Profile', icon: 'apartment' },
+    { href: '/manage/team', label: 'Doctor Timings', icon: 'schedule' },
+    { label: 'Tools', isCategory: true },
+    { href: '/manage/products', label: 'Products & Tools', icon: 'apps' },
     { label: 'Settings', isCategory: true, collapsible: true },
     { href: '/manage/settings', label: 'Queue Rules', icon: 'tune' },
     { href: '/manage/qr', label: 'QR Standees', icon: 'qr_code_2' },
@@ -95,8 +100,8 @@ const ROLE_LABEL: Record<Me['user']['role'], string> = { doctor: 'Doctor', recep
 const DEMO_HIDDEN_HREFS = new Set(['/doctor/payments', '/doctor/online-payments', '/manage/online-payments', '/doctor/settings', '/doctor/billing', '/doctor/profile', '/doctor/notifications', '/doctor/intake-form', '/reception/payments', '/doctor/support', '/reception/support', '/manage/support']);
 
 /**
- * Decision 68: a clinic listed in the directory but without the QR Token System sees a short, plain menu —
- * its public page, timings, team and how to get online OPD booking. The queue menus appear once QR is on.
+ * Decision 68: a clinic listed in the directory but without the QR Token System sees a focused menu —
+ * its public page, timings, team, integrated tools and online OPD booking. The queue menus appear once QR is on.
  */
 const DIRECTORY_ONLY: Record<'doctor' | 'manage', NavItem[]> = {
   doctor: [
@@ -104,12 +109,15 @@ const DIRECTORY_ONLY: Record<'doctor' | 'manage', NavItem[]> = {
     { href: '/doctor/hours', label: 'My timings', icon: 'schedule' },
     { href: '/manage/team', label: 'Doctors & staff', icon: 'group', managersOnly: true },
     { href: '/manage/clinic', label: 'Clinic details', icon: 'apartment', managersOnly: true },
+    { href: '/doctor/products', label: 'Products & Tools', icon: 'apps' },
     { href: '/doctor/billing', label: 'Get online OPD booking', icon: 'confirmation_number', managersOnly: true },
     { href: '/doctor/support', label: 'Help & support', icon: 'support_agent' },
   ],
   manage: [
     { href: '/manage/clinic', label: 'Clinic details', icon: 'apartment' },
     { href: '/manage/team', label: 'Doctors & staff', icon: 'group' },
+    { href: '/manage/team', label: 'Doctor timings', icon: 'schedule' },
+    { href: '/manage/products', label: 'Products & Tools', icon: 'apps' },
     { href: '/manage/billing', label: 'Get online OPD booking', icon: 'confirmation_number' },
     { href: '/manage/support', label: 'Help & support', icon: 'support_agent' },
   ],
@@ -117,7 +125,20 @@ const DIRECTORY_ONLY: Record<'doctor' | 'manage', NavItem[]> = {
 
 function navFor(variant: Variant, me: Me, isDemo: boolean): NavItem[] {
   if (me.tenant.qr_enabled === false && (variant === 'doctor' || variant === 'manage')) {
-    const canManage = me.user.is_owner || me.user.role === "owner"; // /manage pages need clinic-admin access (Decision 14)
+    // If the user is a doctor who is also an owner/admin of the clinic, keep doctor & clinic links
+    // stable across both /doctor/... and /manage/... pages so options don't vanish.
+    if (me.user.role === 'doctor' && me.user.is_owner) {
+      return [
+        { href: '/doctor/profile', label: 'My public page', icon: 'badge' },
+        { href: '/doctor/hours', label: 'My timings', icon: 'schedule' },
+        { href: '/manage/team', label: 'Doctors & staff', icon: 'group' },
+        { href: '/manage/clinic', label: 'Clinic details', icon: 'apartment' },
+        { href: '/manage/products', label: 'Products & Tools', icon: 'apps' },
+        { href: me.doctor_count <= 1 ? '/doctor/billing' : '/manage/billing', label: 'Get online OPD booking', icon: 'confirmation_number' },
+        { href: '/manage/support', label: 'Help & support', icon: 'support_agent' },
+      ];
+    }
+    const canManage = me.user.is_owner || me.user.role === 'owner'; // /manage pages need clinic-admin access (Decision 14)
     return DIRECTORY_ONLY[variant].filter((i) => !i.managersOnly || canManage);
   }
   let items: NavItem[];

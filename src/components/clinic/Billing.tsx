@@ -8,14 +8,22 @@ import { UpiQrCard } from '@/components/payments/UpiQrCard';
 
 // Screen #10 — Billing / Add-on Marketplace. Ported from
 // stitch_medqr_clinic_suite_ui_design/billing_add_on_marketplace/code.html.
-// Prices come from GET /billing/catalog (includes the ₹399 Image-to-Text add-on, kept separate
-// from ₹499 OCR — Decision 3). Active/inactive comes from tenant.entitlements. Self-serve module
+// Prices come from GET /billing/catalog (includes the ₹399 combined Prescription & Lab Reports AI
+// add-on — Decision 3). Active/inactive comes from tenant.entitlements. Self-serve module
 // toggles and invoices still need the payment gateway (Decision 9); WhatsApp wallet recharge is
 // live (same single-use UPI QR gateway as consultation-fee payments, Decisions 9/11).
 
 const DESCRIPTIONS: Record<string, { tag: string; icon: string; body: string }> = {
-  prescription_ocr: { tag: 'AI powered', icon: 'document_scanner', body: 'Snap a photo — extracts vitals, medicines & dosage into structured fields.' },
-  prescription_image_to_text: { tag: 'AI powered · New', icon: 'text_snippet', body: 'Snap a photo — transcribes handwriting into plain searchable text.' },
+  prescription_ocr: {
+    tag: 'AI powered',
+    icon: 'document_scanner',
+    body: 'Snap a photo — transcribes handwriting into searchable text, extracts vitals & medicines, and parses lab reports into structured fields.',
+  },
+  prescription_image_to_text: {
+    tag: 'AI powered',
+    icon: 'document_scanner',
+    body: 'Snap a photo — transcribes handwriting into searchable text, extracts vitals & medicines, and parses lab reports into structured fields.',
+  },
   advance_booking: { tag: 'Sync engine', icon: 'sync', body: 'Two-way appointment sync with Google Calendar and booking apps.' },
   smart_print: { tag: 'Hardware', icon: 'print', body: 'Letterhead offset alignment and silent 58/80mm thermal printing.' },
   medication_adherence: { tag: 'Patient care', icon: 'medication', body: 'Automated WhatsApp dose reminders and refill alerts.' },

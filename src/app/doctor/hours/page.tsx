@@ -19,7 +19,7 @@ export default function DoctorHoursPage() {
   return (
     <StaffShell variant="doctor" active="/doctor/hours">
       {({ tenant, doctor, me, refreshTenant }) => (
-        <MyHours tenant={tenant} doctor={doctor!} canChangeRules={me.user.can_manage_clinic} onDoctorSaved={refreshTenant} />
+        <MyHours tenant={tenant} doctor={doctor!} me={me} canChangeRules={me.user.can_manage_clinic} onDoctorSaved={refreshTenant} />
       )}
     </StaffShell>
   );
@@ -28,11 +28,13 @@ export default function DoctorHoursPage() {
 function MyHours({
   tenant,
   doctor,
+  me,
   canChangeRules,
   onDoctorSaved,
 }: {
   tenant: Tenant;
   doctor: DoctorToday;
+  me: any;
   canChangeRules: boolean;
   onDoctorSaved: () => void;
 }) {
@@ -49,39 +51,47 @@ function MyHours({
     return () => clearInterval(id);
   }, [refresh]);
 
+  const isQrActive = me.tenant?.qr_enabled !== false && tenant.qr_enabled !== false;
+
   return (
     <div className="max-w-5xl flex flex-col gap-6">
       <div>
         <h1 className="font-headline-lg text-headline-lg text-on-surface">My consulting hours</h1>
         <p className="font-body-md text-body-md text-on-surface-variant">
-          Tap to add your hours for each day. Start/End shift and breaks are one tap — here or on your queue screen.
+          {isQrActive
+            ? 'Tap to add your hours for each day. Start/End shift and breaks are one tap — here or on your queue screen.'
+            : 'Set your weekly consulting hours. Patients and visitors will see these timings on your public clinic profile.'}
         </p>
       </div>
 
-      <ShiftBar doctorId={doctor.id} shift={shift} hasPatientInCabin={false} onChanged={setShift} />
-      <HoursReminderBanner
-        doctorId={doctor.id}
-        linkToHours={false}
-        refreshKey={shift}
-        onChanged={() => {
-          refresh();
-          setEditorKey((k) => k + 1);
-        }}
-      />
+      {isQrActive && (
+        <>
+          <ShiftBar doctorId={doctor.id} shift={shift} hasPatientInCabin={false} onChanged={setShift} />
+          <HoursReminderBanner
+            doctorId={doctor.id}
+            linkToHours={false}
+            refreshKey={shift}
+            onChanged={() => {
+              refresh();
+              setEditorKey((k) => k + 1);
+            }}
+          />
 
-      {shift && (
-        <section className="bg-surface-container-lowest rounded-2xl p-5 shadow-sm flex flex-col gap-2">
-          <p className="font-label-sm text-label-sm text-on-surface-variant uppercase">What patients see right now</p>
-          <div className="max-w-md">
-            <DoctorStatusRow status={shift.today_status} detail={shift.today_status_detail} />
-          </div>
-          <p className="font-body-sm text-body-sm text-on-surface-variant">
-            {doctorSettings(tenant, doctor).shift_start_mode === 'auto'
-              ? 'Your shift goes live automatically during the hours below'
-              : 'Your shift goes live when you tap Start shift'}
-            {canChangeRules ? ' (change this in Queue Rules).' : ' (your clinic admin sets this).'}
-          </p>
-        </section>
+          {shift && (
+            <section className="bg-surface-container-lowest rounded-2xl p-5 shadow-sm flex flex-col gap-2">
+              <p className="font-label-sm text-label-sm text-on-surface-variant uppercase">What patients see right now</p>
+              <div className="max-w-md">
+                <DoctorStatusRow status={shift.today_status} detail={shift.today_status_detail} />
+              </div>
+              <p className="font-body-sm text-body-sm text-on-surface-variant">
+                {doctorSettings(tenant, doctor).shift_start_mode === 'auto'
+                  ? 'Your shift goes live automatically during the hours below'
+                  : 'Your shift goes live when you tap Start shift'}
+                {canChangeRules ? ' (change this in Queue Rules).' : ' (your clinic admin sets this).'}
+              </p>
+            </section>
+          )}
+        </>
       )}
 
       <HoursEditor

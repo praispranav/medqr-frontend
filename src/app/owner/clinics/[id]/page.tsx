@@ -21,8 +21,8 @@ import { AdminSetupCard } from '@/components/setup/SetupCards';
 import { clinicSiteUrl, patientUrl } from '@/lib/clinicHost';
 
 // One clinic: doctors, their day-by-day consulting sessions (these drive the today-only
-// availability chips, Decision 6), module switches (Decision 3 keeps OCR and Image-to-Text
-// separate), and manual WhatsApp-wallet credit until the payment gateway exists.
+// availability chips, Decision 6), module switches (Decision 3 combines Prescription & Lab Reports AI
+// under prescription_ocr at ₹399/mo), and manual WhatsApp-wallet credit until the payment gateway exists.
 // Onboarding help: the platform admin can also set the clinic's address + Queue Rules ("Clinic &
 // queue") and each doctor's Patient Notifications + Intake Form ("Doctor setup") — the same
 // screens the clinic uses, saved through the admin API.

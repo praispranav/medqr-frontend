@@ -45,8 +45,7 @@ const FEATURES = [
 ];
 
 const ADD_ONS = [
-  ['document_scanner', 'Prescription OCR', 'Structured medicines & vitals from a photo', 499],
-  ['text_snippet', 'Prescription Image-to-Text', 'Handwriting to plain searchable text', 399],
+  ['document_scanner', 'Prescription & Lab Reports AI OCR', 'Handwriting transcription, structured medicines, vitals & lab reports', 399],
   ['print', 'Letterhead & thermal print driver', 'Offset letterhead and 58/80mm slips', 349],
 ] as const;
 

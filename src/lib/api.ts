@@ -93,9 +93,9 @@ export interface Entitlements {
   custom_forms: boolean;
   smart_print: boolean;
   prescription_ocr: boolean;
-  prescription_image_to_text: boolean;
+  prescription_image_to_text?: boolean;
   advance_booking: boolean;
-  [key: string]: boolean;
+  [key: string]: boolean | undefined;
 }
 
 export interface DirectoryProduct { key: string; name: string }
@@ -104,6 +104,7 @@ export interface Tenant {
   /** Decision 68 */
   verified_at?: string | null;
   directory_products?: string[];
+  qr_enabled?: boolean;
   id: string;
   subdomain: string;
   /** Decision 60 — "Get a token" on public pages: auto (trial/paid), on, off. */
