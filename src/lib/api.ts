@@ -983,6 +983,9 @@ export const api = {
   connectClinicGateway: (key_id: string, key_secret: string) =>
     request<ClinicGatewayView>('/payments/clinic-gateway', { method: 'PUT', body: JSON.stringify({ key_id, key_secret }) }),
   disconnectClinicGateway: () => request<ClinicGatewayView>('/payments/clinic-gateway', { method: 'DELETE' }),
+  /** Decision 70 — is online booking open to fake tokens? */
+  queueProtection: () =>
+    request<{ online_booking: boolean; otp: boolean; arrival: boolean; front_desk: boolean; prepay: boolean; gateway_connected: boolean; total_7d: number; unattended_7d: number; warn: boolean; suspicious: boolean }>('/setup/protection'),
   setupChecklist: (all = false) => request<SetupView | null>(`/setup/checklist${all ? '?all=1' : ''}`),
   confirmSetup: (item: SetupConfirmItem) => request<SetupView | null>('/setup/confirm', { method: 'POST', body: JSON.stringify({ item }) }),
   payoutStatus: () => request<PayoutView>('/payments/payout-status'),

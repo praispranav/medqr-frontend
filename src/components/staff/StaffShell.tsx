@@ -7,6 +7,7 @@ import { api, ApiError, type DoctorToday, type Me, type SubscriptionStatus, type
 import { HOME_FOR_ROLE } from '@/lib/staffRoutes';
 import { DoctorAvatar, Icon, LoadingPage } from '@/components/patient/ui';
 import { OnlinePaymentBanner } from '@/components/payments/OnlinePaymentBanner';
+import { ProtectQueueBanner } from '@/components/staff/ProtectQueueBanner';
 
 // Shared chrome for the staff screens (Reception #4, Doctor Suite #5/#6/#9/#10 + QR poster),
 // following the sidebar layout the Stitch staff screens share.
@@ -449,6 +450,8 @@ export function StaffShell({
 
         <main className="flex-1 p-4 lg:p-6 print:p-0">
           {tenant.is_demo ? <DemoBanner /> : <SubscriptionBanner sub={sub} me={me} />}
+          {/* Decision 70: managers only (they can change clinic-wide rules), QR clinics only. */}
+          {!tenant.is_demo && me.tenant.qr_enabled !== false && (variant === 'manage' || (variant === 'doctor' && (me.user.is_owner || me.doctor_count <= 1))) && <ProtectQueueBanner tenantId={tenant.id} base={variant === 'manage' ? '/manage' : '/doctor'} />}
           {!tenant.is_demo && variant === 'doctor' && active !== '/doctor/online-payments' && <OnlinePaymentBanner />}
           {!tenant.is_demo && variant === 'manage' && active !== '/manage/online-payments' && <OnlinePaymentBanner href="/manage/online-payments" />}
           {children({ tenant, doctors, doctor, refreshTenant, me })}

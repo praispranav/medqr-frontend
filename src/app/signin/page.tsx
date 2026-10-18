@@ -32,6 +32,7 @@ function SignIn() {
   const [step, setStep] = useState<Step>('mobile');
   const [mobile, setMobile] = useState('');
   const [code, setCode] = useState('');
+  const [resendIn, setResendIn] = useState(0);
   const [acct, setAcct] = useState<AccountOverview | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -47,6 +48,12 @@ function SignIn() {
       setBusy(false);
     }
   };
+
+  useEffect(() => {
+    if (resendIn <= 0) return;
+    const id = setTimeout(() => setResendIn((s) => s - 1), 1000);
+    return () => clearTimeout(id);
+  }, [resendIn]);
 
   const goStaff = (me: Me) => router.replace(homeFor(me));
   const asPatient = () =>
@@ -64,7 +71,7 @@ function SignIn() {
       </header>
       <div className="flex-1 w-full max-w-md mx-auto px-4 py-8 flex flex-col gap-5">
         {step === 'mobile' && (
-          <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); run(async () => { const r = await api.accountStart(mobile); if (r.dev_code) setCode(r.dev_code); setStep('code'); }); }}>
+          <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); run(async () => { const r = await api.accountStart(mobile); if (r.dev_code) setCode(r.dev_code); setResendIn(30); setStep('code'); }); }}>
             <div>
               <h1 className="font-headline-md text-headline-md">Sign in or sign up</h1>
               <p className="font-body-md text-body-md text-on-surface-variant mt-1">For patients, doctors and clinics. We&apos;ll send a code on WhatsApp.</p>
@@ -90,6 +97,14 @@ function SignIn() {
             <input value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))} inputMode="numeric" autoComplete="one-time-code" placeholder="6 digits" className={field} autoFocus />
             {error && <p className="font-body-sm text-body-sm text-error">{error}</p>}
             <button disabled={busy || code.length !== 6} className={primary}>{busy ? 'Checking…' : 'Continue'}</button>
+            <button
+              type="button"
+              disabled={resendIn > 0 || busy}
+              onClick={() => run(async () => { const r = await api.accountStart(mobile); if (r.dev_code) setCode(r.dev_code); setResendIn(30); })}
+              className="font-label-md text-label-md text-primary disabled:text-outline self-center"
+            >
+              {resendIn > 0 ? `Resend in ${resendIn}s` : 'Resend code'}
+            </button>
           </form>
         )}
 
