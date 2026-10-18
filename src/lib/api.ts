@@ -639,6 +639,12 @@ export interface DirectoryClinicSummary {
   city: string | null;
   address: string | null;
   doctor_count: number;
+  subdomain?: string;
+  maps_url?: string | null;
+  public_phone?: string | null;
+  available_today?: boolean;
+  doctors?: { name: string; specialty: string | null; slug: string | null }[];
+  specialties?: string[];
 }
 
 export interface SubscriptionStatus {
@@ -1047,7 +1053,7 @@ export const api = {
   directoryDoctor: (slug: string) => request<DirectoryDoctorProfile>(`/directory/doctors/${encodeURIComponent(slug)}`),
   directoryClinic: (slug: string) => request<DirectoryClinicProfile>(`/directory/clinics/${encodeURIComponent(slug)}`),
   // Decision 51 — clinics are searchable too (clinicq.fit/clinics), not just reachable via a doctor's page.
-  directoryClinicsSearch: (opts: { q?: string; city?: string; offset?: string; limit?: string } = {}) =>
+  directoryClinicsSearch: (opts: { q?: string; city?: string; area?: string; bookable?: string; today?: string; offset?: string; limit?: string } = {}) =>
     request<DirectoryClinicSummary[]>(`/directory/clinics${toQuery(opts)}`),
   directorySpecialties: () => request<string[]>('/directory/specialties'),
   directoryCities: () => request<string[]>('/directory/cities'),

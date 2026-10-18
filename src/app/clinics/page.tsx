@@ -7,7 +7,7 @@ import { BrandLogo } from '@/components/brand/BrandLogo';
 // (clinicq.fit/clinics/:slug) was only reachable if you already knew its slug (from a doctor's page or
 // a printed QR). This index makes clinics themselves searchable and discoverable.
 
-export async function generateMetadata({ searchParams }: { searchParams: { q?: string; city?: string } }): Promise<Metadata> {
+export async function generateMetadata({ searchParams }: { searchParams: { q?: string; city?: string; area?: string; bookable?: string; today?: string } }): Promise<Metadata> {
   const citySuffix = searchParams.city ? ` in ${searchParams.city}` : '';
   const q = searchParams.q ? ` matching "${searchParams.q}"` : '';
   return {
@@ -17,7 +17,7 @@ export async function generateMetadata({ searchParams }: { searchParams: { q?: s
   };
 }
 
-export default function ClinicsIndexPage({ searchParams }: { searchParams: { q?: string; city?: string } }) {
+export default function ClinicsIndexPage({ searchParams }: { searchParams: { q?: string; city?: string; area?: string; bookable?: string; today?: string } }) {
   const schemaData = {
     '@context': 'https://schema.org',
     '@type': 'CollectionPage',
@@ -30,21 +30,21 @@ export default function ClinicsIndexPage({ searchParams }: { searchParams: { q?:
       {/* eslint-disable-next-line react/no-danger */}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaData) }} />
       <header className="border-b border-surface-container">
-        <div className="max-w-5xl mx-auto px-4 h-16 flex items-center gap-4">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center gap-4">
           <BrandLogo />
           <Link href="/doctors" className="ml-auto font-label-md text-label-md text-on-surface-variant hover:text-on-surface">
             Find a doctor →
           </Link>
         </div>
       </header>
-      <div className="max-w-5xl mx-auto px-4 py-10 flex flex-col gap-6">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-7 sm:py-10 flex flex-col gap-6">
         <div>
           <h1 className="font-headline-lg text-headline-lg">
-            {searchParams.city ? `Clinics in ${searchParams.city}` : 'Find a clinic'}
+            Find care near you
           </h1>
-          <p className="font-body-md text-body-md text-on-surface-variant mt-1">Search by clinic name or city. Online tokens are available at participating clinics.</p>
+          <p className="font-body-md text-body-md text-on-surface-variant mt-1">Explore clinics and doctors. Get an online token at participating clinics.</p>
         </div>
-        <ClinicsSearch initialQ={searchParams.q} initialCity={searchParams.city} />
+        <ClinicsSearch initialQ={searchParams.q} initialCity={searchParams.city} initialArea={searchParams.area} initialBookable={searchParams.bookable === '1'} initialToday={searchParams.today === '1'} />
       </div>
     </main>
   );
