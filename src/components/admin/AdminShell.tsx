@@ -18,6 +18,7 @@ const NAV = [
   { href: '/owner/coupons', label: 'Coupons', icon: 'sell' },
   { href: '/owner/listings', label: 'Clinic listings', icon: 'travel_explore' },
   { href: '/owner/claims', label: 'Claims & removals', icon: 'verified_user' },
+  { href: '/owner/change-requests', label: 'Change requests', icon: 'rule' },
   { href: '/owner/leads', label: 'Trial requests', icon: 'inbox' },
   { href: '/owner/support', label: 'Support', icon: 'support_agent' },
   { href: '/owner/module-requests', label: 'Module requests', icon: 'extension' },

@@ -37,6 +37,7 @@ function ProfileForm({ doctor, tenant, onSaved }: { doctor: DoctorToday; tenant:
   const [listed, setListed] = useState(!!doctor.is_publicly_listed);
   const [notifyLocationOverride, setNotifyLocationOverride] = useState(doctor.notify_location_override ?? '');
   const [state, setState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [reviewNote, setReviewNote] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [origin, setOrigin] = useState('');
   const [copied, setCopied] = useState(false);
@@ -55,7 +56,7 @@ function ProfileForm({ doctor, tenant, onSaved }: { doctor: DoctorToday; tenant:
     setState('saving');
     setError(null);
     try {
-      await api.updateDoctorPublicProfile(doctor.id, { 
+      const result = (await api.updateDoctorPublicProfile(doctor.id, { 
         photo_url: photoUrl || '', 
         qualification, 
         specialty, 
@@ -63,7 +64,10 @@ function ProfileForm({ doctor, tenant, onSaved }: { doctor: DoctorToday; tenant:
         experience_years: years.trim() === '' ? null : Number(years),
         is_publicly_listed: listed,
         notify_location_override: notifyLocationOverride,
-      });
+      }));
+      // Decision 67: a doubtful edit is held for ClinicQ instead of going live.
+      const pending = (result as { review_pending?: string } | null)?.review_pending;
+      setReviewNote(pending ? `Sent to ClinicQ for a quick check: ${pending}` : null);
       await onSaved();
       setState('saved');
     } catch (e) {
@@ -275,7 +279,7 @@ function ProfileForm({ doctor, tenant, onSaved }: { doctor: DoctorToday; tenant:
             <Icon name="save" className="text-[20px]" />
             {state === 'saving' ? 'Saving…' : 'Save profile'}
           </button>
-          {state === 'saved' && !dirty && <p className="font-body-sm text-body-sm text-tertiary">Saved ✓</p>}
+          {state === 'saved' && !dirty && (reviewNote ? <p className="font-body-sm text-body-sm text-on-surface-variant">{reviewNote}</p> : <p className="font-body-sm text-body-sm text-tertiary">Saved ✓</p>)}
         </div>
       </section>
 

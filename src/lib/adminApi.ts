@@ -22,6 +22,20 @@ async function request<T>(key: string, path: string, options?: RequestInit): Pro
   return res.json();
 }
 
+export interface ChangeRequestView {
+  id: string;
+  tenant_id: string;
+  target: 'clinic_profile' | 'doctor_profile' | 'doctor';
+  target_id: string | null;
+  patch: Record<string, unknown>;
+  reason: string;
+  requested_by: string | null;
+  status: 'pending' | 'applied' | 'rejected';
+  created_at: string;
+  clinic_name: string | null;
+  doctor_name: string | null;
+}
+
 export interface ListingClaimView {
   id: string;
   kind: 'claim' | 'remove';
@@ -220,6 +234,9 @@ export const adminApi = (key: string) => ({
   activity: () => request<Activity>(key, '/activity'),
   tenants: () => request<AdminTenant[]>(key, '/tenants'),
   // Decision 64 — claim / removal requests (super admin).
+  // Decision 67 — clinic edits held by the content check.
+  changeRequests: (status: string) => request<ChangeRequestView[]>(key, `/change-requests?status=${encodeURIComponent(status)}`),
+  decideChangeRequest: (id: string, apply: boolean) => request<ChangeRequestView>(key, `/change-requests/${id}/${apply ? 'apply' : 'reject'}`, { method: 'POST' }),
   claims: (status: string) => request<ListingClaimView[]>(key, `/claims?status=${encodeURIComponent(status)}`),
   decideClaim: (id: string, approve: boolean, note?: string) =>
     request<ListingClaimView & { login?: { username: string; setup_link: string; whatsapp: string } }>(key, `/claims/${id}/${approve ? 'approve' : 'reject'}`, { method: 'POST', body: JSON.stringify({ note }) }),

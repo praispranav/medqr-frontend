@@ -101,7 +101,8 @@ export function DoctorsTab({ api }: { api: TeamApi }) {
               submitLabel="Save"
               onCancel={() => setEditingId(null)}
               onSubmit={async (f) => {
-                await api.updateDoctor(d.id, f);
+                const result = (await api.updateDoctor(d.id, f)) as { review_pending?: string } | null;
+                setListingError(result?.review_pending ?? null); // Decision 67: e.g. a name change waiting for ClinicQ
                 setEditingId(null);
                 await load();
               }}

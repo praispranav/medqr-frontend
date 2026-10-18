@@ -51,6 +51,7 @@ export function ClinicDetails({
   const [aiBusy, setAiBusy] = useState(false);
   const [aiNote, setAiNote] = useState<string | null>(null);
   const [state, setState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [reviewNote, setReviewNote] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [origin, setOrigin] = useState('');
   const [copied, setCopied] = useState(false);
@@ -100,7 +101,10 @@ export function ClinicDetails({
     setState('saving');
     setError(null);
     try {
-      await saveFn({ is_publicly_listed: listed, city: city || null, address: address || null, public_phone: phone || null, maps_url: mapsUrl.trim() || null, landing_template: template, landing_tagline: tagline.trim() || null, landing_about: about.trim() || null, landing_highlights: highlightList });
+      const result = (await saveFn({ is_publicly_listed: listed, city: city || null, address: address || null, public_phone: phone || null, maps_url: mapsUrl.trim() || null, landing_template: template, landing_tagline: tagline.trim() || null, landing_about: about.trim() || null, landing_highlights: highlightList }));
+      // Decision 67: a doubtful edit is held for ClinicQ instead of going live.
+      const pending = (result as { review_pending?: string } | null)?.review_pending;
+      setReviewNote(pending ? `Sent to ClinicQ for a quick check: ${pending}` : null);
       await onSaved();
       setState('saved');
     } catch (e) {
@@ -304,7 +308,7 @@ export function ClinicDetails({
             <Icon name="save" className="text-[20px]" />
             {state === 'saving' ? 'Saving…' : 'Save clinic details'}
           </button>
-          {state === 'saved' && !dirty && <p className="font-body-sm text-body-sm text-tertiary">Saved ✓</p>}
+          {state === 'saved' && !dirty && (reviewNote ? <p className="font-body-sm text-body-sm text-on-surface-variant">{reviewNote}</p> : <p className="font-body-sm text-body-sm text-tertiary">Saved ✓</p>)}
         </div>
       </div>
     </Section>
