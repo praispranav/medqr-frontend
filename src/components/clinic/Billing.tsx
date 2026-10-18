@@ -73,13 +73,15 @@ export function Billing({ tenant }: { tenant: Tenant }) {
           <p className="flex items-center gap-2 font-label-md text-label-md text-on-surface">
             <Icon name="check_circle" className="text-tertiary text-[18px]" />
             Base platform {inr(plan?.base_plan_price_inr ?? catalog.base_plan_price_inr)}/mo — queue, reception verifier, doctor console, custom intake
-            forms{plan && plan.doctor_count > 1 ? `, up to ${plan.included_doctors} doctors` : ', 1 doctor'}
+            forms, includes up to {plan?.included_doctors ?? 3} doctors
           </p>
           {plan && (
             <p className="flex items-center gap-2 font-label-md text-label-md text-on-surface">
               <Icon name="group" className="text-primary text-[18px]" />
               {plan.doctor_count} doctor{plan.doctor_count === 1 ? '' : 's'}
-              {plan.extra_doctors > 0 ? ` — ${plan.extra_doctors} extra × ${inr(plan.extra_doctor_price_inr)}/mo` : ' — included'}
+              {plan.extra_doctors > 0
+                ? ` — ${plan.extra_doctors} extra × ${inr(plan.extra_doctor_price_inr)}/mo`
+                : ` — included in base plan (up to ${plan.included_doctors})`}
             </p>
           )}
         </div>

@@ -366,6 +366,7 @@ export default function LandingPage() {
             </p>
             <ul className="flex flex-col gap-2 font-body-md text-body-md">
               {[
+                'Includes up to 3 doctors (₹499/mo per additional doctor)',
                 'Unlimited QR check-ins with a printable clinic standee',
                 'Live queue on patient phones — no app download',
                 'Doctor Queue Command Center on any tablet or laptop',

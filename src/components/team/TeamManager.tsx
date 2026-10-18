@@ -169,7 +169,7 @@ export function DoctorsTab({ api }: { api: TeamApi }) {
         {api.pricing && doctors.length >= api.pricing.included_doctors && (
           <p className="font-body-sm text-body-sm text-on-surface-variant flex items-start gap-1.5">
             <Icon name="info" className="text-[16px] mt-0.5" />
-            Your plan includes {api.pricing.included_doctors} doctor. Each extra doctor adds {inr(api.pricing.extra_doctor_price_inr)}/month.
+            Your plan includes {api.pricing.included_doctors} doctor{api.pricing.included_doctors === 1 ? '' : 's'}. Each extra doctor adds {inr(api.pricing.extra_doctor_price_inr)}/month.
           </p>
         )}
         {adding ? (

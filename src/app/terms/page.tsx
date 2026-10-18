@@ -49,7 +49,7 @@ export default function TermsPage() {
       <section>
         <h2>4. Fees and payment</h2>
         <ul>
-          <li>The base platform is billed monthly at the price shown on the clinic&apos;s Billing page (currently ₹1,199/month + GST for one doctor; ₹499/month + GST per additional doctor). Optional add-on modules are billed separately, also shown on the Billing page.</li>
+          <li>The base platform is billed monthly at the price shown on the clinic&apos;s Billing page (currently ₹1,199/month + GST including up to 3 doctors; ₹499/month + GST per additional doctor past 3). Optional add-on modules are billed separately, also shown on the Billing page.</li>
           <li>WhatsApp notifications to patients are billed from a prepaid wallet, per message, at the rate shown in the app.</li>
           <li>Where ClinicQ facilitates online (UPI) collection of a clinic&apos;s own consultation fees from patients via a payment gateway, the gateway&apos;s transaction fee and applicable GST are deducted before the remaining amount settles to the clinic&apos;s bank account — this is disclosed in the clinic&apos;s Payments pages.</li>
           <li>Invoices are issued by Altis Labs, the entity operating ClinicQ.</li>

@@ -609,7 +609,7 @@ function ModulesTab({ api, tenant, onSaved }: { api: AdminApi; tenant: Tenant; o
     api.doctors(tenant.id).then((ds) => setDoctorCount((ds as unknown as DoctorToday[]).length)).catch(() => setDoctorCount(null));
   }, [api, tenant.id]);
 
-  const listBasePrice = doctorCount !== null && doctorCount <= 1 ? 499 : 999;
+  const listBasePrice = 1199;
 
   const saveOverride = async (raw = override) => {
     setOverrideBusy(true);
@@ -692,7 +692,7 @@ function ModulesTab({ api, tenant, onSaved }: { api: AdminApi; tenant: Tenant; o
         <div>
           <h2 className="font-headline-sm text-headline-sm">Custom base price</h2>
           <p className="font-body-sm text-body-sm text-on-surface-variant">
-            Normal price for this clinic is {inr(listBasePrice)}/mo ({doctorCount !== null && doctorCount <= 1 ? '1 doctor' : 'up to 3 doctors'}). Set a
+            Normal price for this clinic is {inr(listBasePrice)}/mo (includes up to 3 doctors). Set a
             different amount for a negotiated deal — leave blank to use the normal price. Doctors past 3 still add ₹499/mo each.
           </p>
         </div>
