@@ -105,7 +105,7 @@ export interface DoctorEnrichment {
   address: string;
   city: string | null;
   status: 'queued' | 'searching' | 'review' | 'inactive' | 'not_found' | 'applied' | 'failed';
-  found: { specialty: string | null; qualification: string | null; experience_years: number | null; consultation_fee_inr: number | null; timings: string | null; bio: string | null } | null;
+  found: { specialty: string | null; qualification: string | null; experience_years: number | null; consultation_fee_inr: number | null; timings: string | null; bio: string | null; website?: string | null; socials?: Partial<Record<'facebook' | 'instagram' | 'youtube' | 'linkedin', string>> } | null;
   sources: { site: string; url: string; title: string }[];
   practising: 'yes' | 'no' | 'unknown' | null;
   note: string | null;
@@ -405,6 +405,7 @@ export const adminApi = (key: string) => ({
   directoryProducts: () => request<{ key: string; name: string }[]>(key, '/directory-products'),
   createDirectoryProduct: (body: { key: string; name: string }) => request<{ key: string; name: string }>(key, '/directory-products', { method: 'POST', body: JSON.stringify(body) }),
   listings: () => request<ListingCandidate[]>(key, '/listings'),
+  enrichClinicDoctors: (tenantId: string) => request<{ queued: number }>(key, '/doctor-enrich/clinic', { method: 'POST', body: JSON.stringify({ tenant_id: tenantId }) }),
   doctorEnrichCredits: () => request<{ balance: number | null; per_doctor: number }>(key, '/doctor-enrich/credits'),
   doctorEnrich: () => request<DoctorEnrichment[]>(key, '/doctor-enrich'),
   addDoctorEnrich: (items: { name: string; address: string; city?: string }[]) => request<{ added: number; skipped: number }>(key, '/doctor-enrich', { method: 'POST', body: JSON.stringify({ items }) }),

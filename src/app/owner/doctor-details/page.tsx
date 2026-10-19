@@ -22,6 +22,7 @@ const FIELDS: { key: keyof Found; label: string; number?: boolean }[] = [
   { key: 'experience_years', label: 'Experience (years)', number: true },
   { key: 'consultation_fee_inr', label: 'Fee (₹)', number: true },
   { key: 'bio', label: 'Short bio' },
+  { key: 'website', label: 'Website (clinic or doctor, https://…)' },
 ];
 
 function Details({ api }: { api: AdminApi }) {
@@ -80,7 +81,7 @@ function Details({ api }: { api: AdminApi }) {
       <div>
         <h1 className="font-headline-lg text-headline-lg">Doctor details</h1>
         <p className="font-body-md text-body-md text-on-surface-variant max-w-2xl">
-          Add doctors as <b>Doctor name | clinic address</b>, one per line. The agent looks them up on Practo, Justdial, Lybrate and similar sites, checks the name and area match, and skips anyone shown as closed or retired. Review what it found, fix anything, then Confirm to fill the doctor&apos;s profile.
+          Add doctors as <b>Doctor name | clinic address</b>, one per line. The agent looks them up on Practo, Justdial, Lybrate and similar sites, checks the name and area match, and skips anyone shown as closed or retired. It also looks for the clinic&apos;s own website and Facebook, Instagram, YouTube or LinkedIn pages. Review what it found, fix anything, then Confirm to fill the doctor&apos;s profile (website and social links are saved on the clinic, only where empty).
         </p>
       </div>
 
@@ -135,11 +136,17 @@ function Details({ api }: { api: AdminApi }) {
             {r.status === 'review' && r.found && (
               <div className="grid gap-2 sm:grid-cols-2">
                 {FIELDS.map((f) => (
-                  <label key={f.key} className={`flex flex-col gap-1 ${f.key === 'bio' ? 'sm:col-span-2' : ''}`}>
+                  <label key={f.key} className={`flex flex-col gap-1 ${f.key === 'bio' || f.key === 'website' ? 'sm:col-span-2' : ''}`}>
                     <span className="font-label-sm text-label-sm text-on-surface-variant">{f.label}</span>
-                    <input defaultValue={r.found?.[f.key] ?? ''} onBlur={(e) => e.target.value !== String(r.found?.[f.key] ?? '') && edit(r, f.key, e.target.value, f.number)} type={f.number ? 'number' : 'text'} className="h-10 px-3 rounded-lg bg-surface-container-low font-body-md text-body-md" />
+                    <input defaultValue={(r.found?.[f.key] as string | number | null | undefined) ?? ''} onBlur={(e) => e.target.value !== String((r.found?.[f.key] as string | number | null | undefined) ?? '') && edit(r, f.key, e.target.value, f.number)} type={f.number ? 'number' : 'text'} className="h-10 px-3 rounded-lg bg-surface-container-low font-body-md text-body-md" />
                   </label>
                 ))}
+                {Object.entries(r.found.socials ?? {}).length > 0 && (
+                  <p className="font-body-sm text-body-sm text-on-surface-variant sm:col-span-2">
+                    Social pages found (saved on the clinic when you confirm):{' '}
+                    {Object.entries(r.found.socials ?? {}).map(([k, u]) => <a key={k} href={u} target="_blank" rel="noopener noreferrer" className="text-primary underline mr-2 capitalize">{k}</a>)}
+                  </p>
+                )}
                 {r.found.timings && <p className="font-body-sm text-body-sm text-on-surface-variant sm:col-span-2">Timings seen (not saved — the doctor sets hours): {r.found.timings}</p>}
               </div>
             )}

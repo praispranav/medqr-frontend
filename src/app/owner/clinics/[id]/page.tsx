@@ -114,7 +114,12 @@ function ClinicDetail({ api, referrer }: { api: AdminApi; referrer: boolean }) {
         })}
       </div>
 
-      {tab === 'doctors' && <DoctorsTab api={team} />}
+      {tab === 'doctors' && (
+        <div className="flex flex-col gap-4">
+          {!referrer && <FindDetailsBar api={api} tenantId={tenant.id} />}
+          <DoctorsTab api={team} />
+        </div>
+      )}
       {tab === 'products' && !referrer && <ProductsTab api={api} tenant={tenant} onSaved={setTenant} />}
       {tab === 'setup' && <DoctorSetupTab api={api} tenant={tenant} />}
       {tab === 'clinic' && (
@@ -168,6 +173,31 @@ function ClinicDetail({ api, referrer }: { api: AdminApi; referrer: boolean }) {
       {tab === 'logins' && <LoginsTab api={team} clinicCode={tenant.subdomain} />}
       {tab === 'payments' && !referrer && <GatewaySetupTab api={api} tenantId={tenant.id} clinicName={tenant.display_name ?? tenant.subdomain} />}
       {tab === 'modules' && !referrer && <ModulesTab api={api} tenant={tenant} onSaved={setTenant} />}
+    </div>
+  );
+}
+
+/** Decision 72 — look up this clinic's doctors (and its website / social pages) on Practo, Justdial etc.; results wait on Owner › Doctor details. */
+function FindDetailsBar({ api, tenantId }: { api: AdminApi; tenantId: string }) {
+  const [msg, setMsg] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  return (
+    <div className="bg-surface-container-lowest rounded-2xl p-4 shadow-sm flex flex-wrap items-center gap-3">
+      <div className="flex-1 min-w-[220px]">
+        <p className="font-label-lg text-label-lg">Find details online</p>
+        <p className="font-body-sm text-body-sm text-on-surface-variant">Searches Practo, Justdial and similar sites for this clinic&apos;s doctors, plus its website and social pages. You review before anything is saved.</p>
+      </div>
+      <button
+        disabled={busy}
+        onClick={async () => {
+          setBusy(true); setMsg(null);
+          try { const r = await api.enrichClinicDoctors(tenantId); setMsg(`Searching for ${r.queued} doctor${r.queued === 1 ? '' : 's'}…`); } catch (e) { setMsg((e as Error).message); } finally { setBusy(false); }
+        }}
+        className="h-10 px-4 rounded-full bg-primary text-on-primary font-label-lg text-label-lg flex items-center gap-2 disabled:opacity-60"
+      >
+        <Icon name="person_search" className="text-[18px]" /> Find details
+      </button>
+      {msg && <p className="w-full font-body-sm text-body-sm text-primary">{msg} <Link href="/owner/doctor-details" className="underline">Review results</Link></p>}
     </div>
   );
 }
@@ -448,6 +478,11 @@ function ClinicName({ api, tenant, onSaved }: { api: AdminApi; tenant: Tenant; o
         <div>
           <h1 className="font-headline-lg text-headline-lg">{tenant.display_name ?? tenant.subdomain}</h1>
           <p className="font-body-md text-body-md text-on-surface-variant">{tenant.subdomain}.clinicq.fit</p>
+          {(() => {
+            const t = tenant as Tenant & { website_url?: string | null; social_links?: Record<string, string> };
+            const links = [...(t.website_url ? [['Website', t.website_url] as const] : []), ...Object.entries(t.social_links ?? {}).map(([k, u]) => [k.charAt(0).toUpperCase() + k.slice(1), u] as const)];
+            return links.length ? <p className="font-body-sm text-body-sm text-on-surface-variant">{links.map(([label, url]) => <a key={label} href={url} target="_blank" rel="noopener noreferrer" className="text-primary underline mr-3">{label}</a>)}</p> : null;
+          })()}
           {(() => {
             const page = clinicPageUrl(tenant);
             return (
