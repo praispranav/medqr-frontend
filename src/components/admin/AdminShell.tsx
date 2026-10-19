@@ -20,6 +20,7 @@ const NAV: NavItem[] = [
   { label: 'Clinics', isCategory: true },
   { href: '/owner/clinics', label: 'Clinics', icon: 'local_hospital' },
   { href: '/owner/listings', label: 'Clinic listings', icon: 'travel_explore' },
+  { href: '/owner/doctor-details', label: 'Doctor details', icon: 'person_search' },
   { href: '/owner/claims', label: 'Claims & removals', icon: 'verified_user' },
   { href: '/owner/qr-codes', label: 'QR codes', icon: 'qr_code_2' },
   { label: 'Growth', isCategory: true },

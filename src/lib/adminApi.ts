@@ -98,6 +98,21 @@ export interface Coupon {
 }
 export type CouponInput = Partial<Pick<Coupon, 'code' | 'percent_off' | 'discount_months' | 'free_months' | 'max_uses' | 'valid_until' | 'referrer_id' | 'note' | 'is_active'>>;
 
+/** Decision 67 — a doctor the details agent looked up, waiting for the owner's Confirm. */
+export interface DoctorEnrichment {
+  id: string;
+  doctor_name: string;
+  address: string;
+  city: string | null;
+  status: 'queued' | 'searching' | 'review' | 'inactive' | 'not_found' | 'applied' | 'failed';
+  found: { specialty: string | null; qualification: string | null; experience_years: number | null; consultation_fee_inr: number | null; timings: string | null; bio: string | null } | null;
+  sources: { site: string; url: string; title: string }[];
+  practising: 'yes' | 'no' | 'unknown' | null;
+  note: string | null;
+  agreeing_sites: number;
+  error: string | null;
+}
+
 /** Decision 60 — a Google Maps listing waiting in Owner › Clinic listings. */
 export interface ListingCandidate {
   submitted_by?: string | null;
@@ -390,6 +405,12 @@ export const adminApi = (key: string) => ({
   directoryProducts: () => request<{ key: string; name: string }[]>(key, '/directory-products'),
   createDirectoryProduct: (body: { key: string; name: string }) => request<{ key: string; name: string }>(key, '/directory-products', { method: 'POST', body: JSON.stringify(body) }),
   listings: () => request<ListingCandidate[]>(key, '/listings'),
+  doctorEnrich: () => request<DoctorEnrichment[]>(key, '/doctor-enrich'),
+  addDoctorEnrich: (items: { name: string; address: string; city?: string }[]) => request<{ added: number; skipped: number }>(key, '/doctor-enrich', { method: 'POST', body: JSON.stringify({ items }) }),
+  editDoctorEnrich: (id: string, patch: Partial<NonNullable<DoctorEnrichment['found']>>) => request<DoctorEnrichment>(key, `/doctor-enrich/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
+  retryDoctorEnrich: (ids: string[]) => request<{ queued: number }>(key, '/doctor-enrich/retry', { method: 'POST', body: JSON.stringify({ ids }) }),
+  applyDoctorEnrich: (ids: string[]) => request<{ applied: number; failed: number; results: { id: string; ok: boolean; error?: string }[] }>(key, '/doctor-enrich/apply', { method: 'POST', body: JSON.stringify({ ids }) }),
+  deleteDoctorEnrich: (ids: string[]) => request<{ deleted: number }>(key, '/doctor-enrich/delete', { method: 'POST', body: JSON.stringify({ ids }) }),
   uploadListings: (items: Record<string, unknown>[]) =>
     request<{ added: number; already_there: number; closed_skipped: number; excluded_skipped?: number }>(key, '/listings/upload', { method: 'POST', body: JSON.stringify({ items }) }),
   importListings: (ids: string[]) => request<ListingImportResult>(key, '/listings/import', { method: 'POST', body: JSON.stringify({ ids }) }),
