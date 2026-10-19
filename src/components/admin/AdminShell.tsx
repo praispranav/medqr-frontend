@@ -11,20 +11,40 @@ import { Icon, LoadingPage } from '@/components/patient/ui';
 // `npm run admin:create -- <email>` — there's no sign-up page. Referral partners (Decision 27) are
 // created in Owner › Referrers and get a cut-down panel: their clinics + My earnings.
 
-const NAV = [
+type NavItem = { href: string; label: string; icon: string } | { label: string; isCategory: true };
+
+// Grouped the same way StaffShell groups its own sidebar (Decision 44) — headings only, nothing
+// collapsible: 12 items across 4 short groups reads fine without adding a fold/unfold interaction.
+const NAV: NavItem[] = [
   { href: '/owner', label: 'Activity', icon: 'monitoring' },
+  { label: 'Clinics', isCategory: true },
   { href: '/owner/clinics', label: 'Clinics', icon: 'local_hospital' },
-  { href: '/owner/referrers', label: 'Referrers & marketers', icon: 'handshake' },
-  { href: '/owner/coupons', label: 'Coupons', icon: 'sell' },
   { href: '/owner/listings', label: 'Clinic listings', icon: 'travel_explore' },
   { href: '/owner/claims', label: 'Claims & removals', icon: 'verified_user' },
-  { href: '/owner/change-requests', label: 'Change requests', icon: 'rule' },
+  { href: '/owner/qr-codes', label: 'QR codes', icon: 'qr_code_2' },
+  { label: 'Growth', isCategory: true },
+  { href: '/owner/referrers', label: 'Referrers & marketers', icon: 'handshake' },
+  { href: '/owner/coupons', label: 'Coupons', icon: 'sell' },
   { href: '/owner/leads', label: 'Trial requests', icon: 'inbox' },
-  { href: '/owner/support', label: 'Support', icon: 'support_agent' },
+  { label: 'Requests & support', isCategory: true },
+  { href: '/owner/change-requests', label: 'Change requests', icon: 'rule' },
   { href: '/owner/module-requests', label: 'Module requests', icon: 'extension' },
   { href: '/owner/setting-requests', label: 'Setting requests', icon: 'auto_awesome' },
-  { href: '/owner/qr-codes', label: 'QR codes', icon: 'qr_code_2' },
+  { href: '/owner/support', label: 'Support', icon: 'support_agent' },
 ];
+
+/** Splits the flat nav into headed sections: loose items first (no heading), then each category. */
+function sectionsOf(nav: NavItem[]): { label: string | null; items: Extract<NavItem, { href: string }>[] }[] {
+  const out: { label: string | null; items: Extract<NavItem, { href: string }>[] }[] = [];
+  for (const item of nav) {
+    if ('isCategory' in item) out.push({ label: item.label, items: [] });
+    else {
+      if (!out.length) out.push({ label: null, items: [] });
+      out[out.length - 1].items.push(item);
+    }
+  }
+  return out.filter((sec) => sec.items.length > 0);
+}
 
 const REFERRER_NAV = [
   { href: '/owner/clinics', label: 'My clinics', icon: 'local_hospital' },
@@ -53,12 +73,18 @@ export function AdminShell({ active, children }: { active: string; children: (ap
 
   const referrer = me.role !== 'super';
   const marketer = me.role === 'marketer';
-  const nav = marketer ? [{ href: '/owner/listings', label: 'My clinic submissions', icon: 'travel_explore' }, { href: '/owner/earnings', label: 'My earnings', icon: 'payments' }] : referrer ? REFERRER_NAV : NAV;
+  const nav: NavItem[] = marketer
+    ? [{ href: '/owner/listings', label: 'My clinic submissions', icon: 'travel_explore' }, { href: '/owner/earnings', label: 'My earnings', icon: 'payments' }]
+    : referrer
+      ? REFERRER_NAV
+      : NAV;
+  const flatItems = nav.filter((n): n is Extract<NavItem, { href: string }> => 'href' in n);
   // A referrer on a super-admin page (bookmark, old link) goes to their clinics instead.
-  if (referrer && !nav.some((n) => n.href === active)) {
+  if (referrer && !flatItems.some((n) => n.href === active)) {
     if (typeof window !== 'undefined') window.location.replace(marketer ? '/owner/listings' : '/owner/clinics');
     return <LoadingPage />;
   }
+  const sections = sectionsOf(nav);
 
   return (
     <div className="min-h-screen bg-surface text-on-surface lg:flex">
@@ -72,18 +98,27 @@ export function AdminShell({ active, children }: { active: string; children: (ap
             <p className="font-label-sm text-label-sm uppercase opacity-70">{marketer ? 'Marketer' : referrer ? 'Referral partner' : 'Platform admin'}</p>
           </div>
         </div>
-        <nav className="flex flex-col gap-1">
-          {nav.map((n) => (
-            <Link
-              key={n.href}
-              href={n.href}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl font-label-lg text-label-lg ${
-                active === n.href ? 'bg-primary-container' : 'opacity-80 hover:bg-white/10 hover:opacity-100'
-              }`}
-            >
-              <Icon name={n.icon} className="text-[20px]" />
-              {n.label}
-            </Link>
+        <nav className="flex flex-col gap-1 overflow-y-auto">
+          {sections.map((sec) => (
+            <div key={sec.label ?? 'top'} className="flex flex-col gap-1">
+              {sec.label && (
+                <div className="mt-4 mb-1 px-3">
+                  <span className="font-label-sm text-label-sm opacity-60 uppercase tracking-wider">{sec.label}</span>
+                </div>
+              )}
+              {sec.items.map((n) => (
+                <Link
+                  key={n.href}
+                  href={n.href}
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl font-label-lg text-label-lg ${
+                    active === n.href ? 'bg-primary-container' : 'opacity-80 hover:bg-white/10 hover:opacity-100'
+                  }`}
+                >
+                  <Icon name={n.icon} className="text-[20px]" />
+                  {n.label}
+                </Link>
+              ))}
+            </div>
           ))}
         </nav>
         <div className="mt-auto flex flex-col gap-1">
@@ -101,7 +136,7 @@ export function AdminShell({ active, children }: { active: string; children: (ap
         <header className="lg:hidden sticky top-0 z-30 bg-inverse-surface text-white px-4 h-14 flex items-center gap-3">
           <Icon name="admin_panel_settings" className="text-[22px]" />
           <span className="font-label-lg text-label-lg flex-1">{referrer ? 'ClinicQ partner' : 'ClinicQ admin'}</span>
-          {nav.map((n) => (
+          {flatItems.map((n) => (
             <Link key={n.href} href={n.href} className={`px-3 py-1.5 rounded-full font-label-md text-label-md ${active === n.href ? 'bg-primary-container' : 'opacity-80'}`}>
               {n.label}
             </Link>
