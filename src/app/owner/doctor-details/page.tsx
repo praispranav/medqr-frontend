@@ -31,11 +31,15 @@ function Details({ api }: { api: AdminApi }) {
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [credits, setCredits] = useState<{ balance: number | null; per_doctor: number } | null>(null);
 
   const load = useCallback(async () => {
     try { setRows(await api.doctorEnrich()); } catch (e) { setMsg((e as Error).message); }
   }, [api]);
-  useEffect(() => { load(); }, [load]);
+  const loadCredits = useCallback(() => { api.doctorEnrichCredits().then(setCredits).catch(() => setCredits(null)); }, [api]);
+  useEffect(() => { load(); loadCredits(); }, [load, loadCredits]);
+  // credits drop as lookups finish, so refresh them whenever the list settles
+  useEffect(() => { if (rows && !rows.some((r) => r.status === 'queued' || r.status === 'searching')) loadCredits(); }, [rows, loadCredits]);
   // keep refreshing while the agent is still working
   useEffect(() => {
     if (!rows?.some((r) => r.status === 'queued' || r.status === 'searching')) return;
@@ -81,6 +85,16 @@ function Details({ api }: { api: AdminApi }) {
       </div>
 
       <section className="bg-surface-container-lowest rounded-2xl shadow-sm p-4 flex flex-col gap-3">
+        {credits && (
+          <p className="font-body-md text-body-md">
+            <span className="px-3 py-1 rounded-full bg-primary-fixed/50 text-on-primary-fixed-variant font-label-md text-label-md">
+              {credits.balance === null ? 'Search credits: unavailable' : `Search credits left: ${credits.balance.toLocaleString('en-IN')}`}
+            </span>
+            <span className="ml-2 text-on-surface-variant font-body-sm text-body-sm">
+              {credits.balance === null ? 'Check SERPER_API_KEY on the server.' : `About ${credits.per_doctor} per doctor — enough for roughly ${Math.floor(credits.balance / credits.per_doctor).toLocaleString('en-IN')} more doctors.`}
+            </span>
+          </p>
+        )}
         <textarea value={text} onChange={(e) => setText(e.target.value)} rows={4} placeholder={'Dr. Anil Kumar | Boring Road, Patna, Bihar 800001\nDr. Rina Singh | Hospital Road, Sitamarhi 843302'} className="p-3 rounded-lg bg-surface-container-low font-body-md text-body-md" />
         <div className="flex flex-wrap gap-3 items-center">
           <input value={city} onChange={(e) => setCity(e.target.value)} placeholder="City (optional, helps the search)" className="h-10 px-3 rounded-lg bg-surface-container-low font-body-md text-body-md" />

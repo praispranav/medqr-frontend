@@ -405,6 +405,7 @@ export const adminApi = (key: string) => ({
   directoryProducts: () => request<{ key: string; name: string }[]>(key, '/directory-products'),
   createDirectoryProduct: (body: { key: string; name: string }) => request<{ key: string; name: string }>(key, '/directory-products', { method: 'POST', body: JSON.stringify(body) }),
   listings: () => request<ListingCandidate[]>(key, '/listings'),
+  doctorEnrichCredits: () => request<{ balance: number | null; per_doctor: number }>(key, '/doctor-enrich/credits'),
   doctorEnrich: () => request<DoctorEnrichment[]>(key, '/doctor-enrich'),
   addDoctorEnrich: (items: { name: string; address: string; city?: string }[]) => request<{ added: number; skipped: number }>(key, '/doctor-enrich', { method: 'POST', body: JSON.stringify({ items }) }),
   editDoctorEnrich: (id: string, patch: Partial<NonNullable<DoctorEnrichment['found']>>) => request<DoctorEnrichment>(key, `/doctor-enrich/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
