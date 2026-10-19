@@ -98,6 +98,22 @@ export interface Coupon {
 }
 export type CouponInput = Partial<Pick<Coupon, 'code' | 'percent_off' | 'discount_months' | 'free_months' | 'max_uses' | 'valid_until' | 'referrer_id' | 'note' | 'is_active'>>;
 
+/** Decision 73 — Owner › API usage. */
+export interface UsageTotals { calls: number; errors: number; units: number; cost_usd: number }
+export interface ApiUsageService {
+  key: string;
+  label: string;
+  purpose: string;
+  configured: boolean;
+  live: { remaining: string | null; low: boolean; detail?: string; error?: string } | null;
+  today: UsageTotals;
+  last7: UsageTotals;
+  last30: UsageTotals;
+  operations: ({ operation: string } & UsageTotals)[];
+  daily: { day: string; calls: number }[];
+}
+export interface ApiUsageOverview { as_of: string; tracked_since: string; services: ApiUsageService[] }
+
 /** Decision 67 — a doctor the details agent looked up, waiting for the owner's Confirm. */
 export interface DoctorEnrichment {
   id: string;
@@ -406,6 +422,7 @@ export const adminApi = (key: string) => ({
   createDirectoryProduct: (body: { key: string; name: string }) => request<{ key: string; name: string }>(key, '/directory-products', { method: 'POST', body: JSON.stringify(body) }),
   listings: () => request<ListingCandidate[]>(key, '/listings'),
   enrichClinicDoctors: (tenantId: string) => request<{ queued: number }>(key, '/doctor-enrich/clinic', { method: 'POST', body: JSON.stringify({ tenant_id: tenantId }) }),
+  apiUsage: () => request<ApiUsageOverview>(key, '/api-usage'),
   doctorEnrichCredits: () => request<{ balance: number | null; per_doctor: number }>(key, '/doctor-enrich/credits'),
   doctorEnrich: () => request<DoctorEnrichment[]>(key, '/doctor-enrich'),
   addDoctorEnrich: (items: { name: string; address: string; city?: string }[]) => request<{ added: number; skipped: number }>(key, '/doctor-enrich', { method: 'POST', body: JSON.stringify({ items }) }),
