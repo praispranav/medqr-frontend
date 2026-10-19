@@ -1,3 +1,4 @@
+import { PublicFooter } from '@/components/public/PublicFooter';
 import Link from 'next/link';
 import { BrandLogo } from '@/components/brand/BrandLogo';
 import { fileUrl, type DirectoryLandingDoctor } from '@/lib/api';
@@ -147,13 +148,7 @@ export function PlayfulLanding({ clinic, focusSlug, staffLoginHref, host }: Land
         )}
       </div>
 
-      <footer className="border-t border-[#0F766E]/10 bg-white">
-        <div className="max-w-5xl mx-auto px-5 py-6 flex flex-wrap gap-4 items-center text-[#0F2A24]/60 font-body-sm text-body-sm">
-          <BrandLogo />
-          <span>Digital queue for clinics</span>
-          <span className="ml-auto flex flex-wrap gap-4"><Link href={`/claim/${clinic.subdomain}`}>Own this clinic? Claim it</Link><Link href={`/claim/${clinic.subdomain}?kind=remove`}>Remove listing</Link><Link href="/privacy">Privacy</Link><Link href="/terms">Terms</Link><Link href="/contact">Contact</Link></span>
-        </div>
-      </footer>
+      <PublicFooter clinicCode={clinic.subdomain} />
     </main>
   );
 }

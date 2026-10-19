@@ -1,3 +1,4 @@
+import { PublicFooter } from '@/components/public/PublicFooter';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ClinicsSearch } from './ClinicsSearch';
@@ -47,6 +48,7 @@ export default function ClinicsIndexPage({ searchParams }: { searchParams: { q?:
         </div>
         <ClinicsSearch initialQ={searchParams.q} initialCity={searchParams.city} initialArea={searchParams.area} initialBookable={searchParams.bookable === '1'} initialToday={searchParams.today === '1'} />
       </div>
+      <PublicFooter />
     </main>
   );
 }

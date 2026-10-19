@@ -1,3 +1,4 @@
+import { PublicFooter } from '@/components/public/PublicFooter';
 import Link from 'next/link';
 import { BrandLogo } from '@/components/brand/BrandLogo';
 
@@ -42,18 +43,7 @@ export function LegalLayout({
         </div>
       </main>
 
-      <footer className="border-t border-surface-container">
-        <div className={`${width} mx-auto px-4 py-8 flex flex-col sm:flex-row gap-3 justify-between font-body-sm text-body-sm text-on-surface-variant`}>
-          <p>© {new Date().getFullYear()} ClinicQ · Operated by Altis Labs</p>
-          <div className="flex gap-4">
-            <Link href="/">Home</Link>
-            <Link href="/terms">Terms</Link>
-            <Link href="/privacy">Privacy</Link>
-            <Link href="/contact">Contact</Link>
-            <Link href="/login">Doctor/Staff Login</Link>
-          </div>
-        </div>
-      </footer>
+      <PublicFooter />
     </div>
   );
 }

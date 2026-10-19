@@ -1,3 +1,4 @@
+import { PublicFooter } from '@/components/public/PublicFooter';
 import Link from 'next/link';
 import { BrandLogo } from '@/components/brand/BrandLogo';
 import { DoctorsSearch, DOCTORS_PAGE_SIZE } from '@/app/doctors/DoctorsSearch';
@@ -118,6 +119,7 @@ export async function DoctorDirectoryPage({ city, group, q, bookable = false, la
           )}
         </section>
       </div>
+      <PublicFooter />
     </main>
   );
 }

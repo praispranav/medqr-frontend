@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { api, fileUrl, type DirectoryDoctorSummary } from '@/lib/api';
 import { Icon } from '@/components/patient/ui';
 import { AskOnlineBooking } from '@/components/directory/AskOnlineBooking';
+import { OnlineTokenBadge } from '@/components/directory/OnlineTokenBadge';
 import { VerifiedBadge } from '@/components/directory/VerifiedBadge';
 import { groupOf } from '@/lib/specialtyGroups';
 import { InfiniteFooter, useInfiniteScroll } from '@/lib/useInfiniteScroll';
@@ -153,7 +154,7 @@ export function DoctorsSearch({
         {nearMe && city && <p className="font-body-sm text-body-sm text-on-surface-variant flex items-center gap-1"><Icon name="near_me" className="text-[16px] text-primary" /> Showing doctors near you in {city}</p>}
         <label className="self-start flex items-center gap-2 font-label-md text-label-md text-on-surface cursor-pointer">
           <input type="checkbox" checked={bookable} onChange={(e) => setBookable(e.target.checked)} className="w-4 h-4" />
-          Only doctors with online OPD booking
+          <Icon name="confirmation_number" className="text-[18px] text-primary" /> Online token
         </label>
       </div>
 
@@ -199,7 +200,7 @@ export function DoctorsSearch({
                 </div>
               )}
               <div className="flex-1 min-w-0">
-                <h3 className="font-label-lg text-label-lg flex items-center gap-1.5 min-w-0"><span className="truncate">{d.name}</span>{d.verified && <VerifiedBadge />}</h3>
+                <h3 className="font-label-lg text-label-lg flex items-center gap-1.5 min-w-0"><span className="truncate">{d.name}</span>{d.verified && <VerifiedBadge />}{d.booking_open && <OnlineTokenBadge />}</h3>
                 <p className="font-body-sm text-body-sm text-on-surface-variant truncate">
                   {[groupOf(d.specialty)?.name ?? d.specialty, d.city].filter(Boolean).join(' · ')}
                 </p>
@@ -217,13 +218,7 @@ export function DoctorsSearch({
               </Link>
             )}
             {/* Decision 66: online OPD booking is a ClinicQ product — say clearly who has it. */}
-            {d.booking_open ? (
-              <Link href={`/doctors/${d.slug}`} className="self-start inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary-fixed/60 text-on-primary-fixed-variant font-label-md text-label-md">
-                <Icon name="confirmation_number" className="text-[16px]" /> Online OPD booking available
-              </Link>
-            ) : (
-              <AskOnlineBooking doctorSlug={d.slug} compact />
-            )}
+            {!d.booking_open && <AskOnlineBooking doctorSlug={d.slug} compact />}
           </li>
         ))}
       </ul>

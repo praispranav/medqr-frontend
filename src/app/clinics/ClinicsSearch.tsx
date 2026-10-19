@@ -8,6 +8,7 @@ import { patientUrl } from '@/lib/clinicHost';
 import { useHost } from '@/lib/useHost';
 import { InfiniteFooter, useInfiniteScroll } from '@/lib/useInfiniteScroll';
 import { groupOf } from '@/lib/specialtyGroups';
+import { OnlineTokenBadge } from '@/components/directory/OnlineTokenBadge';
 import { VerifiedBadge } from '@/components/directory/VerifiedBadge';
 
 const PAGE_SIZE = 24;
@@ -87,7 +88,7 @@ export function ClinicsSearch({ initialQ = '', initialCity = '', initialArea = '
         </label>
       </div>
       <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-        <FilterChip label="Online booking" icon="confirmation_number" selected={bookable} onClick={() => setBookable(!bookable)} />
+        <FilterChip label="Online token" icon="confirmation_number" selected={bookable} onClick={() => setBookable(!bookable)} />
         <FilterChip label="Available today" icon="today" selected={today} onClick={() => setToday(!today)} />
         {active && <button onClick={clear} className="min-h-11 px-2 text-label-md text-primary sm:ml-auto underline underline-offset-4">Clear filters</button>}
       </div>
@@ -119,7 +120,7 @@ export function ClinicsSearch({ initialQ = '', initialCity = '', initialArea = '
 
 function FilterChip({ label, icon, selected, onClick }: { label: string; icon: string; selected: boolean; onClick: () => void }) {
   return <button type="button" aria-pressed={selected} onClick={onClick} className={`min-h-11 rounded-full px-4 flex items-center gap-2 text-label-md sm:text-label-lg transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${selected ? 'bg-primary text-on-primary' : 'bg-surface-container-lowest text-on-surface hover:bg-surface-container'}`}>
-    <Icon name={selected ? 'check_circle' : icon} className="text-lg" />{label}
+    <Icon name={icon} className="text-lg" />{label}
   </button>;
 }
 
@@ -137,14 +138,13 @@ function ClinicCard({ clinic: c, host }: { clinic: DirectoryClinicSummary; host:
       <Icon name="chevron_right" className="order-last ml-auto self-center text-[28px] text-on-surface-variant" aria-hidden />
       <div className="min-w-0">
         <Link href={href} className="font-headline text-headline-sm hover:text-primary hover:underline break-words after:absolute after:inset-0 after:rounded-2xl">{c.clinic_name}</Link>
-        {c.verified && <span className="ml-2 align-middle"><VerifiedBadge /></span>}
+        {c.verified && <span className="ml-1.5 align-middle"><VerifiedBadge /></span>}{c.booking_open && <span className="ml-1.5 align-middle"><OnlineTokenBadge /></span>}
         {(c.address || c.city) && <p className="mt-1 text-body-md text-on-surface-variant flex gap-1.5"><Icon name="location_on" className="text-lg shrink-0" /><span className="line-clamp-2">{c.address}{c.address && c.city && !c.address.toLowerCase().includes(c.city.toLowerCase()) ? `, ${c.city}` : !c.address ? c.city : ''}</span></p>}
       </div>
     </div>
     {specialties.length ? <p className="text-body-md text-on-surface-variant line-clamp-2">{specialties.slice(0, 3).join(' · ')}</p> : null}
     {doctors.length > 0 && <p className="text-body-md flex items-start gap-2"><Icon name="stethoscope" className="text-lg text-primary" /><span>{doctors[0].name}{c.doctor_count > 1 ? ` + ${c.doctor_count - 1} more` : ''}</span></p>}
-    {c.booking_open && <div className="flex flex-wrap gap-2 items-center">
-      <span className="rounded-full bg-primary-fixed/40 px-3 py-1 text-label-md text-primary inline-flex items-center gap-1.5"><Icon name="confirmation_number" className="text-base" />Online booking</span>
+    {c.booking_open && c.available_today && <div className="flex flex-wrap gap-2 items-center">
       {c.available_today && <span className="inline-flex items-center gap-1.5 text-label-md text-tertiary"><span className="h-2 w-2 rounded-full bg-tertiary" />Available today</span>}
     </div>}
     </div>

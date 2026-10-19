@@ -1,3 +1,4 @@
+import { PublicFooter } from '@/components/public/PublicFooter';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -51,6 +52,7 @@ export default async function ClinicsInCityPage({ params, searchParams }: { para
           initialToday={searchParams?.today === '1'}
         />
       </div>
+      <PublicFooter />
     </main>
   );
 }

@@ -1,4 +1,5 @@
 'use client';
+import { PublicFooter } from '@/components/public/PublicFooter';
 
 import Link from 'next/link';
 import { BrandLogo } from '@/components/brand/BrandLogo';
@@ -7,7 +8,6 @@ import { useEffect, useState } from 'react';
 import { api, ApiError } from '@/lib/api';
 import { patientUrl } from '@/lib/clinicHost';
 import { useHost } from '@/lib/useHost';
-import { COMPANY_NAME, COMPANY_URL } from '@/components/support/contactInfo';
 import { WhatsAppFloat } from '@/components/support/WhatsAppFloat';
 
 // Decision 58: the clinic-facing marketing page (was the home page; now /for-clinics — the home page is
@@ -225,7 +225,7 @@ export default function LandingPage() {
             <li className="flex items-center gap-1.5"><Icon name="check_circle" className="text-tertiary text-[16px]" /> No app download — works in any browser</li>
             <li className="flex items-center gap-1.5"><Icon name="check_circle" className="text-tertiary text-[16px]" /> Works on budget Android phones</li>
             <li className="flex items-center gap-1.5"><Icon name="check_circle" className="text-tertiary text-[16px]" /> See your live position from anywhere</li>
-            <li className="flex items-center gap-1.5"><Icon name="check_circle" className="text-tertiary text-[16px]" /> WhatsApp alert the moment it's your turn</li>
+            <li className="flex items-center gap-1.5"><Icon name="check_circle" className="text-tertiary text-[16px]" /> WhatsApp alert the moment it&apos;s your turn</li>
           </ul>
         </div>
 
@@ -446,21 +446,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <footer className="border-t border-surface-container">
-        <div className="max-w-6xl mx-auto px-4 py-8 flex flex-col xl:flex-row gap-3 justify-between font-body-sm text-body-sm text-on-surface-variant">
-          <p>
-            © {new Date().getFullYear()} ClinicQ · Digital OPD queues for Indian clinics · A product of{' '}
-            <a href={COMPANY_URL} target="_blank" rel="noreferrer" className="text-primary font-label-md text-label-md">{COMPANY_NAME}</a>
-          </p>
-          <div className="flex flex-wrap gap-x-4 gap-y-2">
-            <Link href="/terms">Terms</Link>
-            <Link href="/privacy">Privacy</Link>
-            <Link href="/contact">Contact &amp; help</Link>
-            <a href={patientUrl('/patient', host)}>Patient Login</a>
-            <Link href="/login">Doctor/Staff Login</Link>
-          </div>
-        </div>
-      </footer>
+      <PublicFooter />
 
       <WhatsAppFloat />
 

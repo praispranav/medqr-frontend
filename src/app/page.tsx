@@ -1,3 +1,4 @@
+import { PublicFooter } from '@/components/public/PublicFooter';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { headers } from 'next/headers';
@@ -5,7 +6,6 @@ import { BrandLogo } from '@/components/brand/BrandLogo';
 import { HomeSearch } from '@/components/home/HomeSearch';
 import { Icon } from '@/components/patient/ui';
 import { WhatsAppFloat } from '@/components/support/WhatsAppFloat';
-import { COMPANY_NAME, COMPANY_URL } from '@/components/support/contactInfo';
 import { patientUrl } from '@/lib/clinicHost';
 import type { DirectoryClinicSummary } from '@/lib/api';
 import { directoryCities, directoryPath, specialtyGroupsIn } from '@/lib/directoryServer';
@@ -188,22 +188,7 @@ export default async function HomePage({ searchParams }: { searchParams?: { q?: 
       </section>
       </main>
 
-      <footer className="border-t border-surface-container">
-        <div className="max-w-6xl mx-auto px-4 py-8 flex flex-col xl:flex-row gap-3 justify-between font-body-sm text-body-sm text-on-surface-variant">
-          <p>
-            © {new Date().getFullYear()} ClinicQ · Doctor &amp; clinic directory with online OPD booking · A product of{' '}
-            <a href={COMPANY_URL} target="_blank" rel="noreferrer" className="text-primary font-label-md text-label-md">{COMPANY_NAME}</a>
-          </p>
-          <div className="flex flex-wrap gap-x-4 gap-y-1">
-            <Link href="/for-clinics" className="min-h-[44px] px-1 inline-flex items-center hover:text-on-surface">For clinics</Link>
-            <Link href="/terms" className="min-h-[44px] px-1 inline-flex items-center hover:text-on-surface">Terms</Link>
-            <Link href="/privacy" className="min-h-[44px] px-1 inline-flex items-center hover:text-on-surface">Privacy</Link>
-            <Link href="/contact" className="min-h-[44px] px-1 inline-flex items-center hover:text-on-surface">Contact &amp; help</Link>
-            <Link href="/signin" className="min-h-[44px] px-1 inline-flex items-center hover:text-on-surface">Sign in</Link>
-            <Link href="/for-clinics#claim" className="min-h-[44px] px-1 inline-flex items-center hover:text-on-surface">List your clinic</Link>
-          </div>
-        </div>
-      </footer>
+      <PublicFooter />
 
       <WhatsAppFloat />
     </div>

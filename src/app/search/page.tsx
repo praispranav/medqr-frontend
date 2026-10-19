@@ -1,9 +1,9 @@
+import { PublicFooter } from '@/components/public/PublicFooter';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { BrandLogo } from '@/components/brand/BrandLogo';
-import { Icon } from '@/components/patient/ui';
-import { searchDoctors, searchClinicsServer, directoryCities, directoryPath } from '@/lib/directoryServer';
-import { groupBySlug, groupOf } from '@/lib/specialtyGroups';
+import { searchDoctors, searchClinicsServer, directoryCities } from '@/lib/directoryServer';
+import { groupBySlug } from '@/lib/specialtyGroups';
 import { SearchClientView } from './SearchClientView';
 
 interface SearchParams {
@@ -38,8 +38,8 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
   const bookable = searchParams.online === '1';
 
   const [doctors, clinics, cities] = await Promise.all([
-    q || city ? searchDoctors({ q: q || undefined, city, bookable, limit: 30 }) : Promise.resolve([]),
-    q || city ? searchClinicsServer({ q: q || undefined, city, bookable, limit: 30 }) : Promise.resolve([]),
+    searchDoctors({ q: q || undefined, city, bookable, limit: 24 }),
+    searchClinicsServer({ q: q || undefined, city, bookable, limit: 24 }),
     directoryCities(),
   ]);
 
@@ -75,6 +75,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
           matchedGroup={matchedGroup}
         />
       </div>
+      <PublicFooter />
     </main>
   );
 }
