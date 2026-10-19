@@ -5,7 +5,7 @@ import { groupBySlug } from '@/lib/specialtyGroups';
 
 // Decision 66 — the doctor directory search. Filters are in the address (?q=&specialty=&city=&online=1);
 // a city / specialty filter points search engines at its clean landing page (/doctors/in/patna/dentist).
-type Params = { q?: string; specialty?: string; city?: string; online?: string };
+type Params = { q?: string; specialty?: string; city?: string; online?: string; area?: string; today?: string };
 
 export async function generateMetadata({ searchParams }: { searchParams: Params }): Promise<Metadata> {
   const group = groupBySlug(searchParams.specialty);
@@ -31,6 +31,8 @@ export default function DoctorsIndexPage({ searchParams }: { searchParams: Param
       group={group ?? qGroup}
       city={searchParams.city?.trim() || null}
       bookable={searchParams.online === '1'}
+      area={searchParams.area}
+      today={searchParams.today === '1'}
       landing={false}
     />
   );

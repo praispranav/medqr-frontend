@@ -11,6 +11,9 @@ interface SearchParams {
   type?: 'all' | 'doctors' | 'clinics';
   city?: string;
   online?: string;
+  area?: string;
+  today?: string;
+  specialty?: string;
 }
 
 export async function generateMetadata({ searchParams }: { searchParams: SearchParams }): Promise<Metadata> {
@@ -35,11 +38,14 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
   const q = searchParams.q?.trim() || '';
   const city = searchParams.city?.trim() || undefined;
   const type = searchParams.type || 'all';
+  const area = searchParams.area?.trim() || undefined;
+  const today = searchParams.today === '1';
+  const group = groupBySlug(searchParams.specialty);
   const bookable = searchParams.online === '1';
 
   const [doctors, clinics, cities] = await Promise.all([
-    searchDoctors({ q: q || undefined, city, bookable, limit: 24 }),
-    searchClinicsServer({ q: q || undefined, city, bookable, limit: 24 }),
+    searchDoctors({ q: q || undefined, city, area, today, group: group?.slug, bookable, limit: 24 }),
+    searchClinicsServer({ q: q || undefined, city, area, today, bookable, limit: 24 }),
     directoryCities(),
   ]);
 
@@ -69,6 +75,9 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
           initialType={type}
           initialCity={city ?? ''}
           initialBookable={bookable}
+          initialArea={area}
+          initialToday={today}
+          initialGroup={group?.slug}
           initialDoctors={doctors}
           initialClinics={clinics}
           cities={cities}

@@ -602,6 +602,12 @@ export interface DirectoryDoctorSummary {
   clinic_name: string | null;
   clinic_slug: string | null;
   city: string | null;
+  id?: string;
+  clinic_subdomain?: string;
+  address?: string | null;
+  public_phone?: string | null;
+  maps_url?: string | null;
+  available_today?: boolean;
 }
 
 export interface DirectoryDoctorProfile extends DirectoryDoctorSummary {
@@ -1110,7 +1116,7 @@ export const api = {
     request<{ id: string }>('/leads', { method: 'POST', body: JSON.stringify(body) }),
   // Public doctor/clinic directory (clinicq.fit/doctors) — only clinics/doctors that opted in ever show up here.
   directoryProducts: () => request<DirectoryProduct[]>('/directory/products'),
-  directorySearch: (opts: { q?: string; specialty?: string; group?: string; city?: string; bookable?: string; limit?: string; offset?: string } = {}) =>
+  directorySearch: (opts: { q?: string; specialty?: string; group?: string; city?: string; area?: string; today?: string; bookable?: string; limit?: string; offset?: string } = {}) =>
     request<DirectoryDoctorSummary[]>(`/directory/doctors${toQuery(opts)}`),
   directoryDoctor: (slug: string) => request<DirectoryDoctorProfile>(`/directory/doctors/${encodeURIComponent(slug)}`),
   directoryClinic: (slug: string) => request<DirectoryClinicProfile>(`/directory/clinics/${encodeURIComponent(slug)}`),

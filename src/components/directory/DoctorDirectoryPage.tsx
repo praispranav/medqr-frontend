@@ -11,9 +11,9 @@ import type { SpecialtyGroup } from '@/lib/specialtyGroups';
  * The first page of doctors, the heading and the related links are in the HTML; more load as you scroll.
  * Only facts from the directory — no rankings, no "best".
  */
-export async function DoctorDirectoryPage({ city, group, q, bookable = false, landing }: { city?: string | null; group?: SpecialtyGroup | null; q?: string; bookable?: boolean; landing: boolean }) {
+export async function DoctorDirectoryPage({ city, group, q, bookable = false, area, today = false, landing }: { city?: string | null; group?: SpecialtyGroup | null; q?: string; bookable?: boolean; area?: string; today?: boolean; landing: boolean }) {
   const [results, groupsHere, cities] = await Promise.all([
-    searchDoctors({ q, group: group?.slug, city: city ?? undefined, bookable, limit: DOCTORS_PAGE_SIZE }),
+    searchDoctors({ q, group: group?.slug, city: city ?? undefined, area, today, bookable, limit: DOCTORS_PAGE_SIZE }),
     specialtyGroupsIn(city),
     directoryCities(),
   ]);
@@ -61,7 +61,7 @@ export async function DoctorDirectoryPage({ city, group, q, bookable = false, la
     <main className="min-h-screen bg-surface">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c') }} />
       <header className="border-b border-surface-container">
-        <div className="max-w-5xl mx-auto px-4 h-16 flex items-center gap-4">
+        <div className="max-w-6xl mx-auto px-4 h-16 flex items-center gap-4">
           <BrandLogo />
           <nav className="ml-auto flex items-center gap-5 font-label-md text-label-md text-on-surface-variant">
             <Link href="/clinics" className="hover:text-on-surface">Clinics &amp; hospitals</Link>
@@ -69,7 +69,7 @@ export async function DoctorDirectoryPage({ city, group, q, bookable = false, la
           </nav>
         </div>
       </header>
-      <div className="max-w-5xl mx-auto px-4 py-8 sm:py-10 flex flex-col gap-6">
+      <div className="max-w-6xl mx-auto px-4 py-8 sm:py-10 flex flex-col gap-6">
         {crumbs.length > 2 && (
           <nav aria-label="Breadcrumb" className="font-body-sm text-body-sm text-on-surface-variant flex flex-wrap gap-1.5">
             {crumbs.slice(1).map((c, i, all) => (
@@ -89,7 +89,7 @@ export async function DoctorDirectoryPage({ city, group, q, bookable = false, la
           </p>
         </div>
 
-        <DoctorsSearch initialQ={q} initialGroup={group?.slug} initialCity={city ?? ''} initialBookable={bookable} initialResults={results} syncUrl={!landing} />
+        <DoctorsSearch initialQ={q} initialGroup={group?.slug} initialCity={city ?? ''} initialBookable={bookable} initialArea={area} initialToday={today} initialResults={results} syncUrl={!landing} />
 
         {/* Internal links: the specialties in this city, and this specialty in other cities. */}
         <section className="border-t border-surface-container pt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
