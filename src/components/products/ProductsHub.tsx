@@ -78,6 +78,19 @@ export function ProductsHub({
 
   const upcomingSystems: SystemProduct[] = [
     {
+      id: 'whatsapp-doctor-search-booking',
+      category: 'PATIENT COMMUNICATION',
+      name: 'WhatsApp Doctor Search & Token Booking',
+      priceLabel: '₹399',
+      billingFrequency: '/ month',
+      status: 'coming_soon',
+      badge: 'Coming Soon',
+      tagline: 'Patients find a doctor and get a token, right inside a WhatsApp chat',
+      description:
+        'A patient messages your ClinicQ WhatsApp number, picks a doctor, and books a live queue token — no app, no website visit. Waiting on WhatsApp’s approval for the booking flow before this goes live.',
+      highlights: ['No App or Website Needed', 'Doctor Search in Chat', 'Instant Token on WhatsApp'],
+    },
+    {
       id: 'pharmacy-inventory-system',
       category: 'PHARMACY & INVENTORY',
       name: 'Clinic Pharmacy & Stock Dispensing Suite',
@@ -444,8 +457,15 @@ export function ProductsHub({
                 </div>
 
                 <div className="pt-4 border-t border-surface-container flex items-center justify-between gap-3">
-                  <span className="font-label-sm text-label-sm text-on-surface-variant font-medium">
-                    Integrated System
+                  <span className="font-label-sm text-label-sm font-medium">
+                    {sys.priceLabel === 'Coming Soon' ? (
+                      <span className="text-on-surface-variant">Integrated System</span>
+                    ) : (
+                      <>
+                        <span className="text-primary font-bold">{sys.priceLabel}</span>
+                        <span className="text-on-surface-variant"> {sys.billingFrequency} when live</span>
+                      </>
+                    )}
                   </span>
                   <button
                     type="button"
