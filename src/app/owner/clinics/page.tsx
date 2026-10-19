@@ -8,6 +8,7 @@ import { describeCoupon } from '@/lib/coupons';
 import { Icon } from '@/components/patient/ui';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { inr } from '@/components/staff/bits';
+import { clinicPageUrl } from '@/lib/clinicHost';
 import { InfiniteFooter, useInfiniteScroll } from '@/lib/useInfiniteScroll';
 
 export default function AdminClinicsPage() {
@@ -198,7 +199,8 @@ function Clinics({ api, referrer }: { api: AdminApi; referrer: boolean }) {
         {list === null && !error && <p className="p-5 font-body-md text-body-md text-on-surface-variant">Loading…</p>}
         {visibleClinics?.length === 0 && <p className="p-5 font-body-md text-body-md text-on-surface-variant">{search.trim() ? 'No clinics match this search.' : referrer || !picked.length ? 'No clinics yet — add the first one above.' : 'No clinics match this product.'}</p>}
         {visibleClinics?.map((t) => (
-          <Link key={t.id} href={`/owner/clinics/${t.id}`} className="flex items-center gap-4 px-5 py-4 border-b border-surface-container last:border-0 hover:bg-surface-container-low">
+          <div key={t.id} className="flex items-center border-b border-surface-container last:border-0 hover:bg-surface-container-low">
+          <Link href={`/owner/clinics/${t.id}`} className="flex flex-1 min-w-0 items-center gap-4 pl-5 pr-2 py-4">
             <div className="w-10 h-10 rounded-xl bg-primary-fixed/50 text-primary flex items-center justify-center shrink-0">
               <Icon name="local_hospital" className="text-[22px]" />
             </div>
@@ -252,6 +254,15 @@ function Clinics({ api, referrer }: { api: AdminApi; referrer: boolean }) {
             </div>
             <Icon name="chevron_right" className="text-on-surface-variant" />
           </Link>
+          {(() => {
+            const page = clinicPageUrl(t);
+            return (
+              <a href={page.url} target="_blank" rel="noopener noreferrer" title={page.listed ? 'Open the public clinic page' : 'Open the clinic home page (not listed in the directory yet)'} className="mr-4 h-10 px-3 rounded-full flex items-center gap-1 text-primary font-label-md text-label-md hover:bg-primary/10 shrink-0">
+                <Icon name="open_in_new" className="text-[18px]" /> <span className="hidden md:inline">{page.listed ? 'Page' : 'Home'}</span>
+              </a>
+            );
+          })()}
+          </div>
         ))}
         <InfiniteFooter sentinel={sentinel} hasMore={hasMore} loading={loadingMore} />
       </section>

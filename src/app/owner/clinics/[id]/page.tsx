@@ -12,6 +12,7 @@ import { IntakeFormEditor } from '@/components/doctor/IntakeFormEditor';
 import type { AdminApi, SubscriptionStatusView } from '@/lib/adminApi';
 import { DoctorsTab, LoginsTab, type TeamApi } from '@/components/team/TeamManager';
 import { Icon } from '@/components/patient/ui';
+import { clinicPageUrl } from '@/lib/clinicHost';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { inr } from '@/components/staff/bits';
 import { ArrivalQrCard } from '@/components/qr/ArrivalQrCard';
@@ -433,6 +434,14 @@ function ClinicName({ api, tenant, onSaved }: { api: AdminApi; tenant: Tenant; o
         <div>
           <h1 className="font-headline-lg text-headline-lg">{tenant.display_name ?? tenant.subdomain}</h1>
           <p className="font-body-md text-body-md text-on-surface-variant">{tenant.subdomain}.clinicq.fit</p>
+          {(() => {
+            const page = clinicPageUrl(tenant);
+            return (
+              <a href={page.url} target="_blank" rel="noopener noreferrer" className="mt-1 inline-flex items-center gap-1 text-primary font-label-md text-label-md">
+                <Icon name="open_in_new" className="text-[18px]" /> {page.listed ? 'View public page' : 'View clinic home (not in the directory yet)'}
+              </a>
+            );
+          })()}
         </div>
         <button onClick={() => setEditing(true)} className="h-10 px-3 rounded-xl text-primary font-label-md text-label-md flex items-center gap-1">
           <Icon name="edit" className="text-[18px]" /> Rename

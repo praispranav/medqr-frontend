@@ -119,3 +119,15 @@ export function apiBase(): string {
   if (!API_SUBDOMAIN || !root || root === 'localhost') return configured;
   return `${window.location.protocol}//${API_SUBDOMAIN}.${root}`;
 }
+
+/**
+ * Where a visitor sees this clinic: its public directory page (/clinics/<slug>) once it is listed, otherwise its own
+ * home page (<code>.clinicq.fit, or /clinic-home/<code> where subdomains aren't set up). Used by Owner › Clinics.
+ */
+export function clinicPageUrl(
+  t: { subdomain: string; is_publicly_listed?: boolean; public_slug?: string | null },
+  host: string | null | undefined = browserHost(),
+): { url: string; listed: boolean } {
+  if (t.is_publicly_listed && t.public_slug) return { url: mainUrl(`/clinics/${t.public_slug}`, host), listed: true };
+  return { url: clinicSiteUrl(t.subdomain, '/', host) ?? `/clinic-home/${t.subdomain}`, listed: false };
+}
