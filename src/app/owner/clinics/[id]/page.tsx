@@ -37,7 +37,7 @@ export default function AdminClinicPage() {
 function ClinicDetail({ api, referrer }: { api: AdminApi; referrer: boolean }) {
   const { id } = useParams<{ id: string }>();
   const [tenant, setTenant] = useState<Tenant | null>(null);
-  const [tab, setTab] = useState<'doctors' | 'setup' | 'clinic' | 'logins' | 'payments' | 'products' | 'modules'>('doctors');
+  const [tab, setTab] = useState<'doctors' | 'setup' | 'clinic' | 'queue' | 'qr' | 'logins' | 'payments' | 'products' | 'modules'>('doctors');
   const [error, setError] = useState<string | null>(null);
   const queueRulesRef = useRef<QueueRulesHandle>(null);
   const team = useMemo(() => adminTeamApi(api, id, referrer, tenant?.queue_settings), [api, id, referrer, tenant?.queue_settings]);
@@ -86,32 +86,50 @@ function ClinicDetail({ api, referrer }: { api: AdminApi; referrer: boolean }) {
 
       <AdminSetupCard api={api} tenantId={tenant.id} referrer={referrer} goTab={setTab} />
 
-      <div className="flex gap-2 flex-wrap">
+      {/* Settings grouped by what they are about, so each one has one obvious home. */}
+      <div className="flex flex-col gap-2">
         {(
           [
-            ['doctors', 'Doctors & schedule'],
-            ['setup', 'Doctor setup'],
-            ['clinic', 'Clinic & queue rules'],
-            ['logins', 'Doctor/Staff Logins'],
-            ['payments', 'Online payments'],
-            ['products', 'Products'],
-            ['modules', 'Settings, modules & wallet'],
+            ['People', [['doctors', 'Doctors & schedule'], ['setup', 'Doctor setup'], ['logins', 'Doctor/Staff Logins']]],
+            ['Clinic', [['clinic', 'Profile & public page'], ['queue', 'Queue rules'], ['qr', 'QR codes']]],
+            ['Money & plan', [['payments', 'Online payments'], ['products', 'Products'], ['modules', 'Plan, modules & wallet']]],
           ] as const
-        ).filter(([k]) => !(referrer && (k === 'modules' || k === 'payments' || k === 'products'))).map(([k, label]) => (
-          <button
-            key={k}
-            onClick={() => setTab(k)}
-            className={`px-4 py-2 rounded-full font-label-lg text-label-lg ${tab === k ? 'bg-primary text-on-primary' : 'bg-surface-container text-on-surface-variant'}`}
-          >
-            {label}
-          </button>
-        ))}
+        ).map(([group, items]) => {
+          const visible = items.filter(([k]) => !(referrer && (k === 'modules' || k === 'payments' || k === 'products')));
+          if (!visible.length) return null;
+          return (
+            <div key={group} className="flex flex-wrap items-center gap-2">
+              <span className="w-24 shrink-0 font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">{group}</span>
+              {visible.map(([k, label]) => (
+                <button
+                  key={k}
+                  onClick={() => setTab(k)}
+                  className={`px-4 py-2 rounded-full font-label-lg text-label-lg ${tab === k ? 'bg-primary text-on-primary' : 'bg-surface-container text-on-surface-variant'}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          );
+        })}
       </div>
 
       {tab === 'doctors' && <DoctorsTab api={team} />}
       {tab === 'products' && !referrer && <ProductsTab api={api} tenant={tenant} onSaved={setTenant} />}
       {tab === 'setup' && <DoctorSetupTab api={api} tenant={tenant} />}
       {tab === 'clinic' && (
+        <div className="flex flex-col gap-6 pb-24">
+          <ClinicDetails
+            key={`details-${tenant.address}-${tenant.city}-${tenant.public_phone}-${tenant.is_publicly_listed}`}
+            tenant={tenant}
+            canEdit
+            onSaved={async () => setTenant(await api.tenant(tenant.id))}
+            save={(patch) => api.updateTenant(tenant.id, patch)}
+            aiDraft={() => api.landingDraft(tenant.id)}
+          />
+        </div>
+      )}
+      {tab === 'queue' && (
         <div className="flex flex-col gap-6 pb-24">
           {referrer && (
             <div>
@@ -129,16 +147,6 @@ function ClinicDetail({ api, referrer }: { api: AdminApi; referrer: boolean }) {
               />
             </div>
           )}
-          <ClinicDetails
-            key={`details-${tenant.address}-${tenant.city}-${tenant.public_phone}-${tenant.is_publicly_listed}`}
-            tenant={tenant}
-            canEdit
-            onSaved={async () => setTenant(await api.tenant(tenant.id))}
-            save={(patch) => api.updateTenant(tenant.id, patch)}
-            aiDraft={() => api.landingDraft(tenant.id)}
-          />
-          <TenantQrStandees api={api} tenantId={tenant.id} />
-          <ArrivalQrCard load={() => api.arrivalQr(tenant.id)} regenerate={() => api.regenerateArrivalQr(tenant.id)} rulesHint="Queue Rules below" />
           <QueueRules
             ref={queueRulesRef}
             key={`rules-${JSON.stringify(tenant.queue_settings)}`}
@@ -149,6 +157,12 @@ function ClinicDetail({ api, referrer }: { api: AdminApi; referrer: boolean }) {
             requestSetting={(description) => api.requestSetting(tenant.id, description)}
             hideSetupButton={referrer}
           />
+        </div>
+      )}
+      {tab === 'qr' && (
+        <div className="flex flex-col gap-6 pb-24">
+          <TenantQrStandees api={api} tenantId={tenant.id} />
+          <ArrivalQrCard load={() => api.arrivalQr(tenant.id)} regenerate={() => api.regenerateArrivalQr(tenant.id)} rulesHint="Queue rules" />
         </div>
       )}
       {tab === 'logins' && <LoginsTab api={team} clinicCode={tenant.subdomain} />}

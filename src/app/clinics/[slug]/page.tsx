@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 import { headers } from 'next/headers';
 import type { DirectoryClinicProfile } from '@/lib/api';
+import { LANDING_TEMPLATES } from '@/lib/landingTemplates';
 import { ClinicLanding } from '@/components/landing/ClinicLanding';
 import { cityFromSlug } from '@/lib/directoryServer';
 
@@ -53,8 +54,8 @@ export default async function ClinicProfilePage({ params, searchParams }: { para
     // URL search fallback: if the slug is not a known clinic, search by term
     redirect(`/clinics?q=${encodeURIComponent(params.slug.replace(/[-_]+/g, ' '))}`);
   }
-  // ?preview=playful|editorial shows the other look before choosing it in Public Profile.
-  const preview = searchParams?.preview === 'playful' || searchParams?.preview === 'editorial' ? searchParams.preview : null;
+  // ?preview=<look> shows another look before choosing it in Public Profile.
+  const preview = LANDING_TEMPLATES.find((t) => t.key === searchParams?.preview)?.key ?? null;
   return <ClinicLanding clinic={preview ? { ...clinic, landing_template: preview } : clinic} host={headers().get('host')} />;
 }
 

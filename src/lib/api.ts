@@ -614,7 +614,7 @@ export interface DirectoryDoctorProfile extends DirectoryDoctorSummary {
   public_phone: string | null;
 }
 
-export type LandingTemplate = 'editorial' | 'playful';
+export type LandingTemplate = 'editorial' | 'playful' | 'classic' | 'bold';
 
 /** One doctor on a clinic's public landing page. fee_inr / hours / experience_years are only present when really set. */
 export interface DirectoryLandingDoctor {

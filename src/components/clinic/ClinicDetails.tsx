@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { LANDING_TEMPLATES } from '@/lib/landingTemplates';
 import { api, ApiError, type LandingTemplate, type Tenant } from '@/lib/api';
 import { Icon } from '@/components/patient/ui';
 
@@ -191,30 +192,25 @@ export function ClinicDetails({
             <span className="px-3 py-1 rounded-full bg-primary-fixed/50 text-on-primary-fixed-variant font-label-md text-label-md">Page details {readyCount}/{needed.length}</span>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            {(
-              [
-                ['editorial', 'Editorial', 'Calm, paper-toned, serif headlines'],
-                ['playful', 'Playful', 'Bright, rounded, friendly tiles'],
-              ] as const
-            ).map(([key, name, hint]) => (
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            {LANDING_TEMPLATES.map((t) => (
               <button
-                key={key}
+                key={t.key}
                 type="button"
-                onClick={() => setTemplate(key)}
-                aria-pressed={template === key}
-                className={`rounded-2xl p-3 text-left border-2 transition-colors ${template === key ? 'border-primary bg-primary-fixed/20' : 'border-surface-container-high bg-surface-container-lowest'}`}
+                onClick={() => setTemplate(t.key)}
+                aria-pressed={template === t.key}
+                className={`rounded-2xl p-3 text-left border-2 transition-colors ${template === t.key ? 'border-primary bg-primary-fixed/20' : 'border-surface-container-high bg-surface-container-lowest'}`}
               >
-                <div className={`h-20 rounded-xl mb-2 p-2 flex flex-col gap-1.5 ${key === 'editorial' ? 'bg-[#FBFAF7] border border-black/5' : 'bg-[#F4FBF6]'}`}>
-                  <div className={`h-3 w-2/3 ${key === 'editorial' ? 'bg-[#1E293B]/70 rounded-sm' : 'bg-[#0F766E] rounded-full'}`} />
+                <div className="h-20 rounded-xl mb-2 p-2 flex flex-col gap-1.5 border border-black/5" style={{ background: t.bg }}>
+                  <div className={`h-3 w-2/3 ${t.round}`} style={{ background: t.bar }} />
                   <div className="flex gap-1.5 flex-1">
-                    <div className={`flex-1 ${key === 'editorial' ? 'bg-[#F4F1EA] rounded-lg border border-black/5' : 'bg-[#DCFCE7] rounded-2xl'}`} />
-                    <div className={`flex-1 ${key === 'editorial' ? 'bg-[#F4F1EA] rounded-lg border border-black/5' : 'bg-[#FFEDD5] rounded-2xl'}`} />
-                    <div className={`flex-1 ${key === 'editorial' ? 'bg-[#0F766E] rounded-lg' : 'bg-[#0F766E] rounded-2xl'}`} />
+                    <div className={`flex-1 ${t.round}`} style={{ background: t.tile }} />
+                    <div className={`flex-1 ${t.round}`} style={{ background: t.tile }} />
+                    <div className={`flex-1 ${t.round}`} style={{ background: t.accent }} />
                   </div>
                 </div>
-                <p className="font-label-lg text-label-lg">{name}</p>
-                <p className="font-body-sm text-body-sm text-on-surface-variant">{hint}</p>
+                <p className="font-label-lg text-label-lg">{t.name}</p>
+                <p className="font-body-sm text-body-sm text-on-surface-variant">{t.hint}</p>
               </button>
             ))}
           </div>
@@ -222,9 +218,12 @@ export function ClinicDetails({
           {tenant.public_slug && listed && (
             <p className="font-body-sm text-body-sm text-on-surface-variant -mt-2">
               Preview:{' '}
-              <Link href={`/clinics/${tenant.public_slug}?preview=editorial`} target="_blank" className="text-primary underline underline-offset-4">Editorial</Link>
-              {' · '}
-              <Link href={`/clinics/${tenant.public_slug}?preview=playful`} target="_blank" className="text-primary underline underline-offset-4">Playful</Link>
+              {LANDING_TEMPLATES.map((t, i) => (
+                <span key={t.key}>
+                  {i > 0 && ' · '}
+                  <Link href={`/clinics/${tenant.public_slug}?preview=${t.key}`} target="_blank" className="text-primary underline underline-offset-4">{t.name}</Link>
+                </span>
+              ))}
               {' '}(shows your saved details)
             </p>
           )}
