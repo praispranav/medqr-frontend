@@ -3,7 +3,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { Icon } from '@/components/patient/ui';
-import { api, fileUrl, type DirectoryDoctorSummary, type DirectoryClinicSummary } from '@/lib/api';
+import { api, ApiError, fileUrl, type DirectoryDoctorSummary, type DirectoryClinicSummary } from '@/lib/api';
+import { PATIENT_DEVICE_EVENT } from '@/lib/patientDevice';
 import { patientUrl } from '@/lib/clinicHost';
 import { groupOf, groupBySlug, SPECIALTY_GROUPS, type SpecialtyGroup } from '@/lib/specialtyGroups';
 import { OnlineTokenBadge } from '@/components/directory/OnlineTokenBadge';
@@ -12,6 +13,8 @@ import { VerifiedBadge } from '@/components/directory/VerifiedBadge';
 import {
   findClosestCity,
   reverseGeocodeCity,
+  detectCoordinates,
+  getStoredCity,
   setStoredCity,
 } from '@/lib/directoryLocation';
 
@@ -89,79 +92,91 @@ export function SearchClientView({
   const locks = useRef({ doctors: false, clinics: false });
   const generation = useRef(0);
 
-  // Handle City Change (persisting to localStorage)
-  const handleCityChange = useCallback((newCity: string) => {
-    setCity(newCity);
-    setStoredCity(newCity || null);
+  const authenticatedLocation = useRef<boolean | null>(null);
+  const locationRevision = useRef(0);
+  const accountEpoch = useRef(0);
+  const saveQueue = useRef(Promise.resolve());
+  const [accountRevision, setAccountRevision] = useState(0);
+  useEffect(() => {
+    const changed = () => { accountEpoch.current++; locationRevision.current++; authenticatedLocation.current = null; setAccountRevision(v => v + 1); };
+    window.addEventListener(PATIENT_DEVICE_EVENT, changed);
+    return () => window.removeEventListener(PATIENT_DEVICE_EVENT, changed);
   }, []);
 
-  // Detect location and match to nearest directory city
-  const detectUserLocation = useCallback((userInitiated = false) => {
-    if (typeof window === 'undefined' || !navigator.geolocation) {
-      if (userInitiated) {
-        setLocationStatus('Location not supported');
-        setTimeout(() => setLocationStatus(null), 3000);
+  const handleCityChange = useCallback((newCity: string, source: 'manual' | 'gps' = 'manual') => {
+    locationRevision.current++;
+    setCity(newCity);
+    setStoredCity(newCity || null);
+    setLocationStatus(null);
+    const revision = locationRevision.current;
+    const epoch = accountEpoch.current;
+    // Serialize saves so a slower request cannot restore an earlier selection.
+    saveQueue.current = saveQueue.current.then(async () => {
+      if (authenticatedLocation.current === false || epoch !== accountEpoch.current) return;
+      try {
+        await api.saveLocationPreference(newCity, source);
+        authenticatedLocation.current = true;
+        if (locationRevision.current === revision) setLocationStatus('Location saved to your account');
+      } catch (error) {
+        if (error instanceof ApiError && error.status === 401) authenticatedLocation.current = false;
+        else if (locationRevision.current === revision) setLocationStatus('Location selected on this device. Could not save to your account; choose it again to retry.');
       }
+    });
+  }, []);
+
+  const detecting = useRef(false);
+  const detectUserLocation = useCallback(async () => {
+    if (detecting.current) return;
+    if (!window.isSecureContext || !navigator.geolocation) {
+      setLocationStatus('Location is unavailable here. Open ClinicQ over HTTPS or choose your city.');
       return;
     }
-
-    setDetectingLocation(true);
-    setLocationStatus(null);
-
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const { latitude, longitude } = position.coords;
-        let matchedCity: string | null = null;
-
-        // 1. Try reverse geocoding lookup
-        const geoName = await reverseGeocodeCity(latitude, longitude);
-        if (geoName && cities.length > 0) {
-          const found = cities.find(
-            (c) =>
-              c.toLowerCase() === geoName.toLowerCase() ||
-              geoName.toLowerCase().includes(c.toLowerCase()) ||
-              c.toLowerCase().includes(geoName.toLowerCase())
-          );
-          if (found) matchedCity = found;
-        }
-
-        // 2. If not matched via reverse geocode, calculate closest city by coordinate distance
-        if (!matchedCity && cities.length > 0) {
-          matchedCity = findClosestCity(latitude, longitude, cities);
-        }
-
-        setDetectingLocation(false);
-
-        if (matchedCity) {
-          handleCityChange(matchedCity);
-          setLocationStatus(`Set to ${matchedCity}`);
-          setTimeout(() => setLocationStatus(null), 3500);
-        } else if (userInitiated) {
-          setLocationStatus('No clinics found near your GPS position');
-          setTimeout(() => setLocationStatus(null), 3500);
-        }
-      },
-      (err) => {
-        setDetectingLocation(false);
-        if (userInitiated) {
-          if (err.code === err.PERMISSION_DENIED) {
-            setLocationStatus('Location permission denied');
-          } else {
-            setLocationStatus('Could not get GPS location');
-          }
-          setTimeout(() => setLocationStatus(null), 3500);
-        }
-      },
-      { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 }
-    );
+    detecting.current = true;
+    const revision = locationRevision.current;
+    setDetectingLocation(true); setLocationStatus('Finding your location…');
+    try {
+      const {latitude, longitude} = await detectCoordinates(navigator.geolocation);
+      const available = cities.length ? cities : await api.directoryCities();
+      let matchedCity = findClosestCity(latitude, longitude, available);
+      if (!matchedCity) {
+        const name = await reverseGeocodeCity(latitude, longitude);
+        matchedCity = name ? available.find(c => c.toLowerCase() === name.toLowerCase()) ?? null : null;
+      }
+      if (locationRevision.current !== revision) return; // A manual selection wins over an old GPS callback.
+      if (matchedCity) {
+        handleCityChange(matchedCity, 'gps');
+        setLocationStatus(`Location detected: ${matchedCity}`);
+      } else setLocationStatus('Location detected, but no nearby directory city was found. Choose a city to search.');
+    } catch (error) {
+      if (locationRevision.current !== revision) return;
+      const code = (error as {code?:number})?.code;
+      setLocationStatus(code === 1 ? 'Location access was denied. Allow location in Safari settings or choose your city.' : code === 3 ? 'Your browser could not get a location fix in time. Try again or choose your city.' : 'Your browser could not determine your position. Check device Location Services or choose your city.');
+    } finally { detecting.current = false; setDetectingLocation(false); }
   }, [cities, handleCityChange]);
 
-  // Resolve URL filters once. Location is chosen explicitly, never silently on shared links.
+  // Explicit/shared URL location wins. A plain search restores the signed-in account's city.
   useEffect(() => {
-    const restored = readDirectorySearch(new URLSearchParams(window.location.search), {q:initialQ,type:initialType,city:initialCity,area:initialArea,group:resolvedInitialGroup,today:initialToday,bookable:initialBookable});
-    setQ(restored.q);setType(restored.type);setCity(restored.city);setArea(restored.area);
-    setGroup(groupBySlug(restored.group)?.slug || restored.group);setToday(restored.today);setBookable(restored.bookable);setUrlReady(true);
-  }, [initialQ,initialType,initialCity,initialArea,resolvedInitialGroup,initialToday,initialBookable]);
+    let live = true;
+    const revision = locationRevision.current;
+    const params = new URLSearchParams(window.location.search);
+    const restored = readDirectorySearch(params, {q:initialQ,type:initialType,city:initialCity,area:initialArea,group:resolvedInitialGroup,today:initialToday,bookable:initialBookable});
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    const restore = async () => {
+      try {
+        const saved = await api.locationPreference(controller.signal);
+        if (!live) return;
+        authenticatedLocation.current = saved.authenticated;
+        if (!params.has('city') && !initialCity) restored.city = saved.authenticated ? saved.city ?? '' : getStoredCity() ?? '';
+      } catch { /* An unavailable preferences API must not block directory search. */ }
+      finally { clearTimeout(timeout); }
+      if (!live || revision !== locationRevision.current) { if (live) setUrlReady(true); return; }
+      setQ(restored.q);setType(restored.type);setCity(restored.city);setArea(restored.area);
+      setGroup(groupBySlug(restored.group)?.slug || restored.group);setToday(restored.today);setBookable(restored.bookable);setUrlReady(true);
+    };
+    void restore();
+    return () => { live = false; clearTimeout(timeout); controller.abort(); };
+  }, [initialQ,initialType,initialCity,initialArea,resolvedInitialGroup,initialToday,initialBookable,accountRevision]);
 
   useEffect(() => {
     let live = true;
@@ -312,7 +327,7 @@ export function SearchClientView({
         </div>
         <div className="flex min-w-0 items-center gap-2">
           <label className="flex min-w-0 flex-1 items-center gap-2 rounded-xl bg-surface-container-low px-3"><Icon name="location_on" className="shrink-0 text-[20px] text-primary"/><select aria-label="Select City" value={city} onChange={e=>handleCityChange(e.target.value)} className="h-11 w-full min-w-0 bg-transparent text-body-md outline-none"><option value="">All cities</option>{city&&!cities.includes(city)&&<option value={city}>{city}</option>}{cities.map(c=><option key={c}>{c}</option>)}</select></label>
-          <button aria-label="Use my location" title="Use my location" onClick={()=>detectUserLocation(true)} disabled={detectingLocation} className="inline-flex h-11 shrink-0 items-center justify-center gap-1.5 rounded-xl border border-outline-variant/40 px-3 text-label-sm text-primary disabled:opacity-50"><Icon name="my_location" className={`text-[20px] ${detectingLocation?'animate-pulse':''}`}/><span className="hidden sm:inline">{detectingLocation?'Detecting…':'Use my location'}</span></button>
+          <button aria-label="Use my location" title="Use my location" onClick={()=>detectUserLocation()} disabled={detectingLocation} className="inline-flex h-11 shrink-0 items-center justify-center gap-1.5 rounded-xl border border-outline-variant/40 px-3 text-label-sm text-primary disabled:opacity-50"><Icon name="my_location" className={`text-[20px] ${detectingLocation?'animate-pulse':''}`}/><span className="hidden sm:inline">{detectingLocation?'Detecting…':'Use my location'}</span></button>
         </div>
         {locationStatus&&<p role="status" className="text-body-sm text-primary">{locationStatus}</p>}
         <label className="flex items-center gap-2 rounded-xl bg-surface-container-low px-3"><Icon name="search" className="text-[20px] text-primary shrink-0"/><input aria-label="Search doctors and clinics" placeholder="Doctor, clinic or specialty" value={q} onChange={e=>setQ(e.target.value)} className="h-11 w-full min-w-0 bg-transparent text-body-md outline-none"/>{q&&<button aria-label="Clear search" onClick={()=>setQ('')} className="flex h-10 w-8 shrink-0 items-center justify-center"><Icon name="close" className="text-[18px]"/></button>}</label>

@@ -40,7 +40,6 @@ export function haversineDistance(lat1: number, lon1: number, lat2: number, lon2
 /** Given a user's coordinates and available directory cities, find the closest matching city */
 export function findClosestCity(userLat: number, userLng: number, availableCities: string[]): string | null {
   if (!availableCities || availableCities.length === 0) return null;
-  if (availableCities.length === 1) return availableCities[0];
 
   let bestCity: string | null = null;
   let minDistance = Infinity;
@@ -57,7 +56,7 @@ export function findClosestCity(userLat: number, userLng: number, availableCitie
     }
   }
 
-  return bestCity;
+  return minDistance <= 75 ? bestCity : null;
 }
 
 /** Reverse geocoding via OpenStreetMap Nominatim with a fast 2s timeout */
@@ -101,4 +100,22 @@ export function setStoredCity(city: string | null): void {
       localStorage.removeItem('clinicq_user_city');
     }
   } catch {}
+}
+
+/** A bounded fresh fix, then a coarse retry. Permission alone does not guarantee a GPS fix. */
+export async function detectCoordinates(geo: Pick<Geolocation, 'getCurrentPosition'>): Promise<GeolocationCoordinates> {
+  const attempt = (highAccuracy: boolean, timeout: number) => new Promise<GeolocationCoordinates>((resolve, reject) => {
+    let settled = false;
+    const finish = (coords?: GeolocationCoordinates, error?: unknown) => {
+      if (settled) return;
+      settled = true; clearTimeout(watchdog);
+      if (coords && Number.isFinite(coords.latitude) && Number.isFinite(coords.longitude)) resolve(coords);
+      else reject(error ?? {code:2});
+    };
+    const watchdog = setTimeout(() => finish(undefined, {code:3}), timeout + 1000);
+    try { geo.getCurrentPosition(p => finish(p.coords), e => finish(undefined, e), {enableHighAccuracy:highAccuracy,timeout,maximumAge:highAccuracy?0:300_000}); }
+    catch (error) { finish(undefined, error); }
+  });
+  try { return await attempt(true, 15_000); }
+  catch (error) { if ((error as {code?:number})?.code === 1) throw error; return attempt(false, 10_000); }
 }

@@ -928,6 +928,8 @@ export const api = {
     request<Me | LoginChoice>('/auth/otp/verify', { method: 'POST', body: JSON.stringify(body) }),
   demoLogin: () => request<Me>('/auth/demo-login', { method: 'POST' }),
   logout: () => request('/auth/logout', { method: 'POST' }),
+  locationPreference: (signal?: AbortSignal) => request<{authenticated:boolean;city:string|null;source?:string|null}>('/account/location', {signal}),
+  saveLocationPreference: (city:string, source:'manual'|'gps') => request<{authenticated:boolean;city:string}>('/account/location', {method:'PATCH',body:JSON.stringify({city,source})}),
   me: () => request<Me>('/auth/me'),
   /** Public, token-gated: whose set-password link this is (Decision 15). */
   setupInfo: (token: string) => request<SetupInfo>(`/auth/setup-info?token=${encodeURIComponent(token)}`),
