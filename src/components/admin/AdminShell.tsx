@@ -34,6 +34,7 @@ const NAV: NavItem[] = [
   { href: '/owner/setting-requests', label: 'Setting requests', icon: 'auto_awesome' },
   { href: '/owner/support', label: 'Support', icon: 'support_agent' },
   { label: 'Platform', isCategory: true },
+  { href: '/owner/analytics', label: 'Analytics', icon: 'insights' },
   { href: '/owner/api-usage', label: 'API usage & credits', icon: 'speed' },
 ];
 

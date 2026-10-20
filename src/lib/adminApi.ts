@@ -128,6 +128,15 @@ export interface ApiUsageService {
 }
 export interface ApiUsageOverview { as_of: string; tracked_since: string; services: ApiUsageService[] }
 
+/** Owner › Analytics — which clinics/cities actually get visited (page_view_log), last N days. */
+export interface VisitInsightsOverview {
+  since: string;
+  total_views: number;
+  by_kind: Record<string, number>;
+  top_clinics: { tenant_id: string; clinic_name: string | null; subdomain: string; city: string | null; count: number }[];
+  top_cities: { city: string; count: number; clinic_count: number }[];
+}
+
 /** Decision 67 — a doctor the details agent looked up, waiting for the owner's Confirm. */
 export interface DoctorEnrichment {
   id: string;
@@ -440,6 +449,7 @@ export const adminApi = (key: string) => ({
   listings: () => request<ListingCandidate[]>(key, '/listings'),
   enrichClinicDoctors: (tenantId: string) => request<{ queued: number }>(key, '/doctor-enrich/clinic', { method: 'POST', body: JSON.stringify({ tenant_id: tenantId }) }),
   apiUsage: () => request<ApiUsageOverview>(key, '/api-usage'),
+  visitInsights: (days?: number) => request<VisitInsightsOverview>(key, `/visit-insights${days ? `?days=${days}` : ''}`),
   doctorEnrichCredits: () => request<{ balance: number | null; per_doctor: number }>(key, '/doctor-enrich/credits'),
   doctorEnrich: () => request<DoctorEnrichment[]>(key, '/doctor-enrich'),
   addDoctorEnrich: (items: { name: string; address: string; city?: string }[]) => request<{ added: number; skipped: number }>(key, '/doctor-enrich', { method: 'POST', body: JSON.stringify({ items }) }),
