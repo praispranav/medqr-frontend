@@ -1,5 +1,7 @@
 'use client';
 
+import { ClinicEmailPanel } from '@/components/admin/ClinicEmailPanel';
+
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -38,7 +40,7 @@ export default function AdminClinicPage() {
 function ClinicDetail({ api, referrer }: { api: AdminApi; referrer: boolean }) {
   const { id } = useParams<{ id: string }>();
   const [tenant, setTenant] = useState<Tenant | null>(null);
-  const [tab, setTab] = useState<'doctors' | 'setup' | 'clinic' | 'queue' | 'qr' | 'logins' | 'payments' | 'products' | 'modules'>('doctors');
+  const [tab, setTab] = useState<'doctors' | 'setup' | 'clinic' | 'queue' | 'qr' | 'logins' | 'payments' | 'products' | 'modules' | 'email'>('doctors');
   const [error, setError] = useState<string | null>(null);
   const queueRulesRef = useRef<QueueRulesHandle>(null);
   const team = useMemo(() => adminTeamApi(api, id, referrer, tenant?.queue_settings), [api, id, referrer, tenant?.queue_settings]);
@@ -92,11 +94,11 @@ function ClinicDetail({ api, referrer }: { api: AdminApi; referrer: boolean }) {
         {(
           [
             ['People', [['doctors', 'Doctors & schedule'], ['setup', 'Doctor setup'], ['logins', 'Doctor/Staff Logins']]],
-            ['Clinic', [['clinic', 'Profile & public page'], ['queue', 'Queue rules'], ['qr', 'QR codes']]],
+            ['Clinic', [['clinic', 'Profile & public page'], ['queue', 'Queue rules'], ['qr', 'QR codes'], ['email', 'Email clinic owner']]],
             ['Money & plan', [['payments', 'Online payments'], ['products', 'Products'], ['modules', 'Plan, modules & wallet']]],
           ] as const
         ).map(([group, items]) => {
-          const visible = items.filter(([k]) => !(referrer && (k === 'modules' || k === 'payments' || k === 'products')));
+          const visible = items.filter(([k]) => !(referrer && (k === 'modules' || k === 'payments' || k === 'products' || k === 'email')));
           if (!visible.length) return null;
           return (
             <div key={group} className="flex flex-wrap items-center gap-2">
@@ -123,12 +125,15 @@ function ClinicDetail({ api, referrer }: { api: AdminApi; referrer: boolean }) {
       )}
       {tab === 'products' && !referrer && <ProductsTab api={api} tenant={tenant} onSaved={setTenant} />}
       {tab === 'setup' && <DoctorSetupTab api={api} tenant={tenant} />}
+      {tab === 'email' && !referrer && <ClinicEmailPanel key={tenant.id} api={api} tenantId={tenant.id} clinicName={tenant.display_name || tenant.subdomain} />}
       {tab === 'clinic' && (
         <div className="flex flex-col gap-6 pb-24">
           <ClinicDetails
             key={`details-${tenant.address}-${tenant.city}-${tenant.public_phone}-${tenant.emergency_phone}-${tenant.is_open_24x7}-${tenant.website_url}-${tenant.is_publicly_listed}`}
             tenant={tenant}
             canEdit
+            showBillingEmail={!referrer}
+            billingEmailSave={(email) => api.updateTenantContactEmail(tenant.id, email)}
             onSaved={async () => setTenant(await api.tenant(tenant.id))}
             save={(patch) => api.updateTenant(tenant.id, patch)}
             aiDraft={() => api.landingDraft(tenant.id)}

@@ -34,12 +34,16 @@ export function ClinicDetails({
   tenant,
   onSaved,
   canEdit,
+  billingEmailSave,
+  showBillingEmail = true,
   save: saveFn = (patch) => api.updateTenantPublicProfile(tenant.id, patch),
   aiDraft = () => api.landingClinicDraft(),
 }: {
   tenant: Tenant;
   onSaved: () => Promise<void>;
   canEdit: boolean;
+  billingEmailSave?: (email: string | null) => Promise<unknown>;
+  showBillingEmail?: boolean;
   /** Platform admin passes its own save. */
   save?: (patch: ClinicDetailsPatch) => Promise<unknown>;
   /** "Write with AI" — the platform admin passes its own (Decision 50). */
@@ -182,7 +186,7 @@ export function ClinicDetails({
 
   return (
     <>
-      <BillingEmail tenant={tenant} onSaved={onSaved} />
+      {showBillingEmail && <BillingEmail tenant={tenant} onSaved={onSaved} saveEmail={billingEmailSave} />}
       <Section title="Clinic details" subtitle="Your clinic's address and phone, and whether it's listed on clinicq.fit/doctors for patients searching online.">
       <div className="flex flex-col gap-4">
         <label className="flex items-center justify-between gap-3">
@@ -474,7 +478,7 @@ export function ClinicDetails({
  * public-profile save above: this address is never shown publicly and must never go through content
  * moderation (which exists only to check public-facing listing text).
  */
-function BillingEmail({ tenant, onSaved }: { tenant: Tenant; onSaved: () => Promise<void> }) {
+function BillingEmail({ tenant, onSaved, saveEmail }: { tenant: Tenant; onSaved: () => Promise<void>; saveEmail?: (email: string | null) => Promise<unknown> }) {
   const [email, setEmail] = useState(tenant.contact_email ?? '');
   const [state, setState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [error, setError] = useState<string | null>(null);
@@ -484,7 +488,8 @@ function BillingEmail({ tenant, onSaved }: { tenant: Tenant; onSaved: () => Prom
     setState('saving');
     setError(null);
     try {
-      await api.updateTenantContactEmail(tenant.id, email.trim() || null);
+      if (saveEmail) await saveEmail(email.trim() || null);
+      else await api.updateTenantContactEmail(tenant.id, email.trim() || null);
       await onSaved();
       setState('saved');
     } catch (e) {

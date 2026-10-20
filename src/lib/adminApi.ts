@@ -22,6 +22,14 @@ async function request<T>(key: string, path: string, options?: RequestInit): Pro
   return res.json();
 }
 
+export type ClinicEmailDraft = { template: 'listed' | 'review' | 'claim' | 'custom'; subject: string; message: string };
+export type ClinicEmailState = {
+  email: string | null; last_sent_at: string | null; last_sent_to: string | null;
+  last_subject: string | null; last_error: string | null; sending_until: string | null;
+  is_demo: boolean; listing_url: string | null;
+  templates: (ClinicEmailDraft & { label: string })[];
+};
+
 export interface AdminReview {
   id: string;
   tenant_id: string;
@@ -321,6 +329,11 @@ export const adminApi = (key: string) => ({
     request<SubscriptionStatusView>(key, `/tenants/${id}/subscription/grace`, { method: 'POST', body: JSON.stringify({ days }) }),
   setSubscriptionActive: (id: string) =>
     request<SubscriptionStatusView>(key, `/tenants/${id}/subscription/set-active`, { method: 'POST' }),
+  clinicEmail: (id: string) => request<ClinicEmailState>(key, `/tenants/${id}/email`),
+  saveClinicEmail: (id: string, email: string | null) => request<ClinicEmailState>(key, `/tenants/${id}/email`, { method: 'PATCH', body: JSON.stringify({ email }) }),
+  previewClinicEmail: (id: string, draft: ClinicEmailDraft) => request<{ subject: string; html: string; text: string }>(key, `/tenants/${id}/email/preview`, { method: 'POST', body: JSON.stringify(draft) }),
+  sendClinicEmail: (id: string, draft: ClinicEmailDraft) => request<ClinicEmailState & { accepted: true }>(key, `/tenants/${id}/email/send`, { method: 'POST', body: JSON.stringify(draft) }),
+  updateTenantContactEmail: (id: string, contact_email: string | null) => request<{ contact_email: string | null }>(key, `/tenants/${id}/contact-email`, { method: 'PATCH', body: JSON.stringify({ contact_email }) }),
   updateTenant: (
     id: string,
     body: {

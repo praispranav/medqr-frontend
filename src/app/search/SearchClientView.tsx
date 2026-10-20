@@ -7,12 +7,11 @@ import { api, fileUrl, type DirectoryDoctorSummary, type DirectoryClinicSummary 
 import { patientUrl } from '@/lib/clinicHost';
 import { groupOf, groupBySlug, SPECIALTY_GROUPS, type SpecialtyGroup } from '@/lib/specialtyGroups';
 import { OnlineTokenBadge } from '@/components/directory/OnlineTokenBadge';
+import { directorySearchPath, readDirectorySearch } from '@/lib/directorySearchUrl';
 import { VerifiedBadge } from '@/components/directory/VerifiedBadge';
 import {
-  GEO_PROMPT_DISMISSED_KEY,
   findClosestCity,
   reverseGeocodeCity,
-  getStoredCity,
   setStoredCity,
 } from '@/lib/directoryLocation';
 
@@ -71,6 +70,9 @@ export function SearchClientView({
   const [cities, setCities] = useState(suppliedCities);
   const [groups, setGroups] = useState<{ slug: string; name: string }[]>(DEFAULT_GROUPS);
   const [copied, setCopied] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [urlReady, setUrlReady] = useState(false);
+  const [shareError, setShareError] = useState(false);
   const [doctors, setDoctors] = useState(initialDoctors);
   const [clinics, setClinics] = useState(initialClinics);
   const [loading, setLoading] = useState(false);
@@ -83,7 +85,6 @@ export function SearchClientView({
   // Geolocation & Location prompt state
   const [detectingLocation, setDetectingLocation] = useState(false);
   const [locationStatus, setLocationStatus] = useState<string | null>(null);
-  const [showLocationPrompt, setShowLocationPrompt] = useState(false);
 
   const locks = useRef({ doctors: false, clinics: false });
   const generation = useRef(0);
@@ -92,7 +93,6 @@ export function SearchClientView({
   const handleCityChange = useCallback((newCity: string) => {
     setCity(newCity);
     setStoredCity(newCity || null);
-    setShowLocationPrompt(false);
   }, []);
 
   // Detect location and match to nearest directory city
@@ -131,11 +131,10 @@ export function SearchClientView({
         }
 
         setDetectingLocation(false);
-        setShowLocationPrompt(false);
 
         if (matchedCity) {
           handleCityChange(matchedCity);
-          setLocationStatus(`📍 Set to ${matchedCity}`);
+          setLocationStatus(`Set to ${matchedCity}`);
           setTimeout(() => setLocationStatus(null), 3500);
         } else if (userInitiated) {
           setLocationStatus('No clinics found near your GPS position');
@@ -152,81 +151,17 @@ export function SearchClientView({
           }
           setTimeout(() => setLocationStatus(null), 3500);
         }
-        setShowLocationPrompt(false);
-        try {
-          sessionStorage.setItem(GEO_PROMPT_DISMISSED_KEY, '1');
-        } catch {}
       },
       { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 }
     );
   }, [cities, handleCityChange]);
 
-  const dismissLocationPrompt = () => {
-    setShowLocationPrompt(false);
-    try {
-      sessionStorage.setItem(GEO_PROMPT_DISMISSED_KEY, '1');
-    } catch {}
-  };
-
-  // Restore filters and city on mount, or prompt for location if no city chosen yet
+  // Resolve URL filters once. Location is chosen explicitly, never silently on shared links.
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const urlParams = new URLSearchParams(window.location.search);
-
-    // 1. Restore search query and type if in URL
-    const urlQ = urlParams.get('q');
-    if (urlQ && urlQ.trim()) setQ(urlQ.trim());
-
-    const urlType = urlParams.get('type') as Kind | null;
-    if (urlType && ['all', 'doctors', 'clinics'].includes(urlType)) {
-      setType(urlType);
-    }
-
-    // 2. Restore area, today, bookable, specialty if in URL
-    const urlArea = urlParams.get('area');
-    if (urlArea && urlArea.trim()) setArea(urlArea.trim());
-
-    if (urlParams.get('today') === '1') setToday(true);
-    if (urlParams.get('online') === '1') setBookable(true);
-
-    const urlSpecialty = urlParams.get('specialty');
-    if (urlSpecialty) {
-      const resolved = groupBySlug(urlSpecialty)?.slug || urlSpecialty;
-      setGroup(resolved);
-    }
-
-    // 3. If URL query has ?city=..., that takes precedence
-    const urlCity = urlParams.get('city');
-    if (urlCity) {
-      setCity(urlCity);
-      setStoredCity(urlCity);
-      return;
-    }
-
-    // 4. If initialCity was passed directly from route props (e.g. /doctors/in/patna)
-    if (initialCity) {
-      setStoredCity(initialCity);
-      return;
-    }
-
-    // 5. Check if user already has a saved city in localStorage
-    const saved = getStoredCity();
-    if (saved) {
-      setCity(saved);
-      return;
-    }
-
-    // 6. No city selected: check if prompt was already dismissed in this session
-    try {
-      const dismissed = sessionStorage.getItem(GEO_PROMPT_DISMISSED_KEY);
-      if (dismissed === '1') return;
-    } catch {}
-
-    // Show prompt banner and attempt geolocation detection
-    setShowLocationPrompt(true);
-    detectUserLocation(false);
-  }, [initialCity, detectUserLocation]);
+    const restored = readDirectorySearch(new URLSearchParams(window.location.search), {q:initialQ,type:initialType,city:initialCity,area:initialArea,group:resolvedInitialGroup,today:initialToday,bookable:initialBookable});
+    setQ(restored.q);setType(restored.type);setCity(restored.city);setArea(restored.area);
+    setGroup(groupBySlug(restored.group)?.slug || restored.group);setToday(restored.today);setBookable(restored.bookable);setUrlReady(true);
+  }, [initialQ,initialType,initialCity,initialArea,resolvedInitialGroup,initialToday,initialBookable]);
 
   useEffect(() => {
     let live = true;
@@ -257,26 +192,11 @@ export function SearchClientView({
     return () => { live = false; };
   }, [city]);
 
-  // Keep URL synchronized without losing the current page pathname
+  const sharePath = directorySearchPath({q,type,city,area,group,today,bookable});
   useEffect(() => {
-    if (!syncUrl || typeof window === 'undefined') return;
-    const pathname = window.location.pathname;
-    const params = new URLSearchParams();
-    if (q.trim()) params.set('q', q.trim());
-    if (type !== initialType && type !== 'all') params.set('type', type);
-    else if (initialType === 'all' && type !== 'all') params.set('type', type);
-    if (city) params.set('city', city);
-    if (area.trim()) params.set('area', area.trim());
-    if (today) params.set('today', '1');
-    const isSpecialtyPage = pathname.includes('/specialty/');
-    if (group && !isSpecialtyPage) params.set('specialty', group);
-    if (bookable) params.set('online', '1');
-
-    const searchStr = params.size ? `?${params.toString()}` : '';
-    if (window.location.search !== searchStr) {
-      window.history.replaceState(null, '', `${pathname}${searchStr}`);
-    }
-  }, [q, type, initialType, city, area, today, group, bookable, syncUrl]);
+    if (!syncUrl || !urlReady) return;
+    if (`${window.location.pathname}${window.location.search}` !== sharePath) window.history.replaceState(null, '', sharePath);
+  }, [sharePath,syncUrl,urlReady]);
 
   const filters = () => ({
     q: q.trim() || undefined,
@@ -289,6 +209,7 @@ export function SearchClientView({
   });
 
   useEffect(() => {
+    if (!urlReady) return;
     const id = ++generation.current;
     setLoading(true); setFailed(false); setPageError(null);
     setMore({ doctors: false, clinics: false });
@@ -316,7 +237,7 @@ export function SearchClientView({
       finally { if (id === generation.current) setLoading(false); }
     }, 250);
     return () => { clearTimeout(timer); generation.current = id + 1; };
-  }, [q, city, area, today, group, bookable, retry]);
+  }, [q, city, area, today, group, bookable, retry, urlReady]);
 
   const loadMore = async (kind: 'doctors' | 'clinics') => {
     if (loading || locks.current[kind] || !more[kind]) return;
@@ -346,7 +267,8 @@ export function SearchClientView({
 
   const handleShare = async () => {
     if (typeof window === 'undefined') return;
-    const url = window.location.href;
+    const url = new URL(sharePath, window.location.origin).href;
+    setShareError(false);
     if (navigator.share) {
       try {
         await navigator.share({
@@ -354,8 +276,8 @@ export function SearchClientView({
           url,
         });
         return;
-      } catch {
-        // User cancelled share or share sheet failed, fallback to clipboard
+      } catch (e) {
+        if ((e as Error).name === 'AbortError') return;
       }
     }
     if (navigator.clipboard) {
@@ -364,9 +286,9 @@ export function SearchClientView({
         setCopied(true);
         setTimeout(() => setCopied(false), 2200);
       } catch {
-        // Clipboard permission denied
+        setShareError(true);
       }
-    }
+    } else setShareError(true);
   };
 
   const clear = () => {
@@ -384,174 +306,33 @@ export function SearchClientView({
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="rounded-2xl bg-surface-container-lowest p-3 sm:p-4 flex flex-col gap-3 shadow-sm border border-outline-variant/20">
-        
-        {/* Geolocation Prompt Banner */}
-        {showLocationPrompt && (
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 sm:p-3.5 rounded-xl bg-primary/10 border border-primary/20 text-on-surface">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary text-white shadow-sm">
-                <Icon name="near_me" className="text-[20px]" />
-              </span>
-              <div className="min-w-0">
-                <p className="text-label-md font-semibold text-on-surface">Find doctors near you</p>
-                <p className="text-body-sm text-on-surface-variant truncate">Allow location access to show clinics and doctors in your city</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
-              <button
-                type="button"
-                onClick={() => detectUserLocation(true)}
-                disabled={detectingLocation}
-                className="h-8 px-3.5 rounded-lg bg-primary text-white text-label-sm font-semibold hover:bg-primary/90 transition-colors cursor-pointer flex items-center gap-1.5"
-              >
-                <Icon name={detectingLocation ? 'refresh' : 'my_location'} className={`text-[16px] ${detectingLocation ? 'animate-spin' : ''}`} />
-                <span>{detectingLocation ? 'Detecting…' : 'Use my location'}</span>
-              </button>
-              <button
-                type="button"
-                onClick={dismissLocationPrompt}
-                className="h-8 w-8 flex items-center justify-center rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-colors"
-                title="Dismiss"
-                aria-label="Dismiss location prompt"
-              >
-                <Icon name="close" className="text-[18px]" />
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* CITY SELECTION (KEPT AT TOP) */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 pb-3 border-b border-surface-container">
-          <div className="flex items-center gap-2.5 flex-1 min-w-0">
-            <div className="flex items-center gap-1 text-primary font-semibold text-label-md shrink-0">
-              <Icon name="location_on" className="text-[20px] text-primary" />
-              <span>City:</span>
-            </div>
-            <div className="relative min-w-[170px] max-w-xs flex-1">
-              <select
-                aria-label="Select City"
-                value={city}
-                onChange={(e) => handleCityChange(e.target.value)}
-                className="h-10 w-full appearance-none rounded-xl bg-surface-container-low pl-3 pr-8 text-body-md font-medium text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40 cursor-pointer border border-outline-variant/30"
-              >
-                <option value="">All cities</option>
-                {cities.map((c) => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </select>
-              <Icon name="expand_more" className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[20px] text-on-surface-variant" />
-            </div>
-            {city && (
-              <span className="hidden md:inline-flex items-center px-2 py-0.5 rounded-md bg-primary-fixed/30 text-primary text-label-sm font-medium">
-                {stateOf(city) || 'Selected'}
-              </span>
-            )}
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            {locationStatus && (
-              <span className="text-label-sm text-primary font-medium animate-pulse">
-                {locationStatus}
-              </span>
-            )}
-            <button
-              type="button"
-              onClick={() => detectUserLocation(true)}
-              disabled={detectingLocation}
-              className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-xl border border-primary/25 bg-primary/5 hover:bg-primary/10 text-primary text-label-sm font-medium transition-colors shrink-0 cursor-pointer disabled:opacity-60"
-              title="Detect your city from GPS"
-            >
-              <Icon name={detectingLocation ? 'refresh' : 'near_me'} className={`text-[16px] ${detectingLocation ? 'animate-spin' : ''}`} />
-              <span>{detectingLocation ? 'Detecting…' : 'Use current location'}</span>
-            </button>
-          </div>
+      <div className="rounded-2xl bg-surface-container-lowest p-3 sm:p-4 flex flex-col gap-2.5">
+        <div className="flex gap-1 rounded-lg bg-surface-container-low p-1 self-start" aria-label="Search category">
+          {(['all','doctors','clinics'] as const).map(kind=><button key={kind} aria-pressed={type===kind} onClick={()=>setType(kind)} className={`h-8 rounded-md px-3 text-label-md font-label-md ${type===kind?'bg-primary text-on-primary':'text-on-surface-variant hover:text-primary'}`}>{kind==='all'?'All':kind==='doctors'?'Doctors':'Clinics'}</button>)}
         </div>
-
-        {/* Category Pills (All / Doctors / Clinics) */}
-        <div className="flex gap-1 rounded-xl bg-surface-container-low p-1 self-start" aria-label="Search category">
-          {(['all', 'doctors', 'clinics'] as const).map(kind => (
-            <button
-              key={kind}
-              aria-pressed={type === kind}
-              onClick={() => setType(kind)}
-              className={`h-9 px-4 rounded-lg text-label-md font-label-md transition-colors ${type === kind ? 'bg-primary text-on-primary' : 'text-on-surface-variant hover:text-primary'}`}
-            >
-              {kind === 'all' ? 'All' : kind === 'doctors' ? 'Doctors' : 'Clinics'}
-            </button>
-          ))}
-        </div>
-
-        {/* Search Inputs Row (Doctor / Clinic Query + Area) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-[minmax(0,2fr)_minmax(0,1.2fr)] gap-2">
-          <label className="flex items-center gap-2 rounded-xl bg-surface-container-low px-3">
-            <Icon name="search" className="text-[20px] text-primary shrink-0"/>
-            <input
-              aria-label="Search doctors and clinics"
-              placeholder="Doctor, clinic or specialty"
-              value={q}
-              onChange={e => setQ(e.target.value)}
-              className="h-11 w-full min-w-0 bg-transparent text-body-md outline-none"
-            />
-            {q && (
-              <button aria-label="Clear search" onClick={() => setQ('')} className="flex h-10 w-8 shrink-0 items-center justify-center text-on-surface-variant hover:text-on-surface">
-                <Icon name="close" className="text-[18px]"/>
-              </button>
-            )}
-          </label>
-          <div className="flex items-center gap-2 rounded-xl bg-surface-container-low px-3">
-            <Icon name="near_me" className="text-[18px] text-on-surface-variant shrink-0" />
-            <input
-              aria-label="Area or landmark"
-              placeholder="Area or landmark (e.g. Kankarbagh)"
-              value={area}
-              onChange={e => setArea(e.target.value)}
-              className="h-11 w-full min-w-0 bg-transparent text-body-md outline-none"
-            />
-            {area && (
-              <button aria-label="Clear area" onClick={() => setArea('')} className="flex h-10 w-8 shrink-0 items-center justify-center text-on-surface-variant hover:text-on-surface">
-                <Icon name="close" className="text-[18px]"/>
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Filters Row */}
+        <label className="flex items-center gap-2 rounded-xl bg-surface-container-low px-3"><Icon name="search" className="text-[20px] text-primary shrink-0"/><input aria-label="Search doctors and clinics" placeholder="Doctor, clinic or specialty" value={q} onChange={e=>setQ(e.target.value)} className="h-11 w-full min-w-0 bg-transparent text-body-md outline-none"/>{q&&<button aria-label="Clear search" onClick={()=>setQ('')} className="flex h-10 w-8 shrink-0 items-center justify-center"><Icon name="close" className="text-[18px]"/></button>}</label>
         <div className="flex flex-wrap items-center gap-2">
-          <button aria-pressed={bookable} onClick={() => setBookable(!bookable)} className={pill(bookable)}>
-            <Icon name="confirmation_number" className="text-[17px]"/>
-            Online token
-          </button>
-          <button aria-pressed={today} onClick={() => setToday(!today)} className={pill(today)}>
-            <Icon name="today" className="text-[17px]"/>
-            Available today
-          </button>
-          <div className="relative">
-            <select
-              aria-label="Specialty"
-              value={group}
-              onChange={e => setGroup(e.target.value)}
-              className="h-9 min-w-0 max-w-full appearance-none rounded-full border border-outline-variant/40 bg-transparent pl-3 pr-7 text-label-md cursor-pointer hover:border-primary"
-            >
-              <option value="">All specialties</option>
-              {groups.map(g => (
-                <option value={g.slug} key={g.slug}>{g.name}</option>
-              ))}
-            </select>
-            <Icon name="expand_more" className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[16px] text-on-surface-variant" />
-          </div>
-          {(q || city || area || group || today || bookable) && (
-            <button onClick={clear} className="min-h-9 px-2 text-label-md text-primary underline underline-offset-4 cursor-pointer">
-              Clear all
-            </button>
-          )}
+          <button aria-pressed={bookable} onClick={()=>setBookable(!bookable)} className={`${pill(bookable)} !px-2.5 !text-label-sm`}><Icon name="confirmation_number" className="!text-[16px]"/>Online token</button>
+          <button aria-label="Available today" aria-pressed={today} onClick={()=>setToday(!today)} className={`${pill(today)} !px-2.5 !text-label-sm`}><Icon name="today" className="!text-[16px]"/>Today</button>
+          <button aria-label={`Filters${[city,area,group].filter(Boolean).length?` (${[city,area,group].filter(Boolean).length})`:''}`} aria-expanded={filtersOpen} aria-controls="directory-search-filters" onClick={()=>setFiltersOpen(v=>!v)} className={`${pill(filtersOpen)} !px-2.5 !text-label-sm`}><Icon name="tune" className="!text-[16px]"/><span className="hidden sm:inline">Filters</span>{[city,area,group].filter(Boolean).length>0&&<span className="text-[11px]">{[city,area,group].filter(Boolean).length}</span>}</button>
         </div>
+        {!filtersOpen&&(city||area||group)&&<p className="truncate text-body-sm text-on-surface-variant" title={[city,groups.find(g=>g.slug===group)?.name,area].filter(Boolean).join(' · ')}>{[city,groups.find(g=>g.slug===group)?.name,area].filter(Boolean).join(' · ')}</p>}
+        {filtersOpen&&<div id="directory-search-filters" className="flex flex-col gap-3 pt-2">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+            <label className="flex min-w-0 flex-col gap-1"><span className="text-label-sm text-on-surface-variant">City</span><select aria-label="Select City" value={city} onChange={e=>handleCityChange(e.target.value)} className="h-11 w-full min-w-0 rounded-xl bg-surface-container-low px-3 text-body-md"><option value="">All cities</option>{city&&!cities.includes(city)&&<option value={city}>{city}</option>}{cities.map(c=><option key={c}>{c}</option>)}</select></label>
+            <label className="flex min-w-0 flex-col gap-1"><span className="text-label-sm text-on-surface-variant">Specialty</span><select aria-label="Specialty" value={group} onChange={e=>setGroup(e.target.value)} className="h-11 w-full min-w-0 rounded-xl bg-surface-container-low px-3 text-body-md"><option value="">All specialties</option>{groups.map(g=><option value={g.slug} key={g.slug}>{g.name}</option>)}</select></label>
+            <label className="col-span-2 md:col-span-1 flex min-w-0 flex-col gap-1"><span className="text-label-sm text-on-surface-variant">Area or landmark</span><input aria-label="Area or landmark" placeholder="Area or landmark" value={area} onChange={e=>setArea(e.target.value)} className="h-11 w-full min-w-0 rounded-xl bg-surface-container-low px-3 text-body-md"/></label>
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-2"><button onClick={()=>detectUserLocation(true)} disabled={detectingLocation} className="inline-flex min-h-9 items-center gap-1.5 text-label-md text-primary disabled:opacity-50"><Icon name="near_me" className="text-[17px]"/>{detectingLocation?'Detecting…':'Use my location'}</button>{(q||city||area||group||today||bookable)&&<button onClick={clear} className="min-h-9 px-2 text-label-md text-primary underline underline-offset-4">Clear all</button>}<button onClick={()=>setFiltersOpen(false)} className="min-h-9 rounded-lg bg-primary px-4 text-label-md text-on-primary">Done</button></div>
+          {locationStatus&&<p role="status" className="text-body-sm text-primary">{locationStatus}</p>}
+        </div>}
       </div>
 
       {/* Results header & count */}
       <div className="flex flex-wrap justify-between items-center gap-2 text-body-sm text-on-surface-variant" aria-live="polite">
         <span>{loading ? 'Updating results…' : `${count}${(type !== 'clinics' && more.doctors) || (type !== 'doctors' && more.clinics) ? '+' : ''} results${city ? ` in ${city}` : ''}`}</span>
         <div className="flex items-center gap-3">
-          <span>Online booking clinics first</span>
+          <span className="hidden sm:inline">Online booking clinics first</span>
           <button
             type="button"
             onClick={handleShare}
@@ -565,6 +346,7 @@ export function SearchClientView({
         </div>
       </div>
 
+      {shareError&&<label className="flex flex-col gap-1 text-body-sm text-on-surface-variant">Copy this search link<input aria-label="Shareable search URL" readOnly value={typeof window !== 'undefined'?new URL(sharePath,window.location.origin).href:sharePath} className="h-11 w-full min-w-0 rounded-xl bg-surface-container-low px-3"/></label>}
       {failed && (
         <p role="alert" className="rounded-xl bg-error-container p-4 text-on-error-container">
           Search couldn’t be loaded. <button onClick={() => setRetry(v => v + 1)} className="min-h-11 underline">Try again</button>
