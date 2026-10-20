@@ -13,10 +13,15 @@ export function HomeSearch({ initialQ = '', initialKind = 'all' }: { initialQ?: 
   const go = (e: React.FormEvent) => {
     e.preventDefault();
     const term = q.trim();
+    const savedCity = typeof window !== 'undefined' ? (localStorage.getItem('clinicq:selected_city') || localStorage.getItem('clinicq_user_city')) : null;
+    const params = new URLSearchParams();
+    if (term) params.set('q', term);
+    if (savedCity) params.set('city', savedCity);
+    const qs = params.size ? `?${params.toString()}` : '';
     if (kind === 'all') {
-      router.push(`/search${term ? `?q=${encodeURIComponent(term)}` : ''}`);
+      router.push(`/search${qs}`);
     } else {
-      router.push(`/${kind}${term ? `?q=${encodeURIComponent(term)}` : ''}`);
+      router.push(`/${kind}${qs}`);
     }
   };
 

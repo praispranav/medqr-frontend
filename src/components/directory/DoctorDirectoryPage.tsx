@@ -89,7 +89,7 @@ export async function DoctorDirectoryPage({ city, group, q, bookable = false, ar
           </p>
         </div>
 
-        <DoctorsSearch initialQ={q} initialGroup={group?.slug} initialCity={city ?? ''} initialBookable={bookable} initialArea={area} initialToday={today} initialResults={results} syncUrl={!landing} />
+        <DoctorsSearch initialQ={q} initialGroup={group?.slug} initialCity={city ?? ''} initialBookable={bookable} initialArea={area} initialToday={today} initialResults={results} syncUrl={true} />
 
         {/* Internal links: the specialties in this city, and this specialty in other cities. */}
         <section className="border-t border-surface-container pt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
