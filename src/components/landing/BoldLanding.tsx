@@ -23,7 +23,7 @@ export function BoldLanding({ clinic, focusSlug, staffLoginHref, host }: Landing
     <main className="min-h-screen bg-[#ECFDF5] text-[#052E16] pb-24 md:pb-0">
       <section className="bg-[#064E3B] text-white">
         <div className="max-w-5xl mx-auto px-5">
-          <div className="h-16 flex items-center gap-4"><BrandLogo />{staffLoginHref ? <Link href={staffLoginHref} className="ml-auto h-9 px-4 rounded-full bg-white/15 text-white font-label-md text-label-md flex items-center">Login</Link> : <Link href="/doctors" className="ml-auto text-white/80 font-label-md text-label-md">All doctors</Link>}</div>
+          <div className="h-16 flex items-center gap-4"><BrandLogo tone="light" />{staffLoginHref ? <Link href={staffLoginHref} className="ml-auto h-9 px-4 rounded-full bg-white/15 text-white font-label-md text-label-md flex items-center">Login</Link> : <Link href="/doctors" className="ml-auto text-white/80 font-label-md text-label-md">All doctors</Link>}</div>
           <div className="py-10 md:py-16 flex flex-col gap-4 max-w-3xl">
             <h1 className="text-[30px] leading-[37px] md:text-[44px] md:leading-[52px] font-bold">{clinic.clinic_name}</h1>
             {(clinic.verified || clinic.is_open_24x7) && <div className="flex flex-wrap items-center gap-2">
