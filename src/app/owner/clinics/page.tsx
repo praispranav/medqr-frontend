@@ -10,6 +10,7 @@ import { AdminShell } from '@/components/admin/AdminShell';
 import { inr } from '@/components/staff/bits';
 import { clinicPageUrl } from '@/lib/clinicHost';
 import { InfiniteFooter, useInfiniteScroll } from '@/lib/useInfiniteScroll';
+import { toTitleCase } from '@/lib/titleCase';
 
 export default function AdminClinicsPage() {
   return <AdminShell active="/owner/clinics">{(api, me) => <Clinics api={api} referrer={me.role === 'referrer'} />}</AdminShell>;
@@ -89,7 +90,8 @@ function Clinics({ api, referrer }: { api: AdminApi; referrer: boolean }) {
     setBusy(true);
     setError(null);
     try {
-      const t = await api.createTenant({ subdomain: effectiveCode, display_name: name, city: city.trim() || undefined, address: address.trim() || undefined, coupon_code: coupon || undefined });
+      const formattedName = toTitleCase(name.trim());
+      const t = await api.createTenant({ subdomain: effectiveCode, display_name: formattedName, city: city.trim() || undefined, address: address.trim() || undefined, coupon_code: coupon || undefined });
       router.push(`/owner/clinics/${t.id}`);
     } catch (e) {
       setError((e as Error).message);
@@ -115,6 +117,7 @@ function Clinics({ api, referrer }: { api: AdminApi; referrer: boolean }) {
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
+              onBlur={() => setName((n) => toTitleCase(n))}
               placeholder="Dr. Sharma's Child Clinic"
               className="h-12 rounded-xl bg-surface-container-low px-3 font-body-lg text-body-lg focus:outline-none focus:ring-2 focus:ring-primary/30"
             />

@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import type { AdminApi, TrialLead, TrialLeadStatus } from '@/lib/adminApi';
 import { Icon } from '@/components/patient/ui';
 import { AdminShell } from '@/components/admin/AdminShell';
+import { toTitleCase } from '@/lib/titleCase';
 
 // "Start free trial" submissions from the public landing page (Decision 18). Never creates a tenant by
 // itself — the platform admin reviews each one here and onboards the clinic through Clinics -> Create.
@@ -154,7 +155,8 @@ function CreateClinicFromLeadModal({
     setBusy(true);
     setError(null);
     try {
-      const tenant = await api.createTenant({ subdomain: effectiveCode, display_name: name, city: city.trim() || undefined });
+      const formatted = toTitleCase(name.trim());
+      const tenant = await api.createTenant({ subdomain: effectiveCode, display_name: formatted, city: city.trim() || undefined });
       const updatedLead = await api.setLeadStatus(lead.id, 'converted');
       onCreated(updatedLead);
       router.push(`/owner/clinics/${tenant.id}`);
@@ -185,6 +187,7 @@ function CreateClinicFromLeadModal({
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
+            onBlur={() => setName((n) => toTitleCase(n))}
             className="h-12 rounded-xl bg-surface-container-low px-3 font-body-lg text-body-lg focus:outline-none focus:ring-2 focus:ring-primary/30"
           />
         </label>

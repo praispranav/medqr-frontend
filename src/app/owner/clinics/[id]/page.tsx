@@ -20,6 +20,7 @@ import { QrStandees } from '@/components/qr/QrStandees';
 import { GatewaySetupTab } from '@/components/admin/GatewaySetupTab';
 import { AdminSetupCard } from '@/components/setup/SetupCards';
 import { clinicSiteUrl, patientUrl } from '@/lib/clinicHost';
+import { toTitleCase } from '@/lib/titleCase';
 
 // One clinic: doctors, their day-by-day consulting sessions (these drive the today-only
 // availability chips, Decision 6), module switches (Decision 3 combines Prescription & Lab Reports AI
@@ -125,7 +126,7 @@ function ClinicDetail({ api, referrer }: { api: AdminApi; referrer: boolean }) {
       {tab === 'clinic' && (
         <div className="flex flex-col gap-6 pb-24">
           <ClinicDetails
-            key={`details-${tenant.address}-${tenant.city}-${tenant.public_phone}-${tenant.is_publicly_listed}`}
+            key={`details-${tenant.address}-${tenant.city}-${tenant.public_phone}-${tenant.emergency_phone}-${tenant.is_open_24x7}-${tenant.website_url}-${tenant.is_publicly_listed}`}
             tenant={tenant}
             canEdit
             onSaved={async () => setTenant(await api.tenant(tenant.id))}
@@ -507,14 +508,21 @@ function ClinicName({ api, tenant, onSaved }: { api: AdminApi; tenant: Tenant; o
       onSubmit={async (e) => {
         e.preventDefault();
         try {
-          onSaved(await api.updateTenant(tenant.id, { display_name: name }));
+          const formatted = toTitleCase(name.trim());
+          onSaved(await api.updateTenant(tenant.id, { display_name: formatted }));
           setEditing(false);
         } catch (err) {
           setError((err as Error).message);
         }
       }}
     >
-      <input autoFocus value={name} onChange={(e) => setName(e.target.value)} className="flex-1 h-12 rounded-xl bg-surface-container-low px-3 font-headline-sm text-headline-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
+      <input
+        autoFocus
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        onBlur={() => setName((n) => toTitleCase(n))}
+        className="flex-1 h-12 rounded-xl bg-surface-container-low px-3 font-headline-sm text-headline-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+      />
       <button className="h-12 px-4 rounded-xl bg-primary text-on-primary font-label-lg text-label-lg">Save</button>
       <button type="button" onClick={() => setEditing(false)} className="h-12 px-4 rounded-xl font-label-lg text-label-lg text-on-surface-variant">
         Cancel

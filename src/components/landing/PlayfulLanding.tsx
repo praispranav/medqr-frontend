@@ -2,7 +2,7 @@ import { PublicFooter } from '@/components/public/PublicFooter';
 import Link from 'next/link';
 import { BrandLogo } from '@/components/brand/BrandLogo';
 import { fileUrl, type DirectoryLandingDoctor } from '@/lib/api';
-import { WHY, VISIT_TIPS, directionsUrl, initials, orderedDoctors, telHref, tokenHref, type LandingProps } from './landingData';
+import { WHY, VISIT_TIPS, directionsUrl, initials, orderedDoctors, telHref, webHref, tokenHref, type LandingProps } from './landingData';
 import { ClaimBox } from './ClaimBox';
 import { ClinicReviews } from './ClinicReviews';
 import { VerifiedBadge } from '@/components/directory/VerifiedBadge';
@@ -19,6 +19,7 @@ export function PlayfulLanding({ clinic, focusSlug, staffLoginHref, host }: Land
   const maps = directionsUrl(clinic);
   const tel = telHref(clinic.public_phone);
   const emTel = telHref(clinic.emergency_phone ?? null);
+  const web = webHref(clinic.website_url);
   const place = [clinic.address, clinic.city].filter(Boolean).join(', ');
   const mainHref = tokenHref(clinic, doctors.length === 1 ? doctors[0] : null, host);
   const canBook = clinic.booking_open !== false; // Decision 60: only opted-in clinics take online tokens
@@ -89,6 +90,13 @@ export function PlayfulLanding({ clinic, focusSlug, staffLoginHref, host }: Land
               <span className="material-symbols-outlined text-rose-700 !text-[32px]">emergency</span>
               <p className="font-title-lg text-title-lg font-bold text-rose-950">24/7 Helpline</p>
               <p className="font-body-sm text-body-sm text-rose-800">{clinic.emergency_phone}</p>
+            </a>
+          )}
+          {web && (
+            <a href={web} target="_blank" rel="noopener noreferrer" className="rounded-[1.75rem] bg-[#CCFBF1] p-5 flex flex-col gap-2 hover:shadow-md transition-shadow">
+              <span className="material-symbols-outlined text-[#0F766E] !text-[32px]">language</span>
+              <p className="font-title-lg text-title-lg font-bold">Official Website</p>
+              <p className="font-body-sm text-body-sm text-[#0F2A24]/70 truncate">{clinic.website_url}</p>
             </a>
           )}
           {canBook ? (

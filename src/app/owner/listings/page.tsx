@@ -6,6 +6,7 @@ import type { AdminApi, ListingCandidate } from '@/lib/adminApi';
 import { Icon } from '@/components/patient/ui';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { api as publicApi, fileUrl } from '@/lib/api';
+import { toTitleCase } from '@/lib/titleCase';
 
 // Decision 60 — Google Maps exports (Apify) land here. Pick listings, then Import turns them into
 // ordinary clinics. Unticked rows stay in this list until you delete them on purpose.
@@ -360,14 +361,35 @@ function ListingForm({ api, onSaved }: { api: AdminApi; onSaved: () => Promise<v
   const [note, setNote] = useState<string | null>(null);
   return <form className="bg-surface-container-lowest rounded-2xl p-5 flex flex-col gap-3" onSubmit={async (e) => {
     e.preventDefault(); setBusy(true); setNote(null);
-    try { const res = await api.submitListing(form); setNote(res.added ? 'Submitted for approval.' : 'This clinic was already submitted. No duplicate was created.'); setForm(empty); await onSaved(); }
+    try {
+      const payload = {
+        ...form,
+        title: toTitleCase(form.title.trim()),
+        doctorName: form.doctorName?.trim() ? toTitleCase(form.doctorName.trim()) : '',
+      };
+      const res = await api.submitListing(payload);
+      setNote(res.added ? 'Submitted for approval.' : 'This clinic was already submitted. No duplicate was created.');
+      setForm(empty);
+      await onSaved();
+    }
     catch (error) { setNote((error as Error).message); } finally { setBusy(false); }
   }}>
     <h2 className="font-headline-sm text-headline-sm">Add a clinic and its doctor</h2>
     <p className="text-body-sm text-on-surface-variant">The address belongs to the clinic. Add a doctor only when you know their name; approval creates a linked doctor profile.</p>
     <div className="grid sm:grid-cols-2 gap-3">
       {([['title', 'Clinic name', true], ['doctorName', 'Doctor name (optional)', false], ['categoryName', 'Category / specialty', false], ['city', 'City / district', true], ['address', 'Clinic address', true], ['phone', 'Public clinic phone (optional)', false], ['url', 'Google Maps link (optional)', false]] as const).map(([key, label, required]) => <label key={key} className="flex flex-col gap-1 text-label-md">{label}
-        <input aria-label={label} required={required} value={form[key]} onChange={(e) => setForm({ ...form, [key]: e.target.value })} className="h-11 bg-surface-container-low rounded-xl px-3" />
+        <input
+          aria-label={label}
+          required={required}
+          value={form[key]}
+          onChange={(e) => setForm({ ...form, [key]: e.target.value })}
+          onBlur={() => {
+            if (key === 'title' || key === 'doctorName') {
+              setForm((f) => ({ ...f, [key]: toTitleCase(f[key]) }));
+            }
+          }}
+          className="h-11 bg-surface-container-low rounded-xl px-3"
+        />
       </label>)}
     </div>
     <div className="flex items-center gap-3">

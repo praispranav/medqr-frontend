@@ -4,7 +4,7 @@ import { BrandLogo } from '@/components/brand/BrandLogo';
 import { fileUrl } from '@/lib/api';
 import { VerifiedBadge } from '@/components/directory/VerifiedBadge';
 import { ClaimBox } from './ClaimBox';
-import { VISIT_TIPS, WHY, directionsUrl, initials, orderedDoctors, telHref, tokenHref, type LandingProps } from './landingData';
+import { VISIT_TIPS, WHY, directionsUrl, initials, orderedDoctors, telHref, webHref, tokenHref, type LandingProps } from './landingData';
 
 // Template 3 — "Classic": plain white, one narrow column, small headings. The simplest page: name, how to reach the
 // clinic, the doctors in a list, hours and fee on one line each.
@@ -17,6 +17,7 @@ export function ClassicLanding({ clinic, focusSlug, staffLoginHref, host }: Land
   const maps = directionsUrl(clinic);
   const tel = telHref(clinic.public_phone);
   const emTel = telHref(clinic.emergency_phone ?? null);
+  const web = webHref(clinic.website_url);
   const canBook = clinic.booking_open !== false;
   const place = [clinic.address, clinic.city].filter(Boolean).join(', ');
   const points = canBook ? WHY : VISIT_TIPS;
@@ -52,6 +53,7 @@ export function ClassicLanding({ clinic, focusSlug, staffLoginHref, host }: Land
                 24/7 Helpline: {clinic.emergency_phone}
               </a>
             )}
+            {web && <a href={web} target="_blank" rel="noopener noreferrer" className={ghost}>Website</a>}
             {maps && <a href={maps} target="_blank" rel="noreferrer" className={ghost}>Directions</a>}
           </div>
         </section>

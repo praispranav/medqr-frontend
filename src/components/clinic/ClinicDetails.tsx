@@ -18,6 +18,7 @@ type ClinicDetailsPatch = {
   emergency_phone?: string | null;
   is_open_24x7?: boolean;
   operating_hours?: string | null;
+  website_url?: string | null;
   maps_url: string | null;
   landing_template: LandingTemplate;
   landing_tagline: string | null;
@@ -49,6 +50,7 @@ export function ClinicDetails({
   const [emergencyPhone, setEmergencyPhone] = useState(tenant.emergency_phone ?? '');
   const [isOpen24x7, setIsOpen24x7] = useState(!!tenant.is_open_24x7);
   const [operatingHours, setOperatingHours] = useState(tenant.operating_hours ?? '');
+  const [websiteUrl, setWebsiteUrl] = useState(tenant.website_url ?? '');
   const [mapsUrl, setMapsUrl] = useState(tenant.maps_url ?? '');
   // Decision 50 — the public landing page
   const [template, setTemplate] = useState<LandingTemplate>(tenant.landing_template ?? 'editorial');
@@ -72,6 +74,7 @@ export function ClinicDetails({
     emergencyPhone !== (tenant.emergency_phone ?? '') ||
     isOpen24x7 !== !!tenant.is_open_24x7 ||
     operatingHours !== (tenant.operating_hours ?? '') ||
+    websiteUrl !== (tenant.website_url ?? '') ||
     mapsUrl !== (tenant.maps_url ?? '') ||
     template !== (tenant.landing_template ?? 'editorial') ||
     tagline !== (tenant.landing_tagline ?? '') ||
@@ -119,6 +122,7 @@ export function ClinicDetails({
         emergency_phone: emergencyPhone || null,
         is_open_24x7: isOpen24x7,
         operating_hours: operatingHours.trim() || null,
+        website_url: websiteUrl.trim() || null,
         maps_url: mapsUrl.trim() || null,
         landing_template: template,
         landing_tagline: tagline.trim() || null,
@@ -149,6 +153,8 @@ export function ClinicDetails({
           <dd>{tenant.public_phone || '—'}</dd>
           <dt className="text-on-surface-variant">Emergency</dt>
           <dd>{tenant.emergency_phone || '—'}</dd>
+          <dt className="text-on-surface-variant">Website</dt>
+          <dd>{tenant.website_url ? <a href={tenant.website_url} target="_blank" rel="noreferrer" className="text-primary underline">{tenant.website_url}</a> : '—'}</dd>
           <dt className="text-on-surface-variant">Timing</dt>
           <dd>{tenant.is_open_24x7 ? 'Open 24/7 (All the time)' : (tenant.operating_hours || 'OPD hours')}</dd>
           <dt className="text-on-surface-variant">Map pin</dt>
@@ -208,6 +214,20 @@ export function ClinicDetails({
                 className="h-11 rounded-lg bg-surface-container-lowest px-3 font-body-md text-body-md border border-surface-container-high focus:outline-none focus:ring-2 focus:ring-primary/30"
               />
               <span className="text-[12px] text-on-surface-variant">Shown as an urgent emergency call button on your page.</span>
+            </label>
+            <label className="flex flex-col gap-1 md:col-span-2">
+              <span className="font-label-sm text-label-sm text-on-surface">Official Website (Optional)</span>
+              <div className="flex items-center rounded-lg bg-surface-container-lowest border border-surface-container-high focus-within:ring-2 focus-within:ring-primary/30 px-3">
+                <Icon name="language" className="text-[18px] text-on-surface-variant mr-2" />
+                <input
+                  type="url"
+                  value={websiteUrl}
+                  onChange={(e) => setWebsiteUrl(e.target.value)}
+                  placeholder="https://www.yourclinic.com"
+                  className="h-11 w-full bg-transparent font-body-md text-body-md focus:outline-none"
+                />
+              </div>
+              <span className="text-[12px] text-on-surface-variant">Your clinic or hospital&apos;s website. Shown as a direct website link on your public profile and search results.</span>
             </label>
           </div>
         </div>

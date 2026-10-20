@@ -2,7 +2,7 @@ import { PublicFooter } from '@/components/public/PublicFooter';
 import Link from 'next/link';
 import { BrandLogo } from '@/components/brand/BrandLogo';
 import { fileUrl, type DirectoryLandingDoctor } from '@/lib/api';
-import { WHY, VISIT_TIPS, directionsUrl, initials, orderedDoctors, telHref, tokenHref, type LandingProps } from './landingData';
+import { WHY, VISIT_TIPS, directionsUrl, initials, orderedDoctors, telHref, webHref, tokenHref, type LandingProps } from './landingData';
 import { ClaimBox } from './ClaimBox';
 import { ClinicReviews } from './ClinicReviews';
 import { VerifiedBadge } from '@/components/directory/VerifiedBadge';
@@ -20,6 +20,7 @@ export function EditorialLanding({ clinic, focusSlug, staffLoginHref, host }: La
   const maps = directionsUrl(clinic);
   const tel = telHref(clinic.public_phone);
   const emTel = telHref(clinic.emergency_phone ?? null);
+  const web = webHref(clinic.website_url);
   const canBook = clinic.booking_open !== false; // Decision 60: only opted-in clinics take online tokens
   const place = [clinic.address, clinic.city].filter(Boolean).join(', ');
 
@@ -71,6 +72,11 @@ export function EditorialLanding({ clinic, focusSlug, staffLoginHref, host }: La
             {emTel && (
               <a href={emTel} className="h-12 px-5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-label-lg text-label-lg flex items-center gap-2 transition-colors shadow-sm">
                 <span className="material-symbols-outlined text-[20px]">emergency</span> 24/7 Helpline: {clinic.emergency_phone}
+              </a>
+            )}
+            {web && (
+              <a href={web} target="_blank" rel="noopener noreferrer" className={ghost}>
+                <span className="material-symbols-outlined text-[20px]">language</span> Website
               </a>
             )}
             {maps && <a href={maps} target="_blank" rel="noreferrer" className={ghost}><span className="material-symbols-outlined text-[20px]">near_me</span> Directions</a>}

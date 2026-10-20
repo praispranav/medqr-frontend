@@ -8,6 +8,7 @@ import { api as publicApi, fileUrl, type QueueSettings, type StaffLinkResult } f
 import { ShareLinkCard, WhatsAppIcon, whatsappHref, type ShareTarget } from '@/components/team/ShareLinkCard';
 import { inr } from '@/components/staff/bits';
 import { DoctorSettingsCard } from '@/components/doctor/DoctorSettingsCard';
+import { toTitleCase } from '@/lib/titleCase';
 
 // Doctors (+ their planned hours) and staff logins for one clinic. Shared by the platform admin
 // (/owner/clinics/[id], via x-admin-key — not to be confused with the clinic-admin "owner" staff
@@ -240,6 +241,11 @@ function DoctorEditor({
         value={f[k]}
         placeholder={ph}
         onChange={(e) => setF((x) => ({ ...x, [k]: e.target.value }))}
+        onBlur={() => {
+          if (k === 'name') {
+            setF((x) => ({ ...x, name: toTitleCase(x.name) }));
+          }
+        }}
         className="h-11 rounded-lg bg-surface-container-low px-3 font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-primary/30"
       />
     </label>
@@ -251,7 +257,7 @@ function DoctorEditor({
         setBusy(true);
         setError(null);
         try {
-          await onSubmit(f);
+          await onSubmit({ ...f, name: toTitleCase(f.name.trim()) });
         } catch (err) {
           setError((err as Error).message);
           setBusy(false);

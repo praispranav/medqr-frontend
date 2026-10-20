@@ -4,7 +4,7 @@ import { BrandLogo } from '@/components/brand/BrandLogo';
 import { fileUrl } from '@/lib/api';
 import { VerifiedBadge } from '@/components/directory/VerifiedBadge';
 import { ClaimBox } from './ClaimBox';
-import { VISIT_TIPS, WHY, directionsUrl, initials, orderedDoctors, telHref, tokenHref, type LandingProps } from './landingData';
+import { VISIT_TIPS, WHY, directionsUrl, initials, orderedDoctors, telHref, webHref, tokenHref, type LandingProps } from './landingData';
 
 // Template 4 — "Bold": a deep-green header with the clinic name and the main action, mint page, white cards, and a
 // fixed bottom action bar on phones (most patients arrive from a phone).
@@ -14,6 +14,7 @@ export function BoldLanding({ clinic, focusSlug, staffLoginHref, host }: Landing
   const maps = directionsUrl(clinic);
   const tel = telHref(clinic.public_phone);
   const emTel = telHref(clinic.emergency_phone ?? null);
+  const web = webHref(clinic.website_url);
   const canBook = clinic.booking_open !== false;
   const place = [clinic.address, clinic.city].filter(Boolean).join(', ');
   const points = canBook ? WHY : VISIT_TIPS;
@@ -43,6 +44,11 @@ export function BoldLanding({ clinic, focusSlug, staffLoginHref, host }: Landing
               {emTel && (
                 <a href={emTel} className="h-14 px-6 rounded-full bg-rose-500 hover:bg-rose-600 text-white font-label-lg text-label-lg flex items-center gap-2 font-semibold shadow-sm">
                   <span className="material-symbols-outlined text-[22px]">emergency</span> 24/7 Helpline: {clinic.emergency_phone}
+                </a>
+              )}
+              {web && (
+                <a href={web} target="_blank" rel="noopener noreferrer" className="h-14 px-6 rounded-full border border-white/40 text-white font-label-lg text-label-lg flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[20px]">language</span> Website
                 </a>
               )}
               {maps && <a href={maps} target="_blank" rel="noreferrer" className="h-14 px-6 rounded-full border border-white/40 text-white font-label-lg text-label-lg flex items-center gap-2">Directions</a>}

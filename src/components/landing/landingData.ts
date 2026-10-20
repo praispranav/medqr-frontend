@@ -30,6 +30,12 @@ export function directionsUrl(c: DirectoryClinicProfile): string | null {
 }
 
 export const telHref = (phone: string | null) => (phone ? `tel:${phone.replace(/[^\d+]/g, '')}` : null);
+export const webHref = (url: string | null | undefined) => {
+  if (!url) return null;
+  const t = url.trim();
+  if (!t) return null;
+  return /^https?:\/\//i.test(t) ? t : `https://${t}`;
+};
 
 // Decision 56: always the patient site (patient.clinicq.fit), where the patient's saved session lives.
 export const tokenHref = (c: DirectoryClinicProfile, d: DirectoryLandingDoctor | null | undefined, host: string | null | undefined) =>
@@ -68,6 +74,8 @@ export function jsonLd(c: DirectoryClinicProfile) {
     '@type': 'MedicalClinic',
     name: c.clinic_name,
     description: c.about ?? c.tagline ?? undefined,
+    url: webHref(c.website_url) ?? undefined,
+    sameAs: c.website_url ? [webHref(c.website_url)!] : undefined,
     address: c.address ?? undefined,
     telephone: c.public_phone ?? c.emergency_phone ?? undefined,
     ...(c.is_open_24x7 ? { openingHours: 'Mo-Su 00:00-24:00', isAcceptingNewPatients: true } : {}),
