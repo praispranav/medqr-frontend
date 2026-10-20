@@ -625,6 +625,7 @@ export interface DirectoryDoctorSummary {
   operating_hours?: string | null;
   maps_url?: string | null;
   available_today?: boolean;
+  experience_years?: number | null;
 }
 
 export interface DirectoryDoctorProfile extends DirectoryDoctorSummary {

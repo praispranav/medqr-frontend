@@ -115,6 +115,7 @@ export default async function DoctorProfilePage({ params, searchParams }: { para
               <h1 className="font-headline-lg text-headline-lg">{doctor.name}</h1>
               {doctor.verified && <VerifiedBadge size="md" />}
               <p className="font-body-md text-body-md text-on-surface-variant">{[doctor.qualification, doctor.specialty].filter(Boolean).join(' · ')}</p>
+              {!!doctor.experience_years && <p className="font-body-sm text-body-sm text-on-surface-variant">{doctor.experience_years}+ {doctor.experience_years === 1 ? 'year' : 'years'} experience</p>}
             </div>
           </div>
           {doctor.bio && <p className="font-body-md text-body-md text-on-surface-variant">{doctor.bio}</p>}
