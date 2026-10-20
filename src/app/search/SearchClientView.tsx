@@ -9,6 +9,12 @@ import { groupOf, type SpecialtyGroup } from '@/lib/specialtyGroups';
 import { OnlineTokenBadge } from '@/components/directory/OnlineTokenBadge';
 import { VerifiedBadge } from '@/components/directory/VerifiedBadge';
 
+// Every city listed today is in Bihar — shown next to the city on its own line so it never gets
+// truncated along with a long street address. An unrecognised city just shows on its own, so this
+// never mislabels a clinic once the directory expands past Bihar.
+const BIHAR_CITIES = new Set(['patna', 'muzaffarpur', 'sitamarhi', 'harpur bakhri', 'rasulpur saidpur bazid']);
+const stateOf = (city?: string | null) => (city && BIHAR_CITIES.has(city.trim().toLowerCase()) ? 'Bihar' : null);
+
 type Kind = 'all' | 'doctors' | 'clinics';
 interface Props {
   initialQ?: string; initialType?: Kind; initialCity?: string; initialArea?: string;
@@ -132,8 +138,8 @@ export function SearchClientView({ initialQ = '', initialType = 'all', initialCi
     <div className="flex flex-wrap justify-between items-center gap-1 text-body-sm text-on-surface-variant" aria-live="polite"><span>{loading ? 'Updating results…' : `${count}${(type !== 'clinics' && more.doctors) || (type !== 'doctors' && more.clinics) ? '+' : ''} results${city ? ` in ${city}` : ''}`}</span><span>Online booking clinics first</span></div>
     {failed && <p role="alert" className="rounded-xl bg-error-container p-4 text-on-error-container">Search couldn’t be loaded. <button onClick={() => setRetry(v => v + 1)} className="min-h-11 underline">Try again</button></p>}
     {!loading && !failed && count === 0 && <div className="rounded-2xl bg-white p-8 text-center"><h2 className="text-title-md">No results match these filters</h2><p className="mt-2 text-body-md text-on-surface-variant">Try another name, area or city.</p><button onClick={clear} className="mt-3 min-h-11 text-primary underline">Show all results</button></div>}
-    {(type === 'all' || type === 'doctors') && doctors.length > 0 && <section className="flex flex-col gap-3" aria-label="Doctor results"><h2 className="text-title-lg font-headline-sm">Doctors</h2><div className="grid grid-cols-1 md:grid-cols-2 gap-3" aria-busy={loading}>{doctors.map(d => <ResultCard key={d.slug} href={`/doctors/${d.slug}`} name={d.name} photo={d.photo_url} icon="stethoscope" subtitle={groupOf(d.specialty)?.name ?? d.specialty} detail={d.clinic_name} address={[d.address, d.city].filter(Boolean).join(', ')} city={d.city} verified={d.verified} online={d.booking_open} phone={d.public_phone} maps={d.maps_url} booking={d.id && d.clinic_subdomain ? patientUrl(`/patient/${d.clinic_subdomain}/intake?doctorId=${encodeURIComponent(d.id)}`) : `/doctors/${d.slug}`} />)}</div>{pagination('doctors')}</section>}
-    {(type === 'all' || type === 'clinics') && clinics.length > 0 && <section className="flex flex-col gap-3" aria-label="Clinic results"><h2 className="text-title-lg font-headline-sm">Clinics &amp; hospitals</h2><div className="grid grid-cols-1 md:grid-cols-2 gap-3" aria-busy={loading}>{clinics.map(c => <ResultCard key={c.slug} href={`/clinics/${c.slug}`} name={c.clinic_name} icon="local_hospital" subtitle={c.specialties?.join(' · ')} detail={c.doctors?.length ? `${c.doctors[0].name}${c.doctor_count > 1 ? ` + ${c.doctor_count - 1} more` : ''}` : `${c.doctor_count} ${c.doctor_count === 1 ? 'doctor' : 'doctors'}`} address={[c.address, c.city && !c.address?.includes(c.city) ? c.city : null].filter(Boolean).join(', ')} city={c.city} verified={c.verified} online={c.booking_open} phone={c.public_phone} maps={c.maps_url} booking={patientUrl(`/patient/${c.subdomain || c.slug}`)} />)}</div>{pagination('clinics')}</section>}
+    {(type === 'all' || type === 'doctors') && doctors.length > 0 && <section className="flex flex-col gap-3" aria-label="Doctor results"><h2 className="text-title-lg font-headline-sm">Doctors</h2><div className="grid grid-cols-1 md:grid-cols-2 gap-3" aria-busy={loading}>{doctors.map(d => <ResultCard key={d.slug} href={`/doctors/${d.slug}`} name={d.name} photo={d.photo_url} icon="stethoscope" subtitle={groupOf(d.specialty)?.name ?? d.specialty} detail={d.clinic_name} address={d.address} city={d.city} verified={d.verified} online={d.booking_open} phone={d.public_phone} maps={d.maps_url} booking={d.id && d.clinic_subdomain ? patientUrl(`/patient/${d.clinic_subdomain}/intake?doctorId=${encodeURIComponent(d.id)}`) : `/doctors/${d.slug}`} />)}</div>{pagination('doctors')}</section>}
+    {(type === 'all' || type === 'clinics') && clinics.length > 0 && <section className="flex flex-col gap-3" aria-label="Clinic results"><h2 className="text-title-lg font-headline-sm">Clinics &amp; hospitals</h2><div className="grid grid-cols-1 md:grid-cols-2 gap-3" aria-busy={loading}>{clinics.map(c => <ResultCard key={c.slug} href={`/clinics/${c.slug}`} name={c.clinic_name} icon="local_hospital" subtitle={c.specialties?.join(' · ')} detail={c.doctors?.length ? `${c.doctors[0].name}${c.doctor_count > 1 ? ` + ${c.doctor_count - 1} more` : ''}` : `${c.doctor_count} ${c.doctor_count === 1 ? 'doctor' : 'doctors'}`} address={c.address} city={c.city} verified={c.verified} online={c.booking_open} phone={c.public_phone} maps={c.maps_url} booking={patientUrl(`/patient/${c.subdomain || c.slug}`)} />)}</div>{pagination('clinics')}</section>}
   </div>;
 }
 
@@ -147,7 +153,13 @@ function ResultCard({ href, name, photo, icon, subtitle, detail, address, city, 
       <Link href={href} aria-label={`View ${name}`} className="text-on-surface-variant shrink-0"><Icon name="chevron_right" className="text-[20px]"/></Link>
     </div>
     {detail && <p className="text-body-sm text-on-surface truncate">{detail}</p>}
-    {address && <p className="flex gap-1 text-body-sm text-on-surface-variant"><Icon name="location_on" className="text-[16px] shrink-0 mt-0.5"/><span className="block min-w-0 truncate" title={address}>{address}</span></p>}
+    {(address || city) && <div className="flex gap-1 text-body-sm text-on-surface-variant">
+      <Icon name="location_on" className="text-[16px] shrink-0 mt-0.5"/>
+      <div className="min-w-0">
+        {address && <p className="truncate" title={address}>{address}</p>}
+        {city && <p className="truncate">{[city, stateOf(city)].filter(Boolean).join(', ')}</p>}
+      </div>
+    </div>}
     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-auto pt-1">
       {online && <a href={booking} className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3 font-label-md text-label-md text-on-primary">Get token<Icon name="arrow_forward" className="text-[16px]"/></a>}
       {phone && <a href={`tel:${phone}`} className="inline-flex min-h-11 items-center gap-1.5 text-label-md text-primary"><Icon name="call" className="text-[18px]"/>Call</a>}

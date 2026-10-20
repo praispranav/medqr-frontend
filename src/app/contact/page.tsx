@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { LegalLayout } from '@/components/legal/LegalLayout';
 import { ContactForm } from '@/components/support/ContactForm';
 import { HelpCenter } from '@/components/support/HelpCenter';
-import { COMPANY_NAME, COMPANY_URL, CONTACT_EMAIL, CONTACT_PHONE_DISPLAY, CONTACT_PHONE_TEL, CONTACT_WHATSAPP, INSTAGRAM_HANDLE, INSTAGRAM_URL } from '@/components/support/contactInfo';
+import { COMPANY_NAME, COMPANY_URL, CONTACT_EMAIL, CONTACT_PHONE_DISPLAY, CONTACT_PHONE_TEL, CONTACT_WHATSAPP, INSTAGRAM_HANDLE, INSTAGRAM_URL, YOUTUBE_URL } from '@/components/support/contactInfo';
 
 export const metadata: Metadata = {
   title: 'Contact us and help — ClinicQ',
@@ -15,7 +15,7 @@ const card = 'bg-surface-container-lowest rounded-2xl p-5 shadow-sm flex flex-co
 export default function ContactPage() {
   return (
     <LegalLayout wide title="Contact us" lede="Questions, a free trial, or something not working? Write to us, call us, or find the answer below.">
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 !text-on-surface">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 !text-on-surface">
         <a className={card} href={`mailto:${CONTACT_EMAIL}`}>
           <span className="font-label-sm text-label-sm text-on-surface-variant uppercase">Email</span>
           <span className="font-label-lg text-label-lg text-primary break-all">{CONTACT_EMAIL}</span>
@@ -31,6 +31,10 @@ export default function ContactPage() {
         <a className={card} href={INSTAGRAM_URL} target="_blank" rel="noreferrer">
           <span className="font-label-sm text-label-sm text-on-surface-variant uppercase">Instagram</span>
           <span className="font-label-lg text-label-lg text-primary">{INSTAGRAM_HANDLE}</span>
+        </a>
+        <a className={card} href={YOUTUBE_URL} target="_blank" rel="noreferrer">
+          <span className="font-label-sm text-label-sm text-on-surface-variant uppercase">YouTube</span>
+          <span className="font-label-lg text-label-lg text-primary">Watch videos</span>
         </a>
       </div>
 
