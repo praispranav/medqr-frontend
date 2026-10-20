@@ -96,6 +96,12 @@ export function AdminShell({ active, children }: { active: string; children: (ap
   if (me === undefined) return <LoadingPage />;
   if (!me) return <SignIn onOk={setMe} />;
 
+  const cleaner = me.role === 'cleaner';
+  // A 'cleaner' login has its own API (owner/cleaner/*) but no screen of its own yet — the owner
+  // coordinates what to work on directly rather than through a dashboard. Keep them off every other
+  // screen (most are referrer/marketer-scoped routes they'd just get a 403 from) instead of guessing.
+  if (cleaner) return <CleanerHome me={me} onSignOut={signOut} />;
+
   const referrer = me.role !== 'super';
   const marketer = me.role === 'marketer';
   const nav: NavItem[] = marketer
@@ -192,6 +198,23 @@ export function AdminShell({ active, children }: { active: string; children: (ap
         <main className="p-4 lg:p-8 max-w-6xl">{children(api, me)}</main>
       </div>
     </div>
+  );
+}
+
+function CleanerHome({ me, onSignOut }: { me: PlatformAdminMe; onSignOut: () => void }) {
+  return (
+    <main className="min-h-screen flex items-center justify-center bg-surface p-4">
+      <div className="w-full max-w-sm bg-surface-container-lowest rounded-2xl p-6 shadow-xl flex flex-col gap-3 text-center">
+        <div className="mx-auto w-12 h-12 rounded-xl bg-primary-container text-on-primary flex items-center justify-center">
+          <Icon name="cleaning_services" className="text-[26px]" />
+        </div>
+        <h1 className="font-headline-md text-headline-md">Signed in, {me.name}</h1>
+        <p className="font-body-md text-body-md text-on-surface-variant">
+          This screen isn&apos;t wired up yet — ask the ClinicQ owner what clinic or doctor to work on. Everything you change is held for their approval before it goes live.
+        </p>
+        <button onClick={onSignOut} className="mt-2 h-11 rounded-xl bg-surface-container-low font-label-md text-label-md">Sign out</button>
+      </div>
+    </main>
   );
 }
 

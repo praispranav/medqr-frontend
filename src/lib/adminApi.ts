@@ -520,8 +520,9 @@ async function authRequest<T>(path: string, body?: unknown): Promise<T> {
 export interface PlatformAdminMe {
   email: string;
   name: string;
-  /** Decision 27: 'referrer' = referral partner — only their own clinics, setup only. */
-  role: 'super' | 'referrer' | 'marketer';
+  /** Decision 27: 'referrer' = referral partner — only their own clinics, setup only. 'cleaner' = data
+   * cleanup login — looks up any clinic/doctor, edits are always held for the super admin's approval. */
+  role: 'super' | 'referrer' | 'marketer' | 'cleaner';
 }
 
 // ---------- Referral partners (Decision 27) ----------
