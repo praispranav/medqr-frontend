@@ -15,6 +15,18 @@ import { VerifiedBadge } from '@/components/directory/VerifiedBadge';
 const BIHAR_CITIES = new Set(['patna', 'muzaffarpur', 'sitamarhi', 'harpur bakhri', 'rasulpur saidpur bazid']);
 const stateOf = (city?: string | null) => (city && BIHAR_CITIES.has(city.trim().toLowerCase()) ? 'Bihar' : null);
 
+// A doctor-run clinic is often named after the doctor ("Dr. Asha Sinha" clinic, doctor "Dr. Asha
+// Sinha") or named "<Doctor> Clinic" — showing the detail line under the title then just repeats it.
+// Strip "Dr."/"Dr" and common clinic-type suffixes, then compare.
+const normName = (s: string) =>
+  s
+    .toLowerCase()
+    .replace(/^dr\.?\s+/, '')
+    .replace(/\s+(clinic|hospital|nursing home|polyclinic|care cent(?:re|er)|medical cent(?:re|er))$/, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+const sameName = (a?: string | null, b?: string | null) => !!a && !!b && normName(a) === normName(b);
+
 type Kind = 'all' | 'doctors' | 'clinics';
 interface Props {
   initialQ?: string; initialType?: Kind; initialCity?: string; initialArea?: string;
@@ -152,7 +164,7 @@ function ResultCard({ href, name, photo, icon, subtitle, detail, address, city, 
       <div className="min-w-0 flex-1"><div className="flex items-center gap-1.5"><Link href={href} className="font-label-lg text-label-lg text-on-surface hover:text-primary line-clamp-2">{name}</Link><span className="flex shrink-0 items-center gap-1">{verified && <VerifiedBadge size="sm"/>}{online && <OnlineTokenBadge/>}</span></div>{subtitle && <p className="mt-0.5 text-body-sm text-on-surface-variant truncate">{subtitle}</p>}</div>
       <Link href={href} aria-label={`View ${name}`} className="text-on-surface-variant shrink-0"><Icon name="chevron_right" className="text-[20px]"/></Link>
     </div>
-    {detail && <p className="text-body-sm text-on-surface truncate">{detail}</p>}
+    {detail && !sameName(detail, name) && <p className="text-body-sm text-on-surface truncate">{detail}</p>}
     {(address || city) && <div className="flex gap-1 text-body-sm text-on-surface-variant">
       <Icon name="location_on" className="text-[16px] shrink-0 mt-0.5"/>
       <div className="min-w-0">
