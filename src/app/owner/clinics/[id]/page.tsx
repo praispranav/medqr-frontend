@@ -297,7 +297,7 @@ function adminTeamApi(api: AdminApi, tenantId: string, referrer: boolean, clinic
     deleteUser: referrer ? undefined : (id) => api.deleteUser(id),
     canGrantOwner: !referrer, // clinic admins are granted by ClinicQ only
     // Decision 28: super admin and the clinic's referrer set each doctor's own fee / payment / pacing.
-    doctorSettings: clinic ? { clinic, save: (doctorId, patch) => api.updateDoctorSettings(doctorId, patch) } : undefined,
+    doctorSettings: { clinic: clinic ?? ({} as QueueSettings), save: (doctorId, patch) => api.updateDoctorSettings(doctorId, patch) },
     directoryFields: true,
   };
 }

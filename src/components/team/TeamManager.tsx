@@ -9,6 +9,7 @@ import { ShareLinkCard, WhatsAppIcon, whatsappHref, type ShareTarget } from '@/c
 import { inr } from '@/components/staff/bits';
 import { DoctorSettingsCard } from '@/components/doctor/DoctorSettingsCard';
 import { toTitleCase } from '@/lib/titleCase';
+import { BulkDoctorImportModal } from './BulkDoctorImportModal';
 
 // Doctors (+ their planned hours) and staff logins for one clinic. Shared by the platform admin
 // (/owner/clinics/[id], via x-admin-key — not to be confused with the clinic-admin "owner" staff
@@ -67,6 +68,7 @@ export function DoctorsTab({ api }: { api: TeamApi }) {
   const [listingBusy, setListingBusy] = useState<string | null>(null);
   const [listingError, setListingError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+  const [bulkOpen, setBulkOpen] = useState(false);
 
   const load = useCallback(async () => {
     const list = await api.doctors();
@@ -187,9 +189,22 @@ export function DoctorsTab({ api }: { api: TeamApi }) {
             }}
           />
         ) : (
-          <button onClick={() => setAdding(true)} className="h-12 rounded-xl border border-dashed border-outline-variant text-primary font-label-lg text-label-lg flex items-center justify-center gap-2 hover:bg-surface-container-low">
-            <Icon name="person_add" className="text-[20px]" /> Add doctor
-          </button>
+          <div className="flex flex-col gap-2">
+            <button
+              type="button"
+              onClick={() => setAdding(true)}
+              className="h-12 rounded-xl border border-dashed border-outline-variant text-primary font-label-lg text-label-lg flex items-center justify-center gap-2 hover:bg-surface-container-low"
+            >
+              <Icon name="person_add" className="text-[20px]" /> Add doctor
+            </button>
+            <button
+              type="button"
+              onClick={() => setBulkOpen(true)}
+              className="h-11 rounded-xl bg-surface-container-low hover:bg-surface-container text-primary font-label-md text-label-md flex items-center justify-center gap-2 transition-colors border border-outline-variant/40"
+            >
+              <Icon name="group_add" className="text-[18px]" /> Bulk import doctors
+            </button>
+          </div>
         )}
       </section>
 
@@ -213,6 +228,17 @@ export function DoctorsTab({ api }: { api: TeamApi }) {
         <section className="bg-surface-container-low rounded-2xl p-8 text-center font-body-md text-body-md text-on-surface-variant">
           Add a doctor to set their consulting hours.
         </section>
+      )}
+
+      {bulkOpen && (
+        <BulkDoctorImportModal
+          api={api}
+          onClose={() => setBulkOpen(false)}
+          onImported={async (firstDoctorId) => {
+            await load();
+            if (firstDoctorId) setSelectedId(firstDoctorId);
+          }}
+        />
       )}
     </div>
   );
