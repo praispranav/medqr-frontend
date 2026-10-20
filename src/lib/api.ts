@@ -867,6 +867,11 @@ export const api = {
   // Staff login (reception and doctors have separate accounts)
   login: (body: { clinic?: string; username: string; password: string; user_id?: string }) =>
     request<Me | LoginChoice>('/auth/login', { method: 'POST', body: JSON.stringify(body) }),
+  // Decision 75 — clinic reviews.
+  clinicReviews: (code: string, offset = 0) =>
+    request<{ average: number | null; count: number; reviews: { id: string; name: string; rating: number; text: string | null; doctor_name: string | null; created_at: string }[] }>(`/reviews/clinic/${encodeURIComponent(code)}${offset ? `?offset=${offset}` : ''}`),
+  submitReview: (body: { ticket: string; clinic_code: string; doctor_id?: string; name: string; rating: number; text?: string }) =>
+    request<{ status: 'published' | 'held'; replaced: boolean }>('/reviews', { method: 'POST', body: JSON.stringify(body) }),
   // Decision 68 — one sign-in for patients, doctors and clinic owners.
   accountStart: (mobile: string) => request<{ sent: true; dev_code?: string }>('/account/start', { method: 'POST', body: JSON.stringify({ mobile }) }),
   accountVerify: (mobile: string, code: string) => request<AccountOverview>('/account/verify', { method: 'POST', body: JSON.stringify({ mobile, code }) }),

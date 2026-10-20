@@ -22,6 +22,20 @@ async function request<T>(key: string, path: string, options?: RequestInit): Pro
   return res.json();
 }
 
+export interface AdminReview {
+  id: string;
+  tenant_id: string;
+  clinic_name: string | null;
+  clinic_code: string | null;
+  display_name: string;
+  mobile: string;
+  rating: number;
+  text: string | null;
+  status: 'published' | 'held' | 'removed';
+  hold_reason: string | null;
+  created_at: string;
+}
+
 export interface ChangeRequestView {
   id: string;
   tenant_id: string;
@@ -265,6 +279,9 @@ export const adminApi = (key: string) => ({
   activity: () => request<Activity>(key, '/activity'),
   tenants: () => request<AdminTenant[]>(key, '/tenants'),
   // Decision 64 — claim / removal requests (super admin).
+  // Decision 75 — clinic reviews (held by the check, or any review to remove).
+  reviews: (status: string) => request<AdminReview[]>(key, `/reviews?status=${encodeURIComponent(status)}`),
+  setReviewStatus: (id: string, publish: boolean) => request<AdminReview>(key, `/reviews/${id}/${publish ? 'publish' : 'remove'}`, { method: 'POST' }),
   // Decision 67 — clinic edits held by the content check.
   changeRequests: (status: string) => request<ChangeRequestView[]>(key, `/change-requests?status=${encodeURIComponent(status)}`),
   decideChangeRequest: (id: string, apply: boolean) => request<ChangeRequestView>(key, `/change-requests/${id}/${apply ? 'apply' : 'reject'}`, { method: 'POST' }),

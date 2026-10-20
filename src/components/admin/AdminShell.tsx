@@ -29,6 +29,7 @@ const NAV: NavItem[] = [
   { href: '/owner/leads', label: 'Trial requests', icon: 'inbox' },
   { label: 'Requests & support', isCategory: true },
   { href: '/owner/change-requests', label: 'Change requests', icon: 'rule' },
+  { href: '/owner/reviews', label: 'Reviews', icon: 'star' },
   { href: '/owner/module-requests', label: 'Module requests', icon: 'extension' },
   { href: '/owner/setting-requests', label: 'Setting requests', icon: 'auto_awesome' },
   { href: '/owner/support', label: 'Support', icon: 'support_agent' },

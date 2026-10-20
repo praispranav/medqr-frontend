@@ -4,6 +4,7 @@ import { BrandLogo } from '@/components/brand/BrandLogo';
 import { fileUrl, type DirectoryLandingDoctor } from '@/lib/api';
 import { WHY, VISIT_TIPS, directionsUrl, initials, orderedDoctors, telHref, tokenHref, type LandingProps } from './landingData';
 import { ClaimBox } from './ClaimBox';
+import { ClinicReviews } from './ClinicReviews';
 import { VerifiedBadge } from '@/components/directory/VerifiedBadge';
 
 // Template 2 — "Playful": bright, rounded, pastel-tinted tiles and friendly icons. Same content as the editorial
@@ -146,6 +147,11 @@ export function PlayfulLanding({ clinic, focusSlug, staffLoginHref, host }: Land
         ) : (
           <ClaimBox code={clinic.subdomain} />
         )}
+      </div>
+
+      {/* Decision 75: patient reviews at the bottom of the clinic page. */}
+      <div className="max-w-5xl mx-auto px-5 pb-12">
+        <ClinicReviews code={clinic.subdomain} doctors={clinic.doctors.map((d) => ({ id: d.id, name: d.name }))} />
       </div>
 
       <PublicFooter clinicCode={clinic.subdomain} />
