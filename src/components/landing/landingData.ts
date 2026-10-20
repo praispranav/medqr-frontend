@@ -69,6 +69,7 @@ export function jsonLd(c: DirectoryClinicProfile) {
     name: c.clinic_name,
     description: c.about ?? c.tagline ?? undefined,
     address: c.address ?? undefined,
-    telephone: c.public_phone ?? undefined,
+    telephone: c.public_phone ?? c.emergency_phone ?? undefined,
+    ...(c.is_open_24x7 ? { openingHours: 'Mo-Su 00:00-24:00', isAcceptingNewPatients: true } : {}),
   };
 }

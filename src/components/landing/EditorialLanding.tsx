@@ -19,6 +19,7 @@ export function EditorialLanding({ clinic, focusSlug, staffLoginHref, host }: La
   const doctors = orderedDoctors(clinic, focusSlug);
   const maps = directionsUrl(clinic);
   const tel = telHref(clinic.public_phone);
+  const emTel = telHref(clinic.emergency_phone ?? null);
   const canBook = clinic.booking_open !== false; // Decision 60: only opted-in clinics take online tokens
   const place = [clinic.address, clinic.city].filter(Boolean).join(', ');
 
@@ -42,7 +43,15 @@ export function EditorialLanding({ clinic, focusSlug, staffLoginHref, host }: La
         <section className="flex flex-col gap-5 max-w-3xl">
           {clinic.city && <p className="font-label-sm text-label-sm uppercase tracking-[0.14em] text-[#0F766E]">{clinic.city}</p>}
           <h1 className="text-[40px] leading-[46px] md:text-[56px] md:leading-[62px] font-medium tracking-[-0.015em]" style={serif}>{clinic.clinic_name}</h1>
-          {clinic.verified && <div><VerifiedBadge size="md" /></div>}
+          <div className="flex flex-wrap items-center gap-2">
+            {clinic.verified && <VerifiedBadge size="md" />}
+            {clinic.is_open_24x7 && (
+              <span className="px-3 py-1 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-900 font-label-sm text-label-sm font-semibold flex items-center gap-1.5 shadow-sm">
+                <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse" />
+                Open 24/7 (All the time)
+              </span>
+            )}
+          </div>
           {clinic.tagline && <p className="text-[22px] leading-[32px] italic text-[#1E293B]/75" style={serif}>{clinic.tagline}</p>}
           {clinic.about && <p className="font-body-lg text-body-lg text-[#1E293B]/80">{clinic.about}</p>}
           {clinic.highlights.length > 0 && (
@@ -58,7 +67,12 @@ export function EditorialLanding({ clinic, focusSlug, staffLoginHref, host }: La
                 <span className="material-symbols-outlined text-[20px]">confirmation_number</span> Get my token
               </Link>
             )}
-            {tel && <a href={tel} className={ghost}><span className="material-symbols-outlined text-[20px]">call</span> {clinic.public_phone}</a>}
+            {tel && <a href={tel} className={ghost}><span className="material-symbols-outlined text-[20px]">call</span> Call {clinic.public_phone}</a>}
+            {emTel && (
+              <a href={emTel} className="h-12 px-5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-label-lg text-label-lg flex items-center gap-2 transition-colors shadow-sm">
+                <span className="material-symbols-outlined text-[20px]">emergency</span> 24/7 Helpline: {clinic.emergency_phone}
+              </a>
+            )}
             {maps && <a href={maps} target="_blank" rel="noreferrer" className={ghost}><span className="material-symbols-outlined text-[20px]">near_me</span> Directions</a>}
           </div>
         </section>

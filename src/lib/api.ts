@@ -124,6 +124,12 @@ export interface Tenant {
   city?: string | null;
   address?: string | null;
   public_phone?: string | null;
+  /** 24/7 or emergency helpline phone number (optional). */
+  emergency_phone?: string | null;
+  /** Whether the clinic/hospital facility is open 24 hours / 7 days a week (all the time). */
+  is_open_24x7?: boolean;
+  /** Custom clinic operating hours summary (e.g. "Open 24/7" or "Mon-Sat: 8 AM - 9 PM"). */
+  operating_hours?: string | null;
   /** Billing/transactional contact email — never public. */
   contact_email?: string | null;
   public_slug?: string | null;
@@ -608,6 +614,12 @@ export interface DirectoryDoctorSummary {
   clinic_subdomain?: string;
   address?: string | null;
   public_phone?: string | null;
+  /** 24/7 or emergency helpline phone number (optional). */
+  emergency_phone?: string | null;
+  /** Whether the clinic/hospital facility is open 24 hours / 7 days a week (all the time). */
+  is_open_24x7?: boolean;
+  /** Custom clinic operating hours summary (e.g. "Open 24/7" or "Mon-Sat: 8 AM - 9 PM"). */
+  operating_hours?: string | null;
   maps_url?: string | null;
   available_today?: boolean;
 }
@@ -648,6 +660,12 @@ export interface DirectoryClinicProfile {
   city: string | null;
   address: string | null;
   public_phone: string | null;
+  /** 24/7 or emergency helpline phone number (optional). */
+  emergency_phone?: string | null;
+  /** Whether the clinic/hospital facility is open 24 hours / 7 days a week (all the time). */
+  is_open_24x7?: boolean;
+  /** Custom clinic operating hours summary (e.g. "Open 24/7" or "Mon-Sat: 8 AM - 9 PM"). */
+  operating_hours?: string | null;
   /** Decision 50 — the page the clinic designed: which look, and the words it wrote. */
   landing_template: LandingTemplate;
   tagline: string | null;
@@ -670,6 +688,12 @@ export interface DirectoryClinicSummary {
   subdomain?: string;
   maps_url?: string | null;
   public_phone?: string | null;
+  /** 24/7 or emergency helpline phone number (optional). */
+  emergency_phone?: string | null;
+  /** Whether the clinic/hospital facility is open 24 hours / 7 days a week (all the time). */
+  is_open_24x7?: boolean;
+  /** Custom clinic operating hours summary (e.g. "Open 24/7" or "Mon-Sat: 8 AM - 9 PM"). */
+  operating_hours?: string | null;
   available_today?: boolean;
   doctors?: { name: string; specialty: string | null; slug: string | null }[];
   specialties?: string[];
@@ -1044,7 +1068,7 @@ export const api = {
   // Public doctor/clinic directory (clinicq.fit/doctors) — clinic-wide fields: doctor/owner self-service (Decision 14).
   updateTenantPublicProfile: (
     tenantId: string,
-    patch: { is_publicly_listed?: boolean; city?: string | null; address?: string | null; public_phone?: string | null; maps_url?: string | null; landing_template?: LandingTemplate; landing_tagline?: string | null; landing_about?: string | null; landing_highlights?: string[] },
+    patch: { is_publicly_listed?: boolean; city?: string | null; address?: string | null; public_phone?: string | null; emergency_phone?: string | null; is_open_24x7?: boolean; operating_hours?: string | null; maps_url?: string | null; landing_template?: LandingTemplate; landing_tagline?: string | null; landing_about?: string | null; landing_highlights?: string[] },
   ) => request<Tenant>(`/tenants/${tenantId}/public-profile`, { method: 'PATCH', body: JSON.stringify(patch) }),
   /** Billing/transactional contact email — private, skips the public-profile moderation path. */
   updateTenantContactEmail: (tenantId: string, contact_email: string | null) =>

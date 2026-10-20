@@ -15,6 +15,9 @@ type ClinicDetailsPatch = {
   city: string | null;
   address: string | null;
   public_phone: string | null;
+  emergency_phone?: string | null;
+  is_open_24x7?: boolean;
+  operating_hours?: string | null;
   maps_url: string | null;
   landing_template: LandingTemplate;
   landing_tagline: string | null;
@@ -43,6 +46,9 @@ export function ClinicDetails({
   const [city, setCity] = useState(tenant.city ?? '');
   const [address, setAddress] = useState(tenant.address ?? '');
   const [phone, setPhone] = useState(tenant.public_phone ?? '');
+  const [emergencyPhone, setEmergencyPhone] = useState(tenant.emergency_phone ?? '');
+  const [isOpen24x7, setIsOpen24x7] = useState(!!tenant.is_open_24x7);
+  const [operatingHours, setOperatingHours] = useState(tenant.operating_hours ?? '');
   const [mapsUrl, setMapsUrl] = useState(tenant.maps_url ?? '');
   // Decision 50 — the public landing page
   const [template, setTemplate] = useState<LandingTemplate>(tenant.landing_template ?? 'editorial');
@@ -63,6 +69,9 @@ export function ClinicDetails({
     city !== (tenant.city ?? '') ||
     address !== (tenant.address ?? '') ||
     phone !== (tenant.public_phone ?? '') ||
+    emergencyPhone !== (tenant.emergency_phone ?? '') ||
+    isOpen24x7 !== !!tenant.is_open_24x7 ||
+    operatingHours !== (tenant.operating_hours ?? '') ||
     mapsUrl !== (tenant.maps_url ?? '') ||
     template !== (tenant.landing_template ?? 'editorial') ||
     tagline !== (tenant.landing_tagline ?? '') ||
@@ -102,7 +111,20 @@ export function ClinicDetails({
     setState('saving');
     setError(null);
     try {
-      const result = (await saveFn({ is_publicly_listed: listed, city: city || null, address: address || null, public_phone: phone || null, maps_url: mapsUrl.trim() || null, landing_template: template, landing_tagline: tagline.trim() || null, landing_about: about.trim() || null, landing_highlights: highlightList }));
+      const result = (await saveFn({
+        is_publicly_listed: listed,
+        city: city || null,
+        address: address || null,
+        public_phone: phone || null,
+        emergency_phone: emergencyPhone || null,
+        is_open_24x7: isOpen24x7,
+        operating_hours: operatingHours.trim() || null,
+        maps_url: mapsUrl.trim() || null,
+        landing_template: template,
+        landing_tagline: tagline.trim() || null,
+        landing_about: about.trim() || null,
+        landing_highlights: highlightList,
+      }));
       // Decision 67: a doubtful edit is held for ClinicQ instead of going live.
       const pending = (result as { review_pending?: string } | null)?.review_pending;
       setReviewNote(pending ? `Sent to ClinicQ for a quick check: ${pending}` : null);
@@ -125,6 +147,10 @@ export function ClinicDetails({
           <dd>{tenant.city || '—'}</dd>
           <dt className="text-on-surface-variant">Phone</dt>
           <dd>{tenant.public_phone || '—'}</dd>
+          <dt className="text-on-surface-variant">Emergency</dt>
+          <dd>{tenant.emergency_phone || '—'}</dd>
+          <dt className="text-on-surface-variant">Timing</dt>
+          <dd>{tenant.is_open_24x7 ? 'Open 24/7 (All the time)' : (tenant.operating_hours || 'OPD hours')}</dd>
           <dt className="text-on-surface-variant">Map pin</dt>
           <dd>{tenant.maps_url ? 'Set' : '—'}</dd>
           <dt className="text-on-surface-variant">Listed online</dt>
@@ -154,20 +180,93 @@ export function ClinicDetails({
           </button>
         </label>
         <p className="text-body-sm text-on-surface-variant">Save to apply listing privacy. When off, the clinic and its doctors are hidden from public directory search. Direct clinic and patient links continue to work. Demo clinics never appear in directory search.</p>
+        {/* Contact Numbers */}
+        <div className="bg-surface-container-low rounded-2xl p-4 border border-surface-container flex flex-col gap-3">
+          <div className="flex items-center gap-2">
+            <Icon name="call" className="text-[20px] text-primary" />
+            <h4 className="font-label-lg text-label-lg text-on-surface">Clinic Contact &amp; Phone Numbers</h4>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <label className="flex flex-col gap-1">
+              <span className="font-label-sm text-label-sm text-on-surface">Clinic Phone / Reception</span>
+              <input
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="080 1234 5678 or 98765 43210"
+                className="h-11 rounded-lg bg-surface-container-lowest px-3 font-body-md text-body-md border border-surface-container-high focus:outline-none focus:ring-2 focus:ring-primary/30"
+              />
+              <span className="text-[12px] text-on-surface-variant">Shown on your public page. Patients tap &quot;Call the clinic&quot; to reach reception.</span>
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="font-label-sm text-label-sm text-on-surface">24/7 Helpline / Emergency (Optional)</span>
+              <input
+                type="tel"
+                value={emergencyPhone}
+                onChange={(e) => setEmergencyPhone(e.target.value)}
+                placeholder="e.g. 98765 00000 or ambulance"
+                className="h-11 rounded-lg bg-surface-container-lowest px-3 font-body-md text-body-md border border-surface-container-high focus:outline-none focus:ring-2 focus:ring-primary/30"
+              />
+              <span className="text-[12px] text-on-surface-variant">Shown as an urgent emergency call button on your page.</span>
+            </label>
+          </div>
+        </div>
+
+        {/* Operating Hours & 24/7 Status */}
+        <div className="bg-surface-container-low rounded-2xl p-4 border border-surface-container flex flex-col gap-3">
+          <div className="flex items-center gap-2">
+            <Icon name="schedule" className="text-[20px] text-primary" />
+            <h4 className="font-label-lg text-label-lg text-on-surface">Facility Timings &amp; 24/7 Operations</h4>
+          </div>
+          <label className="flex items-center justify-between gap-3 bg-surface-container-lowest p-3 rounded-xl border border-surface-container-high cursor-pointer">
+            <div>
+              <p className="font-label-md text-label-md text-on-surface flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block animate-pulse" />
+                Clinic is Open 24 Hours / All The Time (24x7)
+              </p>
+              <p className="text-[12px] text-on-surface-variant mt-0.5">
+                Turn this on if your clinic, hospital, emergency ward, or pharmacy is open round the clock. Adds an &quot;Open 24/7&quot; badge to your page and directory search.
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={isOpen24x7}
+              onClick={() => {
+                setIsOpen24x7((v) => {
+                  const next = !v;
+                  if (next && !operatingHours) setOperatingHours('Open 24 Hours, 7 Days a Week');
+                  return next;
+                });
+              }}
+              className={`w-12 h-7 rounded-full p-0.5 transition-colors shrink-0 ${isOpen24x7 ? 'bg-primary' : 'bg-surface-container-high'}`}
+            >
+              <span className={`block w-6 h-6 rounded-full bg-white shadow transition-transform ${isOpen24x7 ? 'translate-x-5' : ''}`} />
+            </button>
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="font-label-sm text-label-sm text-on-surface">Facility Operating Hours Summary</span>
+            <input
+              value={operatingHours}
+              onChange={(e) => setOperatingHours(e.target.value)}
+              placeholder='e.g. "Open 24 Hours, 7 Days a Week" or "Mon-Sat: 8 AM - 9 PM"'
+              className="h-11 rounded-lg bg-surface-container-lowest px-3 font-body-md text-body-md border border-surface-container-high focus:outline-none focus:ring-2 focus:ring-primary/30"
+            />
+            <span className="text-[12px] text-on-surface-variant">General facility hours. Doctor OPD consulting hours are configured separately in My Hours.</span>
+          </label>
+        </div>
+
+        {/* Location & Map Pin */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <label className="flex flex-col gap-1">
             <span className="font-label-sm text-label-sm text-on-surface-variant">City</span>
             <input value={city} onChange={(e) => setCity(e.target.value)} placeholder="Trivandrum" className="h-11 rounded-lg bg-surface-container-low px-3 font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-primary/30" />
           </label>
           <label className="flex flex-col gap-1">
-            <span className="font-label-sm text-label-sm text-on-surface-variant">Public phone (optional)</span>
-            <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="0471 234 5678" className="h-11 rounded-lg bg-surface-container-low px-3 font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-primary/30" />
+            <span className="font-label-sm text-label-sm text-on-surface-variant">Address</span>
+            <input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="2nd Floor, MG Road" className="h-11 rounded-lg bg-surface-container-low px-3 font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-primary/30" />
           </label>
         </div>
-        <label className="flex flex-col gap-1">
-          <span className="font-label-sm text-label-sm text-on-surface-variant">Address (optional)</span>
-          <input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="2nd Floor, MG Road" className="h-11 rounded-lg bg-surface-container-low px-3 font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-primary/30" />
-        </label>
         <label className="flex flex-col gap-1">
           <span className="font-label-sm text-label-sm text-on-surface-variant">Google Maps link (optional)</span>
           <input

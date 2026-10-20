@@ -16,6 +16,7 @@ export function ClassicLanding({ clinic, focusSlug, staffLoginHref, host }: Land
   const doctors = orderedDoctors(clinic, focusSlug);
   const maps = directionsUrl(clinic);
   const tel = telHref(clinic.public_phone);
+  const emTel = telHref(clinic.emergency_phone ?? null);
   const canBook = clinic.booking_open !== false;
   const place = [clinic.address, clinic.city].filter(Boolean).join(', ');
   const points = canBook ? WHY : VISIT_TIPS;
@@ -32,15 +33,37 @@ export function ClassicLanding({ clinic, focusSlug, staffLoginHref, host }: Land
       <div className="max-w-3xl mx-auto px-5 py-8 flex flex-col gap-8">
         <section className="flex flex-col gap-3">
           <h1 className="font-headline-lg text-headline-lg">{clinic.clinic_name}</h1>
-          {clinic.verified && <div><VerifiedBadge size="md" /></div>}
+          <div className="flex flex-wrap items-center gap-2">
+            {clinic.verified && <div><VerifiedBadge size="md" /></div>}
+            {clinic.is_open_24x7 && (
+              <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-900 font-label-sm text-label-sm font-semibold flex items-center gap-1.5 shadow-sm">
+                <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse" />
+                Open 24/7 (All the time)
+              </span>
+            )}
+          </div>
           {clinic.tagline && <p className="font-body-lg text-body-lg text-gray-700">{clinic.tagline}</p>}
           {place && <p className="font-body-md text-body-md text-gray-600">{place}</p>}
           <div className="flex flex-wrap gap-2 pt-1">
             {canBook && <Link href={tokenHref(clinic, doctors.length === 1 ? doctors[0] : null, host)} className={btn}>Get my token</Link>}
             {tel && <a href={tel} className={ghost}>Call {clinic.public_phone}</a>}
+            {emTel && (
+              <a href={emTel} className="h-11 px-4 rounded-md bg-rose-600 hover:bg-rose-700 text-white font-label-lg text-label-lg flex items-center justify-center gap-2">
+                24/7 Helpline: {clinic.emergency_phone}
+              </a>
+            )}
             {maps && <a href={maps} target="_blank" rel="noreferrer" className={ghost}>Directions</a>}
           </div>
         </section>
+
+        {(clinic.is_open_24x7 || clinic.operating_hours) && (
+          <section>
+            <h2 className="font-title-lg text-title-lg font-semibold mb-1">Facility Hours</h2>
+            <p className="font-body-md text-body-md text-gray-700 font-medium">
+              {clinic.is_open_24x7 ? 'Open 24 Hours / 7 Days a week (All the time)' : clinic.operating_hours}
+            </p>
+          </section>
+        )}
 
         {clinic.about && <section><h2 className="font-title-lg text-title-lg font-semibold mb-1">About</h2><p className="font-body-md text-body-md text-gray-700">{clinic.about}</p></section>}
         {clinic.highlights.length > 0 && (

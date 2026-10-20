@@ -126,6 +126,23 @@ export const QueueRules = forwardRef<QueueRulesHandle, {
           </button>
         )}
       </div>
+
+      <div className="bg-surface-container-low border border-surface-container-high rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <span className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+            <Icon name="apartment" className="text-[20px]" />
+          </span>
+          <div>
+            <p className="font-label-lg text-label-lg text-on-surface">Clinic Contact Number &amp; 24/7 Hours</p>
+            <p className="font-body-sm text-body-sm text-on-surface-variant">
+              Set your public reception phone, emergency 24/7 helpline, round-the-clock availability, and address in Clinic Details.
+            </p>
+          </div>
+        </div>
+        <Link href="/manage/clinic" className="px-4 py-2 rounded-xl bg-surface-container-highest hover:bg-surface-container-high text-primary font-label-md text-label-md shrink-0 flex items-center gap-1.5 transition-colors">
+          Clinic Details <Icon name="arrow_forward" className="text-[18px]" />
+        </Link>
+      </div>
       {setupOpen && (
         <QueueSetupChat
           chat={chatFn}

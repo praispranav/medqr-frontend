@@ -18,6 +18,7 @@ export function PlayfulLanding({ clinic, focusSlug, staffLoginHref, host }: Land
   const doctors = orderedDoctors(clinic, focusSlug);
   const maps = directionsUrl(clinic);
   const tel = telHref(clinic.public_phone);
+  const emTel = telHref(clinic.emergency_phone ?? null);
   const place = [clinic.address, clinic.city].filter(Boolean).join(', ');
   const mainHref = tokenHref(clinic, doctors.length === 1 ? doctors[0] : null, host);
   const canBook = clinic.booking_open !== false; // Decision 60: only opted-in clinics take online tokens
@@ -43,7 +44,15 @@ export function PlayfulLanding({ clinic, focusSlug, staffLoginHref, host }: Land
           <div className="flex-1 flex flex-col gap-4">
             {clinic.city && <span className="self-start px-3 py-1 rounded-full bg-[#CCFBF1] text-[#0F766E] font-label-sm text-label-sm flex items-center gap-1"><span className="material-symbols-outlined text-[16px]">location_on</span>{clinic.city}</span>}
             <h1 className="font-headline-lg text-[34px] leading-[40px] md:text-[46px] md:leading-[52px] font-extrabold tracking-tight">{clinic.clinic_name}</h1>
-            {clinic.verified && <div><VerifiedBadge size="md" /></div>}
+            <div className="flex flex-wrap items-center gap-2">
+              {clinic.verified && <div><VerifiedBadge size="md" /></div>}
+              {clinic.is_open_24x7 && (
+                <span className="px-3 py-1 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-900 font-label-sm text-label-sm font-semibold flex items-center gap-1.5 shadow-sm">
+                  <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse" />
+                  Open 24/7 (All the time)
+                </span>
+              )}
+            </div>
             {clinic.tagline && <p className="font-body-lg text-body-lg text-[#0F2A24]/75">{clinic.tagline}</p>}
             {clinic.about && <p className="font-body-md text-body-md text-[#0F2A24]/70">{clinic.about}</p>}
             {clinic.highlights.length > 0 && (
@@ -75,6 +84,13 @@ export function PlayfulLanding({ clinic, focusSlug, staffLoginHref, host }: Land
               <p className="font-body-sm text-body-sm text-[#0F2A24]/70">{clinic.public_phone}</p>
             </a>
           ) : <div className="rounded-[1.75rem] bg-[#FFEDD5] p-5"><p className="font-title-lg font-bold">Need help?</p><p className="font-body-sm text-[#0F2A24]/70">Ask at the reception desk.</p></div>}
+          {emTel && (
+            <a href={emTel} className="rounded-[1.75rem] bg-rose-100 border border-rose-200 p-5 flex flex-col gap-2 hover:shadow-md transition-shadow">
+              <span className="material-symbols-outlined text-rose-700 !text-[32px]">emergency</span>
+              <p className="font-title-lg text-title-lg font-bold text-rose-950">24/7 Helpline</p>
+              <p className="font-body-sm text-body-sm text-rose-800">{clinic.emergency_phone}</p>
+            </a>
+          )}
           {canBook ? (
             <Link href={mainHref} className="rounded-[1.75rem] bg-[#0F766E] text-white p-5 flex flex-col gap-2 hover:bg-[#115E59] transition-colors">
               <span className="material-symbols-outlined !text-[32px]">confirmation_number</span>
@@ -113,7 +129,7 @@ export function PlayfulLanding({ clinic, focusSlug, staffLoginHref, host }: Land
         </section>
 
         {/* Location & hours */}
-        {(place || doctors.some((d) => d.hours)) && (
+        {(place || clinic.is_open_24x7 || clinic.operating_hours || doctors.some((d) => d.hours)) && (
           <section className="bg-white rounded-[2rem] shadow-[0_8px_30px_rgba(15,118,110,0.08)] p-6 md:p-8 grid md:grid-cols-2 gap-6">
             <div className="flex flex-col gap-2">
               <h2 className="font-headline-sm text-headline-sm font-extrabold">Find us</h2>
@@ -122,17 +138,37 @@ export function PlayfulLanding({ clinic, focusSlug, staffLoginHref, host }: Land
               <div className="flex flex-wrap gap-2 mt-2">
                 {maps && <a href={maps} target="_blank" rel="noreferrer" className="h-10 px-4 rounded-full bg-[#DCFCE7] text-[#0F766E] font-label-md text-label-md flex items-center">Open in Google Maps</a>}
                 {tel && <a href={tel} className="h-10 px-4 rounded-full bg-[#FFEDD5] text-[#9A4B00] font-label-md text-label-md flex items-center">Call front desk</a>}
+                {emTel && (
+                  <a href={emTel} className="h-10 px-4 rounded-full bg-rose-100 text-rose-800 font-label-md text-label-md flex items-center gap-1 font-semibold">
+                    <span className="material-symbols-outlined text-[18px]">emergency</span> 24/7 Helpline
+                  </a>
+                )}
               </div>
             </div>
             <div className="flex flex-col gap-2">
-              <h2 className="font-headline-sm text-headline-sm font-extrabold">Consulting hours</h2>
+              <h2 className="font-headline-sm text-headline-sm font-extrabold">Hours &amp; consultations</h2>
+              {clinic.is_open_24x7 ? (
+                <div className="rounded-2xl bg-emerald-50 border border-emerald-200 px-4 py-3">
+                  <p className="font-label-sm text-label-sm text-emerald-800 font-semibold flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse" /> Facility Hours
+                  </p>
+                  <p className="font-body-md text-body-md text-emerald-950 font-bold">Open 24 Hours / 7 Days a week (All the time)</p>
+                </div>
+              ) : clinic.operating_hours ? (
+                <div className="rounded-2xl bg-[#F4FBF6] px-4 py-3">
+                  <p className="font-label-sm text-label-sm text-[#0F766E] font-semibold">Facility Hours</p>
+                  <p className="font-body-md text-body-md">{clinic.operating_hours}</p>
+                </div>
+              ) : null}
               {doctors.filter((d) => d.hours).map((d) => (
                 <div key={d.id} className="rounded-2xl bg-[#F4FBF6] px-4 py-3">
                   {doctors.length > 1 && <p className="font-label-sm text-label-sm text-[#0F766E]">{d.name}</p>}
                   <p className="font-body-md text-body-md">{d.hours}</p>
                 </div>
               ))}
-              {!doctors.some((d) => d.hours) && <p className="font-body-md text-body-md text-[#0F2A24]/60">Hours appear here once the doctor sets them.</p>}
+              {!clinic.is_open_24x7 && !clinic.operating_hours && !doctors.some((d) => d.hours) && (
+                <p className="font-body-md text-body-md text-[#0F2A24]/60">Hours appear here once the doctor sets them.</p>
+              )}
             </div>
           </section>
         )}

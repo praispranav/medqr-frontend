@@ -13,6 +13,7 @@ export function BoldLanding({ clinic, focusSlug, staffLoginHref, host }: Landing
   const doctors = orderedDoctors(clinic, focusSlug);
   const maps = directionsUrl(clinic);
   const tel = telHref(clinic.public_phone);
+  const emTel = telHref(clinic.emergency_phone ?? null);
   const canBook = clinic.booking_open !== false;
   const place = [clinic.address, clinic.city].filter(Boolean).join(', ');
   const points = canBook ? WHY : VISIT_TIPS;
@@ -25,12 +26,25 @@ export function BoldLanding({ clinic, focusSlug, staffLoginHref, host }: Landing
           <div className="h-16 flex items-center gap-4"><BrandLogo />{staffLoginHref ? <Link href={staffLoginHref} className="ml-auto h-9 px-4 rounded-full bg-white/15 text-white font-label-md text-label-md flex items-center">Login</Link> : <Link href="/doctors" className="ml-auto text-white/80 font-label-md text-label-md">All doctors</Link>}</div>
           <div className="py-10 md:py-16 flex flex-col gap-4 max-w-3xl">
             <h1 className="text-[36px] leading-[42px] md:text-[52px] md:leading-[58px] font-bold">{clinic.clinic_name}</h1>
-            {clinic.verified && <div><VerifiedBadge size="md" /></div>}
+            <div className="flex flex-wrap items-center gap-2">
+              {clinic.verified && <div><VerifiedBadge size="md" /></div>}
+              {clinic.is_open_24x7 && (
+                <span className="px-3 py-1 rounded-full bg-emerald-300 text-emerald-950 font-label-sm text-label-sm font-semibold flex items-center gap-1.5 shadow-sm">
+                  <span className="w-2 h-2 rounded-full bg-emerald-800 animate-pulse" />
+                  Open 24/7 (All the time)
+                </span>
+              )}
+            </div>
             {clinic.tagline && <p className="text-[20px] leading-[30px] text-[#A7F3D0]">{clinic.tagline}</p>}
             {place && <p className="font-body-md text-body-md text-white/80">{place}</p>}
             <div className="hidden md:flex flex-wrap gap-3 pt-2">
               {canBook && <Link href={mainHref} className="h-14 px-8 rounded-full bg-white text-[#064E3B] font-label-lg text-label-lg flex items-center gap-2">Get my token</Link>}
               {tel && <a href={tel} className="h-14 px-6 rounded-full border border-white/40 text-white font-label-lg text-label-lg flex items-center gap-2">Call {clinic.public_phone}</a>}
+              {emTel && (
+                <a href={emTel} className="h-14 px-6 rounded-full bg-rose-500 hover:bg-rose-600 text-white font-label-lg text-label-lg flex items-center gap-2 font-semibold shadow-sm">
+                  <span className="material-symbols-outlined text-[22px]">emergency</span> 24/7 Helpline: {clinic.emergency_phone}
+                </a>
+              )}
               {maps && <a href={maps} target="_blank" rel="noreferrer" className="h-14 px-6 rounded-full border border-white/40 text-white font-label-lg text-label-lg flex items-center gap-2">Directions</a>}
             </div>
           </div>
@@ -38,6 +52,17 @@ export function BoldLanding({ clinic, focusSlug, staffLoginHref, host }: Landing
       </section>
 
       <div className="max-w-5xl mx-auto px-5 py-10 flex flex-col gap-10">
+        {(clinic.is_open_24x7 || clinic.operating_hours) && (
+          <section className="bg-white rounded-xl p-6 flex flex-col gap-2 shadow-sm border-l-4 border-[#047857]">
+            <h2 className="text-[20px] font-bold text-[#064E3B] flex items-center gap-2">
+              <span className="material-symbols-outlined text-[#047857]">schedule</span> Facility Operating Hours
+            </h2>
+            <p className="font-body-md text-body-md text-[#052E16]/85 font-medium">
+              {clinic.is_open_24x7 ? 'Open 24 Hours / 7 Days a week (All the time)' : clinic.operating_hours}
+            </p>
+          </section>
+        )}
+
         {(clinic.about || clinic.highlights.length > 0) && (
           <section className="bg-white rounded-xl p-6 flex flex-col gap-3 shadow-sm">
             {clinic.about && <p className="font-body-lg text-body-lg">{clinic.about}</p>}
@@ -87,10 +112,11 @@ export function BoldLanding({ clinic, focusSlug, staffLoginHref, host }: Landing
         {!canBook && <ClaimBox code={clinic.subdomain} />}
       </div>
 
-      <div className="md:hidden fixed bottom-0 inset-x-0 bg-white border-t border-[#064E3B]/15 p-3 flex gap-3 z-20">
+      <div className="md:hidden fixed bottom-0 inset-x-0 bg-white border-t border-[#064E3B]/15 p-3 flex gap-2 z-20">
         {canBook && <Link href={mainHref} className="flex-1 h-12 rounded-full bg-[#047857] text-white font-label-lg text-label-lg flex items-center justify-center">Get my token</Link>}
         {tel && <a href={tel} className="flex-1 h-12 rounded-full border border-[#047857] text-[#047857] font-label-lg text-label-lg flex items-center justify-center">Call</a>}
-        {!canBook && !tel && maps && <a href={maps} target="_blank" rel="noreferrer" className="flex-1 h-12 rounded-full bg-[#047857] text-white font-label-lg text-label-lg flex items-center justify-center">Directions</a>}
+        {emTel && <a href={emTel} className="flex-1 h-12 rounded-full bg-rose-600 text-white font-label-lg text-label-lg flex items-center justify-center font-semibold">24/7 Helpline</a>}
+        {!canBook && !tel && !emTel && maps && <a href={maps} target="_blank" rel="noreferrer" className="flex-1 h-12 rounded-full bg-[#047857] text-white font-label-lg text-label-lg flex items-center justify-center">Directions</a>}
       </div>
       <PublicFooter clinicCode={clinic.subdomain} />
     </main>

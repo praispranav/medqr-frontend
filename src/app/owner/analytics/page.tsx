@@ -14,7 +14,8 @@ export default function AnalyticsPage() {
   return <AdminShell active="/owner/analytics">{(api, me) => (me.role === 'super' || !me.role ? <Analytics api={api} /> : <p className="font-body-md text-body-md">Super admin only.</p>)}</AdminShell>;
 }
 
-const n = (v: number) => v.toLocaleString('en-IN');
+// Exact number under 1,000; "k" format (1 decimal, trimmed) from 1,000 up — e.g. 842, 1.2k, 10k.
+const n = (v: number) => (v < 1000 ? v.toLocaleString('en-IN') : `${(v / 1000).toFixed(1).replace(/\.0$/, '')}k`);
 
 function Analytics({ api }: { api: AdminApi }) {
   const [days, setDays] = useState(30);
