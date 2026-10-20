@@ -27,6 +27,10 @@ const newsreader = Newsreader({
   adjustFontFallback: false,
 });
 
+// Cloudflare Web Analytics site token (public by design — it only identifies which dashboard beacons
+// report to, same as a GA measurement ID). Unset locally so dev traffic never pollutes real numbers.
+const CF_ANALYTICS_TOKEN = process.env.NEXT_PUBLIC_CF_ANALYTICS_TOKEN;
+
 // Google Tag Manager container (as given by GTM: script high in <head>, noscript iframe right after <body>).
 const GTM_ID = 'GTM-WZFZQ5L6';
 const GTM_SNIPPET = `(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
@@ -125,6 +129,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* Google Tag Manager */}
         <script dangerouslySetInnerHTML={{ __html: GTM_SNIPPET }} />
         {/* End Google Tag Manager */}
+        {/* Cloudflare Web Analytics (2026-10-20) — free, no visitor cap, no cookies/consent banner
+            needed. One site token covers every host this app runs on (clinicq.in, clinicq.fit,
+            clinic subdomains); the dashboard is at dash.cloudflare.com/.../analytics/web. */}
+        {CF_ANALYTICS_TOKEN && (
+          <script
+            defer
+            src="https://static.cloudflare.com/beacon.min.js"
+            data-cf-beacon={`{"token": "${CF_ANALYTICS_TOKEN}"}`}
+          />
+        )}
         {/* Preload self-hosted Material Symbols font to eliminate critical request chain and FOUT */}
         <link
           rel="preload"
