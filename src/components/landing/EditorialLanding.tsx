@@ -53,6 +53,12 @@ export function EditorialLanding({ clinic, focusSlug, staffLoginHref, host }: La
               </span>
             )}
           </div>
+          {place && (
+            <p className="flex items-center gap-1.5 font-body-md text-body-md text-[#1E293B]/80 font-medium -mt-1">
+              <span className="material-symbols-outlined text-[18px] text-[#0F766E] shrink-0">location_on</span>
+              {place}
+            </p>
+          )}
           {clinic.tagline && <p className="text-[22px] leading-[32px] italic text-[#1E293B]/75" style={serif}>{clinic.tagline}</p>}
           {clinic.about && <p className="font-body-lg text-body-lg text-[#1E293B]/80">{clinic.about}</p>}
           {clinic.highlights.length > 0 && (

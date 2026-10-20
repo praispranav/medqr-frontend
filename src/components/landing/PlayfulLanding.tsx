@@ -43,7 +43,15 @@ export function PlayfulLanding({ clinic, focusSlug, staffLoginHref, host }: Land
         {/* Hero */}
         <section className="bg-white rounded-[2rem] shadow-[0_8px_30px_rgba(15,118,110,0.08)] p-6 md:p-10 flex flex-col md:flex-row gap-6 items-start">
           <div className="flex-1 flex flex-col gap-4">
-            {clinic.city && <span className="self-start px-3 py-1 rounded-full bg-[#CCFBF1] text-[#0F766E] font-label-sm text-label-sm flex items-center gap-1"><span className="material-symbols-outlined text-[16px]">location_on</span>{clinic.city}</span>}
+            {place ? (
+              <span className="self-start px-3 py-1 rounded-full bg-[#CCFBF1] text-[#0F766E] font-label-sm text-label-sm flex items-center gap-1">
+                <span className="material-symbols-outlined text-[16px]">location_on</span>{place}
+              </span>
+            ) : clinic.city ? (
+              <span className="self-start px-3 py-1 rounded-full bg-[#CCFBF1] text-[#0F766E] font-label-sm text-label-sm flex items-center gap-1">
+                <span className="material-symbols-outlined text-[16px]">location_on</span>{clinic.city}
+              </span>
+            ) : null}
             <h1 className="font-headline-lg text-[34px] leading-[40px] md:text-[46px] md:leading-[52px] font-extrabold tracking-tight">{clinic.clinic_name}</h1>
             <div className="flex flex-wrap items-center gap-2">
               {clinic.verified && <div><VerifiedBadge size="md" /></div>}
@@ -54,6 +62,12 @@ export function PlayfulLanding({ clinic, focusSlug, staffLoginHref, host }: Land
                 </span>
               )}
             </div>
+            {clinic.address && (
+              <p className="flex items-center gap-1.5 font-body-md text-body-md text-[#0F2A24]/80 font-medium -mt-1">
+                <span className="material-symbols-outlined text-[18px] text-[#0F766E] shrink-0">location_on</span>
+                {[clinic.address, clinic.city].filter(Boolean).join(', ')}
+              </p>
+            )}
             {clinic.tagline && <p className="font-body-lg text-body-lg text-[#0F2A24]/75">{clinic.tagline}</p>}
             {clinic.about && <p className="font-body-md text-body-md text-[#0F2A24]/70">{clinic.about}</p>}
             {clinic.highlights.length > 0 && (

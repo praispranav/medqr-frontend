@@ -325,6 +325,12 @@ export default function SelectDoctorPage() {
                 <Icon name="apartment" className="text-primary text-[20px] mt-0.5 flex-shrink-0" />
                 <div className="flex flex-col flex-1 min-w-0">
                   <span className="font-label-md text-label-md text-on-surface font-semibold">{clinicName}</span>
+                  {(tenant.address || tenant.city) && (
+                    <span className="font-body-sm text-body-sm text-on-surface-variant flex items-center gap-1">
+                      <Icon name="location_on" className="text-[14px] shrink-0 text-primary" />
+                      {[tenant.address, tenant.city].filter(Boolean).join(', ')}
+                    </span>
+                  )}
                   {d.cabin_label && <span className="font-body-sm text-body-sm text-on-surface-variant">{d.cabin_label}</span>}
                 </div>
                 {tenant.maps_url && (
@@ -414,6 +420,12 @@ export default function SelectDoctorPage() {
               <span className="font-label-sm text-label-sm font-bold uppercase tracking-wider">{clinicName}</span>
               <Icon name="verified" className="text-[14px] text-tertiary" />
             </div>
+            {tenant && (tenant.address || tenant.city) && (
+              <p className="font-body-sm text-body-sm text-on-surface-variant flex items-center gap-1 -mt-0.5">
+                <Icon name="location_on" className="text-[14px] shrink-0 text-primary" />
+                {[tenant.address, tenant.city].filter(Boolean).join(', ')}
+              </p>
+            )}
             <h2 className="font-headline-md text-headline-md text-on-surface font-extrabold tracking-tight">
               {t('sd_which')}
             </h2>

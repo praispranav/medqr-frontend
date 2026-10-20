@@ -512,9 +512,11 @@ function IntakeForm() {
               <span>{t('in_back')}</span>
             </button>
             <Link href={doctorsPage} aria-label="Home" className="min-h-[44px] min-w-[44px] flex items-center justify-center text-primary rounded-xl active:bg-primary-fixed/30 touch-manipulation"><Icon name="home" className="text-[22px]" /></Link>
-            <div className="flex items-center gap-2 px-3 py-1 bg-surface-container-low rounded-full min-w-0">
+            <div className="flex items-center gap-2 px-3 py-1 bg-surface-container-low rounded-full min-w-0" title={[tenant.address, tenant.city].filter(Boolean).join(', ') || clinicName}>
               <span className="w-2 h-2 rounded-full bg-primary animate-pulse flex-shrink-0" />
-              <span className="text-label-sm font-label-sm text-on-surface font-semibold tracking-wide truncate">{clinicName}</span>
+              <span className="text-label-sm font-label-sm text-on-surface font-semibold tracking-wide truncate">
+                {clinicName}{tenant.city ? ` · ${tenant.city}` : ''}
+              </span>
             </div>
             <span className="text-label-sm font-label-sm bg-primary-fixed text-on-primary-fixed px-2.5 py-0.5 rounded-full font-bold flex-shrink-0">
               {t('in_step')}
