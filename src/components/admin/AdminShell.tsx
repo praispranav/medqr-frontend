@@ -61,6 +61,26 @@ export function AdminShell({ active, children }: { active: string; children: (ap
   const [me, setMe] = useState<PlatformAdminMe | null | undefined>(undefined);
   const api = useMemo(() => adminApi(''), []);
 
+  // Fold-away sidebar sections: active section open by default, persists user toggles in localStorage
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('admin_sidebar_open_sections');
+      if (saved) setOpenSections(JSON.parse(saved));
+    } catch {}
+  }, []);
+
+  const toggleSection = (label: string, isOpen: boolean) => {
+    setOpenSections((prev) => {
+      const next = { ...prev, [label]: !isOpen };
+      try {
+        localStorage.setItem('admin_sidebar_open_sections', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  };
+
   useEffect(() => {
     platformAuth
       .me()
@@ -90,27 +110,6 @@ export function AdminShell({ active, children }: { active: string; children: (ap
     return <LoadingPage />;
   }
   const sections = sectionsOf(nav);
-
-  // Fold-away sidebar sections: active section open by default, persists user toggles in localStorage
-  const [openSections, setOpenSections] = useState<Record<string, boolean>>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const saved = localStorage.getItem('admin_sidebar_open_sections');
-        if (saved) return JSON.parse(saved);
-      } catch {}
-    }
-    return {};
-  });
-
-  const toggleSection = (label: string, isOpen: boolean) => {
-    setOpenSections((prev) => {
-      const next = { ...prev, [label]: !isOpen };
-      try {
-        localStorage.setItem('admin_sidebar_open_sections', JSON.stringify(next));
-      } catch {}
-      return next;
-    });
-  };
 
   return (
     <div className="min-h-screen bg-surface text-on-surface lg:flex">
