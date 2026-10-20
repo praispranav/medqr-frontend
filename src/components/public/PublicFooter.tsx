@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { BrandLogo } from '@/components/brand/BrandLogo';
-import { COMPANY_NAME, COMPANY_URL } from '@/components/support/contactInfo';
+import { COMPANY_NAME, COMPANY_URL, INSTAGRAM_URL } from '@/components/support/contactInfo';
 
 /** Shared close for the public directory and clinic pages. */
 export function PublicFooter({ clinicCode }: { clinicCode?: string }) {
@@ -22,6 +22,7 @@ export function PublicFooter({ clinicCode }: { clinicCode?: string }) {
           <Link href="/terms" className="min-h-11 inline-flex items-center">Terms</Link>
           <Link href="/privacy" className="min-h-11 inline-flex items-center">Privacy</Link>
           <Link href="/contact" className="min-h-11 inline-flex items-center">Contact &amp; help</Link>
+          <a href={INSTAGRAM_URL} target="_blank" rel="noopener noreferrer" className="min-h-11 inline-flex items-center">Instagram</a>
         </nav>
       </div>
     </div>
