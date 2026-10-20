@@ -12,7 +12,7 @@ async function resolve(slug: string) {
   return count ? { group, count } : null;
 }
 
-type SearchParams = { q?: string; city?: string; online?: string };
+type SearchParams = { q?: string; city?: string; online?: string; today?: string; area?: string };
 
 export async function generateMetadata({ params, searchParams }: { params: { specialty: string }; searchParams?: SearchParams }): Promise<Metadata> {
   const r = await resolve(params.specialty);
@@ -33,6 +33,16 @@ export async function generateMetadata({ params, searchParams }: { params: { spe
 export default async function SpecialtyPage({ params, searchParams }: { params: { specialty: string }; searchParams?: SearchParams }) {
   const r = await resolve(params.specialty);
   if (!r) notFound();
-  return <DoctorDirectoryPage group={r.group} city={searchParams?.city} q={searchParams?.q} bookable={searchParams?.online === '1'} landing={!searchParams?.q} />;
+  return (
+    <DoctorDirectoryPage
+      group={r.group}
+      city={searchParams?.city}
+      q={searchParams?.q}
+      bookable={searchParams?.online === '1'}
+      area={searchParams?.area}
+      today={searchParams?.today === '1'}
+      landing={!searchParams?.q && !searchParams?.city && !searchParams?.area && !searchParams?.online && !searchParams?.today}
+    />
+  );
 }
 

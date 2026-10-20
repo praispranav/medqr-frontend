@@ -168,12 +168,35 @@ export function SearchClientView({
     } catch {}
   };
 
-  // Restore city on mount, or prompt for location if no city chosen yet
+  // Restore filters and city on mount, or prompt for location if no city chosen yet
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    // 1. If URL query has ?city=..., that takes precedence
     const urlParams = new URLSearchParams(window.location.search);
+
+    // 1. Restore search query and type if in URL
+    const urlQ = urlParams.get('q');
+    if (urlQ && urlQ.trim()) setQ(urlQ.trim());
+
+    const urlType = urlParams.get('type') as Kind | null;
+    if (urlType && ['all', 'doctors', 'clinics'].includes(urlType)) {
+      setType(urlType);
+    }
+
+    // 2. Restore area, today, bookable, specialty if in URL
+    const urlArea = urlParams.get('area');
+    if (urlArea && urlArea.trim()) setArea(urlArea.trim());
+
+    if (urlParams.get('today') === '1') setToday(true);
+    if (urlParams.get('online') === '1') setBookable(true);
+
+    const urlSpecialty = urlParams.get('specialty');
+    if (urlSpecialty) {
+      const resolved = groupBySlug(urlSpecialty)?.slug || urlSpecialty;
+      setGroup(resolved);
+    }
+
+    // 3. If URL query has ?city=..., that takes precedence
     const urlCity = urlParams.get('city');
     if (urlCity) {
       setCity(urlCity);
@@ -181,20 +204,20 @@ export function SearchClientView({
       return;
     }
 
-    // 2. If initialCity was passed directly from route props (e.g. /doctors/in/patna)
+    // 4. If initialCity was passed directly from route props (e.g. /doctors/in/patna)
     if (initialCity) {
       setStoredCity(initialCity);
       return;
     }
 
-    // 3. Check if user already has a saved city in localStorage
+    // 5. Check if user already has a saved city in localStorage
     const saved = getStoredCity();
     if (saved) {
       setCity(saved);
       return;
     }
 
-    // 4. No city selected: check if prompt was already dismissed in this session
+    // 6. No city selected: check if prompt was already dismissed in this session
     try {
       const dismissed = sessionStorage.getItem(GEO_PROMPT_DISMISSED_KEY);
       if (dismissed === '1') return;
