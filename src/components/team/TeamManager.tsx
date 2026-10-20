@@ -297,7 +297,7 @@ function DoctorEditor({
       {directoryFields && (
         <>
           <label className="flex flex-col gap-1">
-            <span className="font-label-sm text-label-sm text-on-surface-variant">Public bio (shown on clinicq.fit/doctors)</span>
+            <span className="font-label-sm text-label-sm text-on-surface-variant">Public bio (shown on clinicq.in/doctors)</span>
             <textarea
               value={f.bio}
               placeholder="A short line about this doctor for patients searching online…"
