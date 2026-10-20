@@ -91,6 +91,27 @@ export function AdminShell({ active, children }: { active: string; children: (ap
   }
   const sections = sectionsOf(nav);
 
+  // Fold-away sidebar sections: active section open by default, persists user toggles in localStorage
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('admin_sidebar_open_sections');
+        if (saved) return JSON.parse(saved);
+      } catch {}
+    }
+    return {};
+  });
+
+  const toggleSection = (label: string, isOpen: boolean) => {
+    setOpenSections((prev) => {
+      const next = { ...prev, [label]: !isOpen };
+      try {
+        localStorage.setItem('admin_sidebar_open_sections', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  };
+
   return (
     <div className="min-h-screen bg-surface text-on-surface lg:flex">
       <aside className="hidden lg:flex w-60 shrink-0 flex-col bg-inverse-surface text-white min-h-screen sticky top-0 h-screen p-4 gap-4">
@@ -103,28 +124,49 @@ export function AdminShell({ active, children }: { active: string; children: (ap
             <p className="font-label-sm text-label-sm uppercase opacity-70">{marketer ? 'Marketer' : referrer ? 'Referral partner' : 'Platform admin'}</p>
           </div>
         </div>
-        <nav className="flex flex-col gap-1 overflow-y-auto">
-          {sections.map((sec) => (
-            <div key={sec.label ?? 'top'} className="flex flex-col gap-1">
-              {sec.label && (
-                <div className="mt-4 mb-1 px-3">
-                  <span className="font-label-sm text-label-sm opacity-60 uppercase tracking-wider">{sec.label}</span>
-                </div>
-              )}
-              {sec.items.map((n) => (
-                <Link
-                  key={n.href}
-                  href={n.href}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl font-label-lg text-label-lg ${
-                    active === n.href ? 'bg-primary-container' : 'opacity-80 hover:bg-white/10 hover:opacity-100'
-                  }`}
-                >
-                  <Icon name={n.icon} className="text-[20px]" />
-                  {n.label}
-                </Link>
-              ))}
-            </div>
-          ))}
+        <nav className="flex-1 min-h-0 flex flex-col gap-1 overflow-y-auto no-scrollbar custom-scrollbar pr-1">
+          {sections.map((sec) => {
+            const hasActive = sec.items.some(
+              (n) => active === n.href || (n.href === '/owner/clinics' && active.startsWith('/owner/clinics/'))
+            );
+            const open = sec.label ? (openSections[sec.label] ?? hasActive) : true;
+
+            return (
+              <div key={sec.label ?? 'top'} className="flex flex-col gap-1">
+                {sec.label && (
+                  <button
+                    type="button"
+                    onClick={() => toggleSection(sec.label!, open)}
+                    aria-expanded={open}
+                    className="mt-3 mb-1 px-3 py-1 flex items-center justify-between rounded-lg hover:bg-white/10 transition-colors text-left group cursor-pointer"
+                  >
+                    <span className="font-label-sm text-label-sm opacity-60 group-hover:opacity-90 uppercase tracking-wider font-semibold">
+                      {sec.label}
+                    </span>
+                    <Icon
+                      name={open ? 'expand_less' : 'expand_more'}
+                      className="text-[18px] opacity-60 group-hover:opacity-90 transition-transform"
+                    />
+                  </button>
+                )}
+                {open &&
+                  sec.items.map((n) => (
+                    <Link
+                      key={n.href}
+                      href={n.href}
+                      className={`flex items-center gap-3 px-3 py-2.5 rounded-xl font-label-lg text-label-lg transition-colors ${
+                        active === n.href || (n.href === '/owner/clinics' && active.startsWith('/owner/clinics/'))
+                          ? 'bg-primary-container text-white'
+                          : 'opacity-80 hover:bg-white/10 hover:opacity-100'
+                      }`}
+                    >
+                      <Icon name={n.icon} className="text-[20px]" />
+                      {n.label}
+                    </Link>
+                  ))}
+              </div>
+            );
+          })}
         </nav>
         <div className="mt-auto flex flex-col gap-1">
           <Link href="/" className="flex items-center gap-2 px-3 py-2 rounded-xl opacity-80 hover:bg-white/10 font-label-md text-label-md">

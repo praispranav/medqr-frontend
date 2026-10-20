@@ -324,7 +324,7 @@ export function StaffShell({
           </div>
         )}
 
-        <nav className="flex flex-col gap-1 overflow-y-auto">
+        <nav className="flex-1 min-h-0 flex flex-col gap-1 overflow-y-auto no-scrollbar custom-scrollbar pr-1">
           {sections.map((sec) => {
             const hasActive = sec.items.some((i) => i.href === active);
             const open = !sec.collapsible || (openSections[sec.label ?? ''] ?? hasActive);

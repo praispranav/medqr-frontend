@@ -21,13 +21,32 @@ const PAGE_SIZE = 30;
 function Clinics({ api, referrer }: { api: AdminApi; referrer: boolean }) {
   const router = useRouter();
   const [list, setList] = useState<AdminTenant[] | null>(null);
-  const [picked, setPicked] = useState<string[]>([]); // empty = all products
+  const [picked, setPicked] = useState<string[]>(() => {
+    if (typeof window !== 'undefined') {
+      const urlP = new URLSearchParams(window.location.search).get('product');
+      if (urlP) return urlP.split(',').filter(Boolean);
+      const saved = sessionStorage.getItem('owner_clinics_picked');
+      if (saved) {
+        try {
+          return JSON.parse(saved);
+        } catch {}
+      }
+    }
+    return [];
+  });
   const [products, setProducts] = useState([{ key: 'qr-token-system', name: 'QR Token System' }]);
   useEffect(() => {
     if (!referrer) api.directoryProducts().then(setProducts).catch((e: Error) => setError(e.message));
   }, [api, referrer]);
   // Paged from the server (search + product filter there); the next page loads as you scroll.
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const urlQ = new URLSearchParams(window.location.search).get('q');
+      if (urlQ != null) return urlQ;
+      return sessionStorage.getItem('owner_clinics_search') ?? '';
+    }
+    return '';
+  });
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const pageId = useRef(0);
@@ -46,6 +65,22 @@ function Clinics({ api, referrer }: { api: AdminApi; referrer: boolean }) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  // Sync search & picked filters to sessionStorage and URL
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('owner_clinics_search', search);
+      sessionStorage.setItem('owner_clinics_picked', JSON.stringify(picked));
+      const params = new URLSearchParams(window.location.search);
+      if (search.trim()) params.set('q', search.trim());
+      else params.delete('q');
+      if (picked.length) params.set('product', picked.join(','));
+      else params.delete('product');
+      const qStr = params.toString();
+      const newUrl = `${window.location.pathname}${qStr ? `?${qStr}` : ''}`;
+      window.history.replaceState(null, '', newUrl);
+    }
+  }, [search, picked]);
+
   const pageOpts = { q: search.trim() || undefined, product: referrer || !picked.length ? undefined : picked.join(','), limit: PAGE_SIZE };
   useEffect(() => {
     const id = ++pageId.current;
@@ -53,12 +88,30 @@ function Clinics({ api, referrer }: { api: AdminApi; referrer: boolean }) {
     const t = setTimeout(() => {
       api
         .tenantsPage({ ...pageOpts, offset: 0 })
-        .then((rows) => { if (id === pageId.current) { setList(rows); setHasMore(rows.length === PAGE_SIZE); } })
+        .then((rows) => {
+          if (id === pageId.current) {
+            setList(rows);
+            setHasMore(rows.length === PAGE_SIZE);
+          }
+        })
         .catch((e: Error) => setError(e.message));
     }, 250);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [api, search, picked.join(','), referrer]);
+
+  // Restore scroll position after returning from a clinic detail review
+  useEffect(() => {
+    if (list && list.length > 0 && typeof window !== 'undefined') {
+      const savedScroll = sessionStorage.getItem('owner_clinics_scroll');
+      if (savedScroll) {
+        sessionStorage.removeItem('owner_clinics_scroll');
+        setTimeout(() => {
+          window.scrollTo({ top: Number(savedScroll), behavior: 'instant' });
+        }, 60);
+      }
+    }
+  }, [list]);
 
   const loadMore = async () => {
     if (!list || !hasMore || loadingMore) return;
@@ -203,7 +256,15 @@ function Clinics({ api, referrer }: { api: AdminApi; referrer: boolean }) {
         {visibleClinics?.length === 0 && <p className="p-5 font-body-md text-body-md text-on-surface-variant">{search.trim() ? 'No clinics match this search.' : referrer || !picked.length ? 'No clinics yet — add the first one above.' : 'No clinics match this product.'}</p>}
         {visibleClinics?.map((t) => (
           <div key={t.id} className="flex items-center border-b border-surface-container last:border-0 hover:bg-surface-container-low">
-          <Link href={`/owner/clinics/${t.id}`} className="flex flex-1 min-w-0 items-center gap-4 pl-5 pr-2 py-4">
+          <Link
+            href={`/owner/clinics/${t.id}`}
+            onClick={() => {
+              if (typeof window !== 'undefined') {
+                sessionStorage.setItem('owner_clinics_scroll', String(window.scrollY));
+              }
+            }}
+            className="flex flex-1 min-w-0 items-center gap-4 pl-5 pr-2 py-4"
+          >
             {t.clinic_number != null && (
               <span className="font-label-md text-label-md text-on-surface-variant shrink-0 w-10 text-right tabular-nums" title="Clinic number">
                 #{t.clinic_number}

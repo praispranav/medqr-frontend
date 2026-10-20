@@ -43,13 +43,24 @@ function Listings({ api, marketer }: { api: AdminApi; marketer: boolean }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const seen = useRef<Set<string>>(new Set()); // ids we've already decided a default for, so unticking survives a reload
 
-  const [search, setSearch] = useState('');
-  const [skip, setSkip] = useState('');
-  const [area, setArea] = useState('');
-  const [category, setCategory] = useState('');
-  const [onlyPhone, setOnlyPhone] = useState(false);
-  const [showImported, setShowImported] = useState(false);
+  const [search, setSearch] = useState(() => (typeof window !== 'undefined' ? sessionStorage.getItem('owner_listings_search') ?? '' : ''));
+  const [skip, setSkip] = useState(() => (typeof window !== 'undefined' ? sessionStorage.getItem('owner_listings_skip') ?? '' : ''));
+  const [area, setArea] = useState(() => (typeof window !== 'undefined' ? sessionStorage.getItem('owner_listings_area') ?? '' : ''));
+  const [category, setCategory] = useState(() => (typeof window !== 'undefined' ? sessionStorage.getItem('owner_listings_cat') ?? '' : ''));
+  const [onlyPhone, setOnlyPhone] = useState(() => (typeof window !== 'undefined' ? sessionStorage.getItem('owner_listings_phone') === 'true' : false));
+  const [showImported, setShowImported] = useState(() => (typeof window !== 'undefined' ? sessionStorage.getItem('owner_listings_imported') === 'true' : false));
   const [limit, setLimit] = useState(SHOW_AT_A_TIME);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('owner_listings_search', search);
+      sessionStorage.setItem('owner_listings_skip', skip);
+      sessionStorage.setItem('owner_listings_area', area);
+      sessionStorage.setItem('owner_listings_cat', category);
+      sessionStorage.setItem('owner_listings_phone', String(onlyPhone));
+      sessionStorage.setItem('owner_listings_imported', String(showImported));
+    }
+  }, [search, skip, area, category, onlyPhone, showImported]);
 
   const load = async () => {
     try {
