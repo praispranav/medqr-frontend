@@ -8,7 +8,6 @@ import { BrandLogo } from '@/components/brand/BrandLogo';
 import { patientUrl } from '@/lib/clinicHost';
 import { groupBySlug, groupOf } from '@/lib/specialtyGroups';
 import { cityFromSlug } from '@/lib/directoryServer';
-import { AskOnlineBooking } from '@/components/directory/AskOnlineBooking';
 import { VerifiedBadge } from '@/components/directory/VerifiedBadge';
 
 // Public, server-rendered doctor profile — the actual target of clinicq.fit/doctors search results and
@@ -128,7 +127,7 @@ export default async function DoctorProfilePage({ params, searchParams }: { para
         </div>
 
         {/* Decision 60: only clinics that opted in take online tokens. */}
-        {doctor.booking_open !== false ? (
+        {doctor.booking_open !== false && (
           <>
             <Link
               href={patientUrl(`/patient/${doctor.clinic_subdomain}/intake?doctorId=${doctor.id}`, headers().get('host'))}
@@ -138,12 +137,6 @@ export default async function DoctorProfilePage({ params, searchParams }: { para
             </Link>
             <p className="text-center font-body-sm text-body-sm text-on-surface-variant">No app download — instant QR check-in via ClinicQ.</p>
           </>
-        ) : (
-          <div className="bg-surface-container-lowest rounded-2xl shadow-sm p-6 flex flex-col items-center text-center gap-3">
-            <p className="font-body-md text-body-md text-on-surface-variant">Online OPD booking isn&apos;t available for this doctor yet.</p>
-            <AskOnlineBooking doctorSlug={doctor.slug} />
-            <Link href={`/claim/${doctor.clinic_subdomain}`} className="font-body-sm text-body-sm text-primary underline">Is this your clinic?</Link>
-          </div>
         )}
       </div>
     </main>

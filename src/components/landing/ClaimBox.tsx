@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import { AskOnlineBooking } from '@/components/directory/AskOnlineBooking';
 
 /**
  * Decision 60 — shown on a listed clinic's page instead of "Get my token" when the clinic doesn't take
@@ -7,15 +6,6 @@ import { AskOnlineBooking } from '@/components/directory/AskOnlineBooking';
  */
 export function ClaimBox({ code }: { code: string }) {
   return (
-    <div className="flex flex-col gap-4">
-    {/* Decision 66: patients can ask this clinic for online OPD booking. */}
-    <section className="rounded-3xl bg-white p-6 md:p-8 flex flex-col md:flex-row md:items-center gap-4 border border-[#0F766E]/15">
-      <div className="flex-1">
-        <h2 className="font-headline-sm text-headline-sm font-bold text-[#0F2A24]">Online OPD booking isn&apos;t available here yet</h2>
-        <p className="mt-1 font-body-md text-body-md text-[#0F2A24]/70">Want to take your token from your phone and wait from home? Let the clinic know.</p>
-      </div>
-      <AskOnlineBooking clinicCode={code} />
-    </section>
     <section className="rounded-3xl border border-dashed border-[#0F766E]/40 bg-white p-6 md:p-8 flex flex-col md:flex-row md:items-center gap-4">
       <div className="flex-1">
         <h2 className="font-headline-sm text-headline-sm font-bold text-[#0F2A24]">Is this your clinic?</h2>
@@ -33,6 +23,5 @@ export function ClaimBox({ code }: { code: string }) {
         </Link>
       </div>
     </section>
-    </div>
   );
 }
