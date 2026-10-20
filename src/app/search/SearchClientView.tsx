@@ -98,7 +98,7 @@ export function SearchClientView({
   const saveQueue = useRef(Promise.resolve());
   const [accountRevision, setAccountRevision] = useState(0);
   useEffect(() => {
-    const changed = () => { accountEpoch.current++; locationRevision.current++; authenticatedLocation.current = null; setAccountRevision(v => v + 1); };
+    const changed = () => { setLocationStatus(null); accountEpoch.current++; locationRevision.current++; authenticatedLocation.current = null; setAccountRevision(v => v + 1); };
     window.addEventListener(PATIENT_DEVICE_EVENT, changed);
     return () => window.removeEventListener(PATIENT_DEVICE_EVENT, changed);
   }, []);
@@ -107,18 +107,19 @@ export function SearchClientView({
     locationRevision.current++;
     setCity(newCity);
     setStoredCity(newCity || null);
-    setLocationStatus(null);
+    setLocationStatus('Location saved in this browser');
     const revision = locationRevision.current;
     const epoch = accountEpoch.current;
     // Serialize saves so a slower request cannot restore an earlier selection.
     saveQueue.current = saveQueue.current.then(async () => {
       if (authenticatedLocation.current === false || epoch !== accountEpoch.current) return;
       try {
-        await api.saveLocationPreference(newCity, source);
+        const saved = await api.saveLocationPreference(newCity, source);
+        if (epoch !== accountEpoch.current) return;
         authenticatedLocation.current = true;
-        if (locationRevision.current === revision) setLocationStatus('Location saved to your account');
+        if (locationRevision.current === revision) setLocationStatus(saved.authenticated ? 'Location saved to your account' : 'Location saved in this browser');
       } catch (error) {
-        if (error instanceof ApiError && error.status === 401) authenticatedLocation.current = false;
+        if (error instanceof ApiError && error.status === 401) { authenticatedLocation.current = false; if (locationRevision.current === revision) setLocationStatus('Location saved in this browser'); }
         else if (locationRevision.current === revision) setLocationStatus('Location selected on this device. Could not save to your account; choose it again to retry.');
       }
     });

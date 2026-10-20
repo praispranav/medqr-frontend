@@ -1,3 +1,4 @@
+import { PublicAccountLink } from '@/components/public/PublicAccountLink';
 import { PublicFooter } from '@/components/public/PublicFooter';
 import type { Metadata } from 'next';
 import Link from 'next/link';
@@ -63,9 +64,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
             <Link href="/for-clinics" className="hover:text-on-surface">For clinics</Link>
           </nav>
           <div className="ml-auto flex items-center gap-2">
-            <Link href="/signin" className="h-10 px-5 inline-flex items-center rounded-xl bg-primary text-on-primary font-label-md text-label-md">
-              Sign in
-            </Link>
+            <PublicAccountLink />
           </div>
         </div>
       </header>

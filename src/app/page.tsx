@@ -1,3 +1,4 @@
+import { PublicAccountLink } from '@/components/public/PublicAccountLink';
 import { PublicFooter } from '@/components/public/PublicFooter';
 import type { Metadata } from 'next';
 import Link from 'next/link';
@@ -58,9 +59,7 @@ export default async function HomePage({ searchParams }: { searchParams?: { q?: 
           </nav>
           <div className="ml-auto flex items-center gap-2">
             {/* Decision 68: one sign-in for patients, doctors and clinic owners. */}
-            <Link href="/signin" className="h-10 px-5 inline-flex items-center whitespace-nowrap rounded-xl bg-primary text-on-primary font-label-md text-label-md">
-              Sign in
-            </Link>
+            <PublicAccountLink />
           </div>
         </div>
       </header>
