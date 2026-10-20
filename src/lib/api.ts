@@ -1161,7 +1161,7 @@ export const api = {
   directoryDoctor: (slug: string) => request<DirectoryDoctorProfile>(`/directory/doctors/${encodeURIComponent(slug)}`),
   directoryClinic: (slug: string) => request<DirectoryClinicProfile>(`/directory/clinics/${encodeURIComponent(slug)}`),
   // Decision 51 — clinics are searchable too (clinicq.fit/clinics), not just reachable via a doctor's page.
-  directoryClinicsSearch: (opts: { q?: string; city?: string; area?: string; bookable?: string; today?: string; offset?: string; limit?: string; any?: string } = {}) =>
+  directoryClinicsSearch: (opts: { q?: string; group?: string; specialty?: string; city?: string; area?: string; bookable?: string; today?: string; offset?: string; limit?: string; any?: string } = {}) =>
     request<DirectoryClinicSummary[]>(`/directory/clinics${toQuery(opts)}`),
   directorySpecialties: () => request<string[]>('/directory/specialties'),
   // Decision 64 — "Is this your clinic?": claim it or ask for removal, with proof documents.

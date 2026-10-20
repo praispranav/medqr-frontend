@@ -37,9 +37,10 @@ export function searchDoctors(opts: { q?: string; group?: string; city?: string;
   return getJson<DirectoryDoctorSummary[]>(`/directory/doctors?${p}`, []);
 }
 
-export function searchClinicsServer(opts: { q?: string; city?: string; area?: string; today?: boolean; bookable?: boolean; limit: number }) {
+export function searchClinicsServer(opts: { q?: string; group?: string; city?: string; area?: string; today?: boolean; bookable?: boolean; limit: number }) {
   const p = new URLSearchParams({ limit: String(opts.limit) });
   if (opts.q) p.set('q', opts.q);
+  if (opts.group) p.set('group', opts.group);
   if (opts.city) p.set('city', opts.city);
   if (opts.area) p.set('area', opts.area);
   if (opts.today) p.set('today', '1');

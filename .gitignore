@@ -19,4 +19,5 @@ build
 # vercel
 .vercel
 /.next-preview/
+/.next-profile-preview/
 *.bak

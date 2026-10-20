@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Icon } from '@/components/patient/ui';
 import { api, fileUrl, type DirectoryDoctorSummary, type DirectoryClinicSummary } from '@/lib/api';
 import { patientUrl } from '@/lib/clinicHost';
-import { groupOf, type SpecialtyGroup } from '@/lib/specialtyGroups';
+import { groupOf, groupBySlug, SPECIALTY_GROUPS, type SpecialtyGroup } from '@/lib/specialtyGroups';
 import { OnlineTokenBadge } from '@/components/directory/OnlineTokenBadge';
 import { VerifiedBadge } from '@/components/directory/VerifiedBadge';
 
@@ -38,18 +38,21 @@ const PAGE_SIZE = 24;
 const EMPTY_CITIES: string[] = [];
 const EMPTY_DOCTORS: DirectoryDoctorSummary[] = [];
 const EMPTY_CLINICS: DirectoryClinicSummary[] = [];
+const DEFAULT_GROUPS = SPECIALTY_GROUPS.map(g => ({ slug: g.slug, name: g.name }));
 const field = 'h-11 w-full min-w-0 rounded-xl bg-surface-container-low px-3 text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/40';
 
 export function SearchClientView({ initialQ = '', initialType = 'all', initialCity = '', initialArea = '', initialToday = false, initialBookable = false, initialGroup = '', initialDoctors = EMPTY_DOCTORS, initialClinics = EMPTY_CLINICS, cities: suppliedCities = EMPTY_CITIES, syncUrl = true }: Props) {
+  const resolvedInitialGroup = groupBySlug(initialGroup)?.slug || initialGroup;
   const [q, setQ] = useState(initialQ);
   const [type, setType] = useState<Kind>(initialType);
   const [city, setCity] = useState(initialCity);
   const [area, setArea] = useState(initialArea);
   const [today, setToday] = useState(initialToday);
   const [bookable, setBookable] = useState(initialBookable);
-  const [group, setGroup] = useState(initialGroup);
+  const [group, setGroup] = useState(resolvedInitialGroup);
   const [cities, setCities] = useState(suppliedCities);
-  const [groups, setGroups] = useState<{ slug: string; name: string }[]>([]);
+  const [groups, setGroups] = useState<{ slug: string; name: string }[]>(DEFAULT_GROUPS);
+  const [copied, setCopied] = useState(false);
   const [doctors, setDoctors] = useState(initialDoctors);
   const [clinics, setClinics] = useState(initialClinics);
   const [loading, setLoading] = useState(false);
@@ -66,11 +69,30 @@ export function SearchClientView({ initialQ = '', initialType = 'all', initialCi
     if (!suppliedCities.length) api.directoryCities().then(rows => { if (live) setCities(rows); }).catch(() => {});
     return () => { live = false; };
   }, [suppliedCities]);
+
   useEffect(() => {
     let live = true;
-    api.directorySpecialtyGroups(city || undefined).then(rows => { if (live) setGroups(rows); }).catch(() => {});
+    api.directorySpecialtyGroups(city || undefined).then(rows => {
+      if (!live) return;
+      const seen = new Set<string>();
+      const combined: { slug: string; name: string }[] = [];
+      for (const r of rows) {
+        if (!seen.has(r.slug)) {
+          seen.add(r.slug);
+          combined.push({ slug: r.slug, name: r.name });
+        }
+      }
+      for (const dg of DEFAULT_GROUPS) {
+        if (!seen.has(dg.slug)) {
+          seen.add(dg.slug);
+          combined.push(dg);
+        }
+      }
+      setGroups(combined);
+    }).catch(() => {});
     return () => { live = false; };
   }, [city]);
+
   useEffect(() => {
     if (!syncUrl) return;
     const params = new URLSearchParams();
@@ -82,10 +104,19 @@ export function SearchClientView({ initialQ = '', initialType = 'all', initialCi
     if (group) params.set('specialty', group);
     if (bookable) params.set('online', '1');
     // A single URL keeps tabs and filters intact when a result is opened and the patient returns.
-    window.history.replaceState(null, '', `/search${params.size ? `?${params}` : ''}`);
+    window.history.replaceState(null, '', `/search${params.size ? `?${params.toString()}` : ''}`);
   }, [q, type, city, area, today, group, bookable, syncUrl]);
 
-  const filters = () => ({ q: q.trim() || undefined, city: city || undefined, area: area.trim() || undefined, today: today ? '1' : undefined, bookable: bookable ? '1' : undefined, limit: String(PAGE_SIZE) });
+  const filters = () => ({
+    q: q.trim() || undefined,
+    group: group || undefined,
+    city: city || undefined,
+    area: area.trim() || undefined,
+    today: today ? '1' : undefined,
+    bookable: bookable ? '1' : undefined,
+    limit: String(PAGE_SIZE),
+  });
+
   useEffect(() => {
     const id = ++generation.current;
     setLoading(true); setFailed(false); setPageError(null);
@@ -94,8 +125,19 @@ export function SearchClientView({ initialQ = '', initialType = 'all', initialCi
     setLoadingPage({ doctors: false, clinics: false });
     const timer = setTimeout(async () => {
       try {
-        const common = { q: q.trim() || undefined, city: city || undefined, area: area.trim() || undefined, today: today ? '1' : undefined, bookable: bookable ? '1' : undefined, limit: String(PAGE_SIZE) };
-        const [docs, cls] = await Promise.all([api.directorySearch({ ...common, group: group || undefined }), api.directoryClinicsSearch(common)]);
+        const common = {
+          q: q.trim() || undefined,
+          group: group || undefined,
+          city: city || undefined,
+          area: area.trim() || undefined,
+          today: today ? '1' : undefined,
+          bookable: bookable ? '1' : undefined,
+          limit: String(PAGE_SIZE),
+        };
+        const [docs, cls] = await Promise.all([
+          api.directorySearch(common),
+          api.directoryClinicsSearch(common),
+        ]);
         if (id !== generation.current) return;
         setDoctors(docs); setClinics(cls);
         setMore({ doctors: docs.length === PAGE_SIZE, clinics: cls.length === PAGE_SIZE });
@@ -111,9 +153,13 @@ export function SearchClientView({ initialQ = '', initialType = 'all', initialCi
     locks.current[kind] = true;
     setLoadingPage(prev => ({ ...prev, [kind]: true })); setPageError(null);
     try {
-      const common = { ...filters(), offset: String(kind === 'doctors' ? doctors.length : clinics.length) };
+      const common = {
+        ...filters(),
+        group: group || undefined,
+        offset: String(kind === 'doctors' ? doctors.length : clinics.length),
+      };
       if (kind === 'doctors') {
-        const rows = await api.directorySearch({ ...common, group: group || undefined });
+        const rows = await api.directorySearch(common);
         if (id !== generation.current) return;
         setDoctors(prev => [...prev, ...rows.filter(row => !prev.some(p => p.slug === row.slug))]);
         setMore(prev => ({ ...prev, doctors: rows.length === PAGE_SIZE }));
@@ -126,6 +172,32 @@ export function SearchClientView({ initialQ = '', initialType = 'all', initialCi
     } catch { if (id === generation.current) setPageError(kind); }
     finally { if (id === generation.current) { locks.current[kind] = false; setLoadingPage(prev => ({ ...prev, [kind]: false })); } }
   };
+
+  const handleShare = async () => {
+    if (typeof window === 'undefined') return;
+    const url = window.location.href;
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'ClinicQ Search Results',
+          url,
+        });
+        return;
+      } catch {
+        // User cancelled share or share sheet failed, fallback to clipboard
+      }
+    }
+    if (navigator.clipboard) {
+      try {
+        await navigator.clipboard.writeText(url);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2200);
+      } catch {
+        // Clipboard permission denied
+      }
+    }
+  };
+
   const clear = () => { setQ(''); setCity(''); setArea(''); setGroup(''); setToday(false); setBookable(false); };
   const count = type === 'doctors' ? doctors.length : type === 'clinics' ? clinics.length : doctors.length + clinics.length;
   const pill = (active: boolean) => `inline-flex h-9 items-center justify-center gap-1.5 rounded-full border px-3 text-label-md font-label-md transition-colors ${active ? 'border-primary bg-primary text-on-primary' : 'border-outline-variant/40 bg-transparent text-on-surface-variant hover:border-primary hover:text-primary'}`;
@@ -133,7 +205,7 @@ export function SearchClientView({ initialQ = '', initialType = 'all', initialCi
   return <div className="flex flex-col gap-5">
     <div className="rounded-2xl bg-surface-container-lowest p-3 sm:p-4 flex flex-col gap-3 shadow-sm">
       <div className="flex gap-1 rounded-xl bg-surface-container-low p-1 self-start" aria-label="Search category">
-        {(['all', 'doctors', 'clinics'] as const).map(kind => <button key={kind} aria-pressed={type === kind} onClick={() => { setType(kind); if (kind !== 'doctors') setGroup(''); }} className={`h-9 px-4 rounded-lg text-label-md font-label-md ${type === kind ? 'bg-primary text-on-primary' : 'text-on-surface-variant hover:text-primary'}`}>{kind === 'all' ? 'All' : kind === 'doctors' ? 'Doctors' : 'Clinics'}</button>)}
+        {(['all', 'doctors', 'clinics'] as const).map(kind => <button key={kind} aria-pressed={type === kind} onClick={() => setType(kind)} className={`h-9 px-4 rounded-lg text-label-md font-label-md ${type === kind ? 'bg-primary text-on-primary' : 'text-on-surface-variant hover:text-primary'}`}>{kind === 'all' ? 'All' : kind === 'doctors' ? 'Doctors' : 'Clinics'}</button>)}
       </div>
       <div className="grid grid-cols-2 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)] gap-2">
         <label className="col-span-2 md:col-span-1 flex items-center gap-2 rounded-xl bg-surface-container-low px-3"><Icon name="search" className="text-[20px] text-primary shrink-0"/><input aria-label="Search doctors and clinics" placeholder="Doctor, clinic or specialty" value={q} onChange={e => setQ(e.target.value)} className="h-11 w-full min-w-0 bg-transparent text-body-md outline-none"/>{q && <button aria-label="Clear search" onClick={() => setQ('')} className="flex h-10 w-8 shrink-0 items-center justify-center"><Icon name="close" className="text-[18px]"/></button>}</label>
@@ -143,11 +215,26 @@ export function SearchClientView({ initialQ = '', initialType = 'all', initialCi
       <div className="flex flex-wrap items-center gap-2">
         <button aria-pressed={bookable} onClick={() => setBookable(!bookable)} className={pill(bookable)}><Icon name="confirmation_number" className="text-[17px]"/>Online token</button>
         <button aria-pressed={today} onClick={() => setToday(!today)} className={pill(today)}><Icon name="today" className="text-[17px]"/>Available today</button>
-        {type === 'doctors' && <select aria-label="Specialty" value={group} onChange={e => setGroup(e.target.value)} className="h-9 min-w-0 max-w-full rounded-full border border-outline-variant/40 bg-transparent px-3 text-label-md"><option value="">All specialties</option>{groups.map(g => <option value={g.slug} key={g.slug}>{g.name}</option>)}</select>}
+        <select aria-label="Specialty" value={group} onChange={e => setGroup(e.target.value)} className="h-9 min-w-0 max-w-full rounded-full border border-outline-variant/40 bg-transparent px-3 text-label-md"><option value="">All specialties</option>{groups.map(g => <option value={g.slug} key={g.slug}>{g.name}</option>)}</select>
         {(q || city || area || group || today || bookable) && <button onClick={clear} className="min-h-9 px-2 text-label-md text-primary underline underline-offset-4">Clear</button>}
       </div>
     </div>
-    <div className="flex flex-wrap justify-between items-center gap-1 text-body-sm text-on-surface-variant" aria-live="polite"><span>{loading ? 'Updating results…' : `${count}${(type !== 'clinics' && more.doctors) || (type !== 'doctors' && more.clinics) ? '+' : ''} results${city ? ` in ${city}` : ''}`}</span><span>Online booking clinics first</span></div>
+    <div className="flex flex-wrap justify-between items-center gap-2 text-body-sm text-on-surface-variant" aria-live="polite">
+      <span>{loading ? 'Updating results…' : `${count}${(type !== 'clinics' && more.doctors) || (type !== 'doctors' && more.clinics) ? '+' : ''} results${city ? ` in ${city}` : ''}`}</span>
+      <div className="flex items-center gap-3">
+        <span>Online booking clinics first</span>
+        <button
+          type="button"
+          onClick={handleShare}
+          title="Share or copy search link"
+          aria-label="Share or copy search link"
+          className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full border border-primary/20 bg-primary/5 hover:bg-primary/10 text-primary font-label-sm text-label-sm transition-colors cursor-pointer"
+        >
+          <Icon name={copied ? 'check' : 'share'} className="text-[16px]" />
+          <span>{copied ? 'Link copied!' : 'Share search'}</span>
+        </button>
+      </div>
+    </div>
     {failed && <p role="alert" className="rounded-xl bg-error-container p-4 text-on-error-container">Search couldn’t be loaded. <button onClick={() => setRetry(v => v + 1)} className="min-h-11 underline">Try again</button></p>}
     {!loading && !failed && count === 0 && <div className="rounded-2xl bg-white p-8 text-center"><h2 className="text-title-md">No results match these filters</h2><p className="mt-2 text-body-md text-on-surface-variant">Try another name, area or city.</p><button onClick={clear} className="mt-3 min-h-11 text-primary underline">Show all results</button></div>}
     {(type === 'all' || type === 'doctors') && doctors.length > 0 && <section className="flex flex-col gap-3" aria-label="Doctor results"><h2 className="text-title-lg font-headline-sm">Doctors</h2><div className="grid grid-cols-1 md:grid-cols-2 gap-3" aria-busy={loading}>{doctors.map(d => <ResultCard key={d.slug} href={`/doctors/${d.slug}`} name={d.name} photo={d.photo_url} icon="stethoscope" subtitle={groupOf(d.specialty)?.name ?? d.specialty} detail={d.clinic_name} address={d.address} city={d.city} verified={d.verified} online={d.booking_open} phone={d.public_phone} isOpen24x7={d.is_open_24x7} emergencyPhone={d.emergency_phone} maps={d.maps_url} experienceYears={d.experience_years} booking={d.id && d.clinic_subdomain ? patientUrl(`/patient/${d.clinic_subdomain}/intake?doctorId=${encodeURIComponent(d.id)}`) : `/doctors/${d.slug}`} />)}</div>{pagination('doctors')}</section>}

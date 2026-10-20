@@ -41,11 +41,12 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
   const area = searchParams.area?.trim() || undefined;
   const today = searchParams.today === '1';
   const group = groupBySlug(searchParams.specialty);
+  const specialtySlug = group?.slug || searchParams.specialty?.trim() || undefined;
   const bookable = searchParams.online === '1';
 
   const [doctors, clinics, cities] = await Promise.all([
-    searchDoctors({ q: q || undefined, city, area, today, group: group?.slug, bookable, limit: 24 }),
-    searchClinicsServer({ q: q || undefined, city, area, today, bookable, limit: 24 }),
+    searchDoctors({ q: q || undefined, city, area, today, group: specialtySlug, bookable, limit: 24 }),
+    searchClinicsServer({ q: q || undefined, group: specialtySlug, city, area, today, bookable, limit: 24 }),
     directoryCities(),
   ]);
 
@@ -77,7 +78,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
           initialBookable={bookable}
           initialArea={area}
           initialToday={today}
-          initialGroup={group?.slug}
+          initialGroup={specialtySlug ?? ''}
           initialDoctors={doctors}
           initialClinics={clinics}
           cities={cities}
