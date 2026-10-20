@@ -1,8 +1,9 @@
+import { ClinicVisitDetails } from './ClinicVisitDetails';
 import { PublicFooter } from '@/components/public/PublicFooter';
 import Link from 'next/link';
 import { BrandLogo } from '@/components/brand/BrandLogo';
 import { fileUrl, type DirectoryLandingDoctor } from '@/lib/api';
-import { WHY, VISIT_TIPS, directionsUrl, initials, orderedDoctors, telHref, webHref, tokenHref, type LandingProps } from './landingData';
+import { WHY, VISIT_TIPS, directionsUrl, initials, orderedDoctors, telHref, tokenHref, type LandingProps } from './landingData';
 import { ClaimBox } from './ClaimBox';
 import { ClinicReviews } from './ClinicReviews';
 import { VerifiedBadge } from '@/components/directory/VerifiedBadge';
@@ -20,9 +21,7 @@ export function EditorialLanding({ clinic, focusSlug, staffLoginHref, host }: La
   const maps = directionsUrl(clinic);
   const tel = telHref(clinic.public_phone);
   const emTel = telHref(clinic.emergency_phone ?? null);
-  const web = webHref(clinic.website_url);
   const canBook = clinic.booking_open !== false; // Decision 60: only opted-in clinics take online tokens
-  const place = [clinic.address, clinic.city].filter(Boolean).join(', ');
 
   return (
     <main className="min-h-screen bg-[#FBFAF7] text-[#1E293B]">
@@ -39,12 +38,12 @@ export function EditorialLanding({ clinic, focusSlug, staffLoginHref, host }: La
         </div>
       </header>
 
-      <div className="max-w-5xl mx-auto px-5 py-10 md:py-14 flex flex-col gap-14">
+      <div className="max-w-5xl mx-auto px-5 py-8 md:py-10 flex flex-col gap-9 md:gap-10">
         {/* Hero */}
-        <section className="flex flex-col gap-5 max-w-3xl">
-          {clinic.city && <p className="font-label-sm text-label-sm uppercase tracking-[0.14em] text-[#0F766E]">{clinic.city}</p>}
-          <h1 className="text-[40px] leading-[46px] md:text-[56px] md:leading-[62px] font-medium tracking-[-0.015em]" style={serif}>{clinic.clinic_name}</h1>
-          <div className="flex flex-wrap items-center gap-2">
+        <section className="flex flex-col gap-4 max-w-4xl">
+          <h1 className="text-[30px] leading-[37px] md:text-[44px] md:leading-[52px] font-medium tracking-[-0.015em]" style={serif}>{clinic.clinic_name}</h1>
+          {(clinic.city || clinic.verified || clinic.is_open_24x7) && <div className="flex flex-wrap items-center gap-2">
+            {clinic.city && <p className="font-body-md text-body-md text-[#1E293B]/75">{clinic.city}</p>}
             {clinic.verified && <VerifiedBadge size="md" />}
             {clinic.is_open_24x7 && (
               <span className="px-3 py-1 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-900 font-label-sm text-label-sm font-semibold flex items-center gap-1.5 shadow-sm">
@@ -52,13 +51,7 @@ export function EditorialLanding({ clinic, focusSlug, staffLoginHref, host }: La
                 Open 24/7 (All the time)
               </span>
             )}
-          </div>
-          {place && (
-            <p className="flex items-center gap-1.5 font-body-md text-body-md text-[#1E293B]/80 font-medium -mt-1">
-              <span className="material-symbols-outlined text-[18px] text-[#0F766E] shrink-0">location_on</span>
-              {place}
-            </p>
-          )}
+          </div>}
           {clinic.tagline && <p className="text-[22px] leading-[32px] italic text-[#1E293B]/75" style={serif}>{clinic.tagline}</p>}
           {clinic.about && <p className="font-body-lg text-body-lg text-[#1E293B]/80">{clinic.about}</p>}
           {clinic.highlights.length > 0 && (
@@ -74,17 +67,13 @@ export function EditorialLanding({ clinic, focusSlug, staffLoginHref, host }: La
                 <span className="material-symbols-outlined text-[20px]">confirmation_number</span> Get my token
               </Link>
             )}
-            {tel && <a href={tel} className={ghost}><span className="material-symbols-outlined text-[20px]">call</span> Call {clinic.public_phone}</a>}
+            {tel && <a href={tel} className={ghost}><span className="material-symbols-outlined text-[20px]">call</span> Call clinic</a>}
             {emTel && (
               <a href={emTel} className="h-12 px-5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-label-lg text-label-lg flex items-center gap-2 transition-colors shadow-sm">
                 <span className="material-symbols-outlined text-[20px]">emergency</span> 24/7 Helpline: {clinic.emergency_phone}
               </a>
             )}
-            {web && (
-              <a href={web} target="_blank" rel="noopener noreferrer" className={ghost}>
-                <span className="material-symbols-outlined text-[20px]">language</span> Website
-              </a>
-            )}
+
             {maps && <a href={maps} target="_blank" rel="noreferrer" className={ghost}><span className="material-symbols-outlined text-[20px]">near_me</span> Directions</a>}
           </div>
         </section>
@@ -98,6 +87,8 @@ export function EditorialLanding({ clinic, focusSlug, staffLoginHref, host }: La
             </div>
           </section>
         )}
+
+        <ClinicVisitDetails clinic={clinic} doctors={doctors} className="bg-[#F4F1EA]" />
 
         {/* Why */}
         <section className="flex flex-col gap-6">
@@ -114,31 +105,6 @@ export function EditorialLanding({ clinic, focusSlug, staffLoginHref, host }: La
             ))}
           </ol>
         </section>
-
-        {/* Location & hours */}
-        {(place || doctors.some((d) => d.hours)) && (
-          <section className={`${card} p-6 md:p-8 grid md:grid-cols-2 gap-8`}>
-            <div className="flex flex-col gap-3">
-              <h2 className="text-[26px] leading-[34px] font-medium" style={serif}>Find us</h2>
-              <p className="font-body-lg text-body-lg font-semibold">{clinic.clinic_name}</p>
-              {place && <p className="font-body-md text-body-md text-[#1E293B]/75">{place}</p>}
-              <div className="flex flex-wrap gap-3 mt-1">
-                {maps && <a href={maps} target="_blank" rel="noreferrer" className={ghost}>Open in Google Maps</a>}
-                {tel && <a href={tel} className={ghost}>Call the clinic</a>}
-              </div>
-            </div>
-            <div className="flex flex-col gap-3">
-              <h2 className="text-[26px] leading-[34px] font-medium" style={serif}>Consulting hours</h2>
-              {doctors.filter((d) => d.hours).map((d) => (
-                <div key={d.id}>
-                  {doctors.length > 1 && <p className="font-label-md text-label-md text-[#0F766E]">{d.name}</p>}
-                  <p className="font-body-md text-body-md">{d.hours}</p>
-                </div>
-              ))}
-              {!doctors.some((d) => d.hours) && <p className="font-body-md text-body-md text-[#1E293B]/60">Hours are shown here once the doctor sets them.</p>}
-            </div>
-          </section>
-        )}
 
         {/* Closing call to action */}
         {canBook ? (
@@ -168,27 +134,27 @@ export function EditorialLanding({ clinic, focusSlug, staffLoginHref, host }: La
 
 function DoctorCard({ d, href }: { d: DirectoryLandingDoctor; href: string | null }) {
   return (
-    <article className={`${card} p-5 md:p-7 flex flex-col md:flex-row gap-6`}>
+    <article className={`${card} p-5 md:p-7 grid grid-cols-[64px_minmax(0,1fr)] md:grid-cols-[112px_minmax(0,1fr)] gap-x-4 md:gap-x-6 gap-y-3`}>
       {d.photo_url ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={fileUrl(d.photo_url)} alt={d.name} className="w-32 h-32 md:w-40 md:h-40 rounded-3xl object-cover shrink-0" />
+        <img src={fileUrl(d.photo_url)} alt={d.name} className="w-16 h-16 md:w-28 md:h-28 rounded-2xl object-cover" />
       ) : (
-        <div className="w-32 h-32 md:w-40 md:h-40 rounded-3xl bg-[#9CF2E8] text-[#005C55] text-[44px] flex items-center justify-center shrink-0" style={serif}>{initials(d.name)}</div>
+        <div className="w-16 h-16 md:w-28 md:h-28 rounded-2xl bg-[#9CF2E8] text-[#005C55] text-[26px] md:text-[36px] flex items-center justify-center" style={serif}>{initials(d.name)}</div>
       )}
-      <div className="flex-1 min-w-0 flex flex-col gap-3">
+      <div className="contents md:flex md:min-w-0 md:flex-col md:gap-3">
         <div>
-          <h3 className="text-[28px] leading-[36px] font-medium" style={serif}>{d.name}</h3>
+          <h3 className="text-[24px] leading-[30px] md:text-[28px] md:leading-[36px] font-medium" style={serif}>{d.name}</h3>
           <p className="font-body-md text-body-md text-[#1E293B]/75">{[d.qualification, d.specialty].filter(Boolean).join(' · ')}</p>
         </div>
-        {d.experience_years ? <span className="self-start px-3 py-1 rounded-full bg-[#FEF3C7] border border-[#F59E0B]/50 text-[#684000] font-label-sm text-label-sm">{d.experience_years} years in practice</span> : null}
-        {d.bio && <p className="font-body-md text-body-md text-[#1E293B]/80">{d.bio}</p>}
+        {d.experience_years ? <span className="col-start-2 justify-self-start px-3 py-1 rounded-full bg-[#FEF3C7] border border-[#F59E0B]/50 text-[#684000] font-label-sm text-label-sm">{d.experience_years} years in practice</span> : null}
+        {d.bio && <p className="col-span-2 md:col-start-2 md:col-span-1 font-body-md text-body-md text-[#1E293B]/80">{d.bio}</p>}
         {(d.fee_inr || d.hours) && (
-          <dl className="grid sm:grid-cols-2 gap-x-8 gap-y-2 border-t border-[#1E293B]/10 pt-3">
+          <dl className="col-span-2 md:col-start-2 md:col-span-1 grid sm:grid-cols-2 gap-x-8 gap-y-2 border-t border-[#1E293B]/10 pt-3">
             {d.fee_inr ? <div><dt className="font-label-sm text-label-sm uppercase tracking-wider text-[#1E293B]/55">Consultation fee</dt><dd className="font-body-md text-body-md font-semibold">₹{d.fee_inr.toLocaleString('en-IN')}</dd></div> : null}
             {d.hours ? <div><dt className="font-label-sm text-label-sm uppercase tracking-wider text-[#1E293B]/55">Hours</dt><dd className="font-body-md text-body-md">{d.hours}</dd></div> : null}
           </dl>
         )}
-        {href && <Link href={href} className={`${btn} self-start`}>Get a token with {d.name.replace(/^dr\.?\s+/i, 'Dr. ')}</Link>}
+        {href && <Link href={href} className={`${btn} col-span-2 md:col-start-2 md:col-span-1 justify-self-start h-auto min-h-12 py-2`}>Get a token with {d.name.replace(/^dr\.?\s+/i, 'Dr. ')}</Link>}
       </div>
     </article>
   );

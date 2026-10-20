@@ -1,5 +1,6 @@
 'use client';
 
+import { SOCIAL_PLATFORMS, publicWebLink } from '@/lib/publicLinks';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { LANDING_TEMPLATES } from '@/lib/landingTemplates';
@@ -19,6 +20,7 @@ type ClinicDetailsPatch = {
   is_open_24x7?: boolean;
   operating_hours?: string | null;
   website_url?: string | null;
+  social_links?: Record<string, string>;
   maps_url: string | null;
   landing_template: LandingTemplate;
   landing_tagline: string | null;
@@ -51,6 +53,10 @@ export function ClinicDetails({
   const [isOpen24x7, setIsOpen24x7] = useState(!!tenant.is_open_24x7);
   const [operatingHours, setOperatingHours] = useState(tenant.operating_hours ?? '');
   const [websiteUrl, setWebsiteUrl] = useState(tenant.website_url ?? '');
+  const [socialLinks, setSocialLinks] = useState<Record<string, string>>(tenant.social_links ?? {});
+  const savedSocialLinks = JSON.stringify(tenant.social_links ?? {});
+  useEffect(() => setSocialLinks(JSON.parse(savedSocialLinks)), [savedSocialLinks]);
+  useEffect(() => setWebsiteUrl(tenant.website_url ?? ''), [tenant.website_url]);
   const [mapsUrl, setMapsUrl] = useState(tenant.maps_url ?? '');
   // Decision 50 — the public landing page
   const [template, setTemplate] = useState<LandingTemplate>(tenant.landing_template ?? 'editorial');
@@ -75,6 +81,7 @@ export function ClinicDetails({
     isOpen24x7 !== !!tenant.is_open_24x7 ||
     operatingHours !== (tenant.operating_hours ?? '') ||
     websiteUrl !== (tenant.website_url ?? '') ||
+    JSON.stringify(Object.fromEntries(Object.entries(socialLinks).filter(([, value]) => value.trim()))) !== savedSocialLinks ||
     mapsUrl !== (tenant.maps_url ?? '') ||
     template !== (tenant.landing_template ?? 'editorial') ||
     tagline !== (tenant.landing_tagline ?? '') ||
@@ -123,6 +130,7 @@ export function ClinicDetails({
         is_open_24x7: isOpen24x7,
         operating_hours: operatingHours.trim() || null,
         website_url: websiteUrl.trim() || null,
+        social_links: Object.fromEntries(Object.entries(socialLinks).map(([key, value]) => [key, value.trim()]).filter(([, value]) => value)),
         maps_url: mapsUrl.trim() || null,
         landing_template: template,
         landing_tagline: tagline.trim() || null,
@@ -132,6 +140,11 @@ export function ClinicDetails({
       // Decision 67: a doubtful edit is held for ClinicQ instead of going live.
       const pending = (result as { review_pending?: string } | null)?.review_pending;
       setReviewNote(pending ? `Sent to ClinicQ for a quick check: ${pending}` : null);
+      const saved = result as Partial<Tenant> | null;
+      if (!pending && saved) {
+        if (saved.website_url !== undefined) setWebsiteUrl(saved.website_url ?? '');
+        if (saved.social_links !== undefined) setSocialLinks(saved.social_links ?? {});
+      }
       await onSaved();
       setState('saved');
     } catch (e) {
@@ -154,7 +167,8 @@ export function ClinicDetails({
           <dt className="text-on-surface-variant">Emergency</dt>
           <dd>{tenant.emergency_phone || '—'}</dd>
           <dt className="text-on-surface-variant">Website</dt>
-          <dd>{tenant.website_url ? <a href={tenant.website_url} target="_blank" rel="noreferrer" className="text-primary underline">{tenant.website_url}</a> : '—'}</dd>
+          <dd>{tenant.website_url ? <a href={publicWebLink(tenant.website_url) ?? undefined} target="_blank" rel="noreferrer" className="text-primary underline">{tenant.website_url}</a> : '—'}</dd>
+          {Object.entries(tenant.social_links ?? {}).some(([, url]) => publicWebLink(url)) && <><dt className="text-on-surface-variant">Social links</dt><dd className="min-w-0 flex flex-wrap gap-x-4 gap-y-2">{Object.entries(tenant.social_links ?? {}).map(([key, url]) => publicWebLink(url) && <a key={key} href={publicWebLink(url)!} target="_blank" rel="noopener noreferrer" className="text-primary underline">{SOCIAL_PLATFORMS.find(p => p.key === key)?.label ?? key}</a>)}</dd></>}
           <dt className="text-on-surface-variant">Timing</dt>
           <dd>{tenant.is_open_24x7 ? 'Open 24/7 (All the time)' : (tenant.operating_hours || 'OPD hours')}</dd>
           <dt className="text-on-surface-variant">Map pin</dt>
@@ -215,22 +229,40 @@ export function ClinicDetails({
               />
               <span className="text-[12px] text-on-surface-variant">Shown as an urgent emergency call button on your page.</span>
             </label>
+
+          </div>
+        </div>
+
+        <section className="bg-surface-container-low rounded-2xl p-4 flex flex-col gap-3" aria-label="Website and social links">
+          <h3 className="font-label-lg text-label-lg">Website &amp; social links</h3>
+          <p className="text-body-sm text-on-surface-variant">Optional. Saved links appear in “Visit the clinic” on your public clinic and doctor pages. Clear a field to remove its link.</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <label className="flex flex-col gap-1 md:col-span-2">
-              <span className="font-label-sm text-label-sm text-on-surface">Official Website (Optional)</span>
+              <span className="font-label-sm text-label-sm text-on-surface">Website (optional)</span>
               <div className="flex items-center rounded-lg bg-surface-container-lowest border border-surface-container-high focus-within:ring-2 focus-within:ring-primary/30 px-3">
                 <Icon name="language" className="text-[18px] text-on-surface-variant mr-2" />
                 <input
                   type="url"
+                  inputMode="url"
+                  autoCapitalize="none"
+                  spellCheck={false}
+                  maxLength={2048}
                   value={websiteUrl}
                   onChange={(e) => setWebsiteUrl(e.target.value)}
                   placeholder="https://www.yourclinic.com"
                   className="h-11 w-full bg-transparent font-body-md text-body-md focus:outline-none"
                 />
               </div>
-              <span className="text-[12px] text-on-surface-variant">Your clinic or hospital&apos;s website. Shown as a direct website link on your public profile and search results.</span>
+              <span className="text-[12px] text-on-surface-variant">Use your clinic or hospital’s official website.</span>
             </label>
+            {SOCIAL_PLATFORMS.map(({ key, label, placeholder }) => (
+              <label key={key} className="flex min-w-0 flex-col gap-1">
+                <span className="font-label-sm text-label-sm text-on-surface">{label}</span>
+                <input type="url" inputMode="url" maxLength={2048} autoCapitalize="none" spellCheck={false} value={socialLinks[key] ?? ''} onChange={e => setSocialLinks(links => ({ ...links, [key]: e.target.value }))} placeholder={placeholder} className="h-11 w-full min-w-0 rounded-lg bg-surface-container-lowest px-3 text-body-md focus:outline-none focus:ring-2 focus:ring-primary/30" />
+              </label>
+            ))}
           </div>
-        </div>
+        </section>
 
         {/* Operating Hours & 24/7 Status */}
         <div className="bg-surface-container-low rounded-2xl p-4 border border-surface-container flex flex-col gap-3">

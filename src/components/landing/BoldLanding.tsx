@@ -1,10 +1,11 @@
+import { ClinicVisitDetails } from './ClinicVisitDetails';
 import Link from 'next/link';
 import { PublicFooter } from '@/components/public/PublicFooter';
 import { BrandLogo } from '@/components/brand/BrandLogo';
 import { fileUrl } from '@/lib/api';
 import { VerifiedBadge } from '@/components/directory/VerifiedBadge';
 import { ClaimBox } from './ClaimBox';
-import { VISIT_TIPS, WHY, directionsUrl, initials, orderedDoctors, telHref, webHref, tokenHref, type LandingProps } from './landingData';
+import { VISIT_TIPS, WHY, directionsUrl, initials, orderedDoctors, telHref, tokenHref, type LandingProps } from './landingData';
 
 // Template 4 — "Bold": a deep-green header with the clinic name and the main action, mint page, white cards, and a
 // fixed bottom action bar on phones (most patients arrive from a phone).
@@ -14,9 +15,7 @@ export function BoldLanding({ clinic, focusSlug, staffLoginHref, host }: Landing
   const maps = directionsUrl(clinic);
   const tel = telHref(clinic.public_phone);
   const emTel = telHref(clinic.emergency_phone ?? null);
-  const web = webHref(clinic.website_url);
   const canBook = clinic.booking_open !== false;
-  const place = [clinic.address, clinic.city].filter(Boolean).join(', ');
   const points = canBook ? WHY : VISIT_TIPS;
   const mainHref = tokenHref(clinic, doctors.length === 1 ? doctors[0] : null, host);
 
@@ -26,8 +25,8 @@ export function BoldLanding({ clinic, focusSlug, staffLoginHref, host }: Landing
         <div className="max-w-5xl mx-auto px-5">
           <div className="h-16 flex items-center gap-4"><BrandLogo />{staffLoginHref ? <Link href={staffLoginHref} className="ml-auto h-9 px-4 rounded-full bg-white/15 text-white font-label-md text-label-md flex items-center">Login</Link> : <Link href="/doctors" className="ml-auto text-white/80 font-label-md text-label-md">All doctors</Link>}</div>
           <div className="py-10 md:py-16 flex flex-col gap-4 max-w-3xl">
-            <h1 className="text-[36px] leading-[42px] md:text-[52px] md:leading-[58px] font-bold">{clinic.clinic_name}</h1>
-            <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-[30px] leading-[37px] md:text-[44px] md:leading-[52px] font-bold">{clinic.clinic_name}</h1>
+            {(clinic.verified || clinic.is_open_24x7) && <div className="flex flex-wrap items-center gap-2">
               {clinic.verified && <div><VerifiedBadge size="md" /></div>}
               {clinic.is_open_24x7 && (
                 <span className="px-3 py-1 rounded-full bg-emerald-300 text-emerald-950 font-label-sm text-label-sm font-semibold flex items-center gap-1.5 shadow-sm">
@@ -35,22 +34,18 @@ export function BoldLanding({ clinic, focusSlug, staffLoginHref, host }: Landing
                   Open 24/7 (All the time)
                 </span>
               )}
-            </div>
+            </div>}
             {clinic.tagline && <p className="text-[20px] leading-[30px] text-[#A7F3D0]">{clinic.tagline}</p>}
-            {place && <p className="font-body-md text-body-md text-white/80">{place}</p>}
+            {clinic.city && <p className="font-body-md text-body-md text-white/80">{clinic.city}</p>}
             <div className="hidden md:flex flex-wrap gap-3 pt-2">
               {canBook && <Link href={mainHref} className="h-14 px-8 rounded-full bg-white text-[#064E3B] font-label-lg text-label-lg flex items-center gap-2">Get my token</Link>}
-              {tel && <a href={tel} className="h-14 px-6 rounded-full border border-white/40 text-white font-label-lg text-label-lg flex items-center gap-2">Call {clinic.public_phone}</a>}
+              {tel && <a href={tel} className="h-14 px-6 rounded-full border border-white/40 text-white font-label-lg text-label-lg flex items-center gap-2">Call clinic</a>}
               {emTel && (
                 <a href={emTel} className="h-14 px-6 rounded-full bg-rose-500 hover:bg-rose-600 text-white font-label-lg text-label-lg flex items-center gap-2 font-semibold shadow-sm">
                   <span className="material-symbols-outlined text-[22px]">emergency</span> 24/7 Helpline: {clinic.emergency_phone}
                 </a>
               )}
-              {web && (
-                <a href={web} target="_blank" rel="noopener noreferrer" className="h-14 px-6 rounded-full border border-white/40 text-white font-label-lg text-label-lg flex items-center gap-2">
-                  <span className="material-symbols-outlined text-[20px]">language</span> Website
-                </a>
-              )}
+
               {maps && <a href={maps} target="_blank" rel="noreferrer" className="h-14 px-6 rounded-full border border-white/40 text-white font-label-lg text-label-lg flex items-center gap-2">Directions</a>}
             </div>
           </div>
@@ -58,17 +53,6 @@ export function BoldLanding({ clinic, focusSlug, staffLoginHref, host }: Landing
       </section>
 
       <div className="max-w-5xl mx-auto px-5 py-10 flex flex-col gap-10">
-        {(clinic.is_open_24x7 || clinic.operating_hours) && (
-          <section className="bg-white rounded-xl p-6 flex flex-col gap-2 shadow-sm border-l-4 border-[#047857]">
-            <h2 className="text-[20px] font-bold text-[#064E3B] flex items-center gap-2">
-              <span className="material-symbols-outlined text-[#047857]">schedule</span> Facility Operating Hours
-            </h2>
-            <p className="font-body-md text-body-md text-[#052E16]/85 font-medium">
-              {clinic.is_open_24x7 ? 'Open 24 Hours / 7 Days a week (All the time)' : clinic.operating_hours}
-            </p>
-          </section>
-        )}
-
         {(clinic.about || clinic.highlights.length > 0) && (
           <section className="bg-white rounded-xl p-6 flex flex-col gap-3 shadow-sm">
             {clinic.about && <p className="font-body-lg text-body-lg">{clinic.about}</p>}
@@ -101,6 +85,8 @@ export function BoldLanding({ clinic, focusSlug, staffLoginHref, host }: Landing
             </div>
           </section>
         )}
+
+        <ClinicVisitDetails clinic={clinic} doctors={doctors} className="bg-white" />
 
         <section className="flex flex-col gap-4">
           <h2 className="text-[26px] font-bold">{canBook ? 'How a token helps you' : 'Before you visit'}</h2>

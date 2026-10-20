@@ -1,3 +1,4 @@
+import { publicWebLink } from '@/lib/publicLinks';
 import { patientUrl } from '@/lib/clinicHost';
 import type { DirectoryClinicProfile, DirectoryLandingDoctor } from '@/lib/api';
 
@@ -22,20 +23,24 @@ export const initials = (name: string) =>
     .join('')
     .toUpperCase();
 
+/** City is often already included in imported addresses. Keep it once. */
+export function clinicAddress(c: Pick<DirectoryClinicProfile, 'address' | 'city'>): string {
+  const address = c.address?.trim() ?? '';
+  const city = c.city?.trim() ?? '';
+  if (!address) return city;
+  if (!city || address.toLocaleLowerCase('en-IN').includes(city.toLocaleLowerCase('en-IN'))) return address;
+  return `${address}, ${city}`;
+}
+
 /** The clinic's own Google Maps pin when it set one (Decision 41), else a plain Maps search for its address. */
 export function directionsUrl(c: DirectoryClinicProfile): string | null {
   if (c.maps_url) return c.maps_url;
-  const q = [c.clinic_name, c.address, c.city].filter(Boolean).join(', ');
+  const q = [c.clinic_name, clinicAddress(c)].filter(Boolean).join(', ');
   return c.address ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}` : null;
 }
 
 export const telHref = (phone: string | null) => (phone ? `tel:${phone.replace(/[^\d+]/g, '')}` : null);
-export const webHref = (url: string | null | undefined) => {
-  if (!url) return null;
-  const t = url.trim();
-  if (!t) return null;
-  return /^https?:\/\//i.test(t) ? t : `https://${t}`;
-};
+export const webHref = publicWebLink;
 
 // Decision 56: always the patient site (patient.clinicq.fit), where the patient's saved session lives.
 export const tokenHref = (c: DirectoryClinicProfile, d: DirectoryLandingDoctor | null | undefined, host: string | null | undefined) =>
@@ -75,7 +80,7 @@ export function jsonLd(c: DirectoryClinicProfile) {
     name: c.clinic_name,
     description: c.about ?? c.tagline ?? undefined,
     url: webHref(c.website_url) ?? undefined,
-    sameAs: c.website_url ? [webHref(c.website_url)!] : undefined,
+    sameAs: Object.values(c.social_links ?? {}).map(webHref).filter((url): url is string => !!url),
     address: c.address ?? undefined,
     telephone: c.public_phone ?? c.emergency_phone ?? undefined,
     ...(c.is_open_24x7 ? { openingHours: 'Mo-Su 00:00-24:00', isAcceptingNewPatients: true } : {}),

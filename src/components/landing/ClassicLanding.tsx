@@ -1,10 +1,11 @@
+import { ClinicVisitDetails } from './ClinicVisitDetails';
 import Link from 'next/link';
 import { PublicFooter } from '@/components/public/PublicFooter';
 import { BrandLogo } from '@/components/brand/BrandLogo';
 import { fileUrl } from '@/lib/api';
 import { VerifiedBadge } from '@/components/directory/VerifiedBadge';
 import { ClaimBox } from './ClaimBox';
-import { VISIT_TIPS, WHY, directionsUrl, initials, orderedDoctors, telHref, webHref, tokenHref, type LandingProps } from './landingData';
+import { VISIT_TIPS, WHY, directionsUrl, initials, orderedDoctors, telHref, tokenHref, type LandingProps } from './landingData';
 
 // Template 3 — "Classic": plain white, one narrow column, small headings. The simplest page: name, how to reach the
 // clinic, the doctors in a list, hours and fee on one line each.
@@ -17,9 +18,7 @@ export function ClassicLanding({ clinic, focusSlug, staffLoginHref, host }: Land
   const maps = directionsUrl(clinic);
   const tel = telHref(clinic.public_phone);
   const emTel = telHref(clinic.emergency_phone ?? null);
-  const web = webHref(clinic.website_url);
   const canBook = clinic.booking_open !== false;
-  const place = [clinic.address, clinic.city].filter(Boolean).join(', ');
   const points = canBook ? WHY : VISIT_TIPS;
 
   return (
@@ -33,8 +32,8 @@ export function ClassicLanding({ clinic, focusSlug, staffLoginHref, host }: Land
 
       <div className="max-w-3xl mx-auto px-5 py-8 flex flex-col gap-8">
         <section className="flex flex-col gap-3">
-          <h1 className="font-headline-lg text-headline-lg">{clinic.clinic_name}</h1>
-          <div className="flex flex-wrap items-center gap-2">
+          <h1 className="font-headline-lg text-[30px] leading-[37px] md:text-[36px] md:leading-[44px]">{clinic.clinic_name}</h1>
+          {(clinic.verified || clinic.is_open_24x7) && <div className="flex flex-wrap items-center gap-2">
             {clinic.verified && <div><VerifiedBadge size="md" /></div>}
             {clinic.is_open_24x7 && (
               <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-900 font-label-sm text-label-sm font-semibold flex items-center gap-1.5 shadow-sm">
@@ -42,30 +41,20 @@ export function ClassicLanding({ clinic, focusSlug, staffLoginHref, host }: Land
                 Open 24/7 (All the time)
               </span>
             )}
-          </div>
+          </div>}
           {clinic.tagline && <p className="font-body-lg text-body-lg text-gray-700">{clinic.tagline}</p>}
-          {place && <p className="font-body-md text-body-md text-gray-600">{place}</p>}
+          {clinic.city && <p className="font-body-md text-body-md text-gray-600">{clinic.city}</p>}
           <div className="flex flex-wrap gap-2 pt-1">
             {canBook && <Link href={tokenHref(clinic, doctors.length === 1 ? doctors[0] : null, host)} className={btn}>Get my token</Link>}
-            {tel && <a href={tel} className={ghost}>Call {clinic.public_phone}</a>}
+            {tel && <a href={tel} className={ghost}>Call clinic</a>}
             {emTel && (
               <a href={emTel} className="h-11 px-4 rounded-md bg-rose-600 hover:bg-rose-700 text-white font-label-lg text-label-lg flex items-center justify-center gap-2">
                 24/7 Helpline: {clinic.emergency_phone}
               </a>
             )}
-            {web && <a href={web} target="_blank" rel="noopener noreferrer" className={ghost}>Website</a>}
             {maps && <a href={maps} target="_blank" rel="noreferrer" className={ghost}>Directions</a>}
           </div>
         </section>
-
-        {(clinic.is_open_24x7 || clinic.operating_hours) && (
-          <section>
-            <h2 className="font-title-lg text-title-lg font-semibold mb-1">Facility Hours</h2>
-            <p className="font-body-md text-body-md text-gray-700 font-medium">
-              {clinic.is_open_24x7 ? 'Open 24 Hours / 7 Days a week (All the time)' : clinic.operating_hours}
-            </p>
-          </section>
-        )}
 
         {clinic.about && <section><h2 className="font-title-lg text-title-lg font-semibold mb-1">About</h2><p className="font-body-md text-body-md text-gray-700">{clinic.about}</p></section>}
         {clinic.highlights.length > 0 && (
@@ -96,6 +85,8 @@ export function ClassicLanding({ clinic, focusSlug, staffLoginHref, host }: Land
             </ul>
           </section>
         )}
+
+        <ClinicVisitDetails clinic={clinic} doctors={doctors} className="bg-surface-container-low" />
 
         <section>
           <h2 className="font-title-lg text-title-lg font-semibold mb-2">{canBook ? 'How a token helps you' : 'Before you visit'}</h2>

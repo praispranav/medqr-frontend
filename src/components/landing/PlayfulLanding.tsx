@@ -1,8 +1,9 @@
+import { ClinicVisitDetails } from './ClinicVisitDetails';
 import { PublicFooter } from '@/components/public/PublicFooter';
 import Link from 'next/link';
 import { BrandLogo } from '@/components/brand/BrandLogo';
 import { fileUrl, type DirectoryLandingDoctor } from '@/lib/api';
-import { WHY, VISIT_TIPS, directionsUrl, initials, orderedDoctors, telHref, webHref, tokenHref, type LandingProps } from './landingData';
+import { WHY, VISIT_TIPS, directionsUrl, initials, orderedDoctors, telHref, tokenHref, type LandingProps } from './landingData';
 import { ClaimBox } from './ClaimBox';
 import { ClinicReviews } from './ClinicReviews';
 import { VerifiedBadge } from '@/components/directory/VerifiedBadge';
@@ -19,8 +20,6 @@ export function PlayfulLanding({ clinic, focusSlug, staffLoginHref, host }: Land
   const maps = directionsUrl(clinic);
   const tel = telHref(clinic.public_phone);
   const emTel = telHref(clinic.emergency_phone ?? null);
-  const web = webHref(clinic.website_url);
-  const place = [clinic.address, clinic.city].filter(Boolean).join(', ');
   const mainHref = tokenHref(clinic, doctors.length === 1 ? doctors[0] : null, host);
   const canBook = clinic.booking_open !== false; // Decision 60: only opted-in clinics take online tokens
 
@@ -43,17 +42,8 @@ export function PlayfulLanding({ clinic, focusSlug, staffLoginHref, host }: Land
         {/* Hero */}
         <section className="bg-white rounded-[2rem] shadow-[0_8px_30px_rgba(15,118,110,0.08)] p-6 md:p-10 flex flex-col md:flex-row gap-6 items-start">
           <div className="flex-1 flex flex-col gap-4">
-            {place ? (
-              <span className="self-start px-3 py-1 rounded-full bg-[#CCFBF1] text-[#0F766E] font-label-sm text-label-sm flex items-center gap-1">
-                <span className="material-symbols-outlined text-[16px]">location_on</span>{place}
-              </span>
-            ) : clinic.city ? (
-              <span className="self-start px-3 py-1 rounded-full bg-[#CCFBF1] text-[#0F766E] font-label-sm text-label-sm flex items-center gap-1">
-                <span className="material-symbols-outlined text-[16px]">location_on</span>{clinic.city}
-              </span>
-            ) : null}
-            <h1 className="font-headline-lg text-[34px] leading-[40px] md:text-[46px] md:leading-[52px] font-extrabold tracking-tight">{clinic.clinic_name}</h1>
-            <div className="flex flex-wrap items-center gap-2">
+            <h1 className="font-headline-lg text-[28px] leading-[35px] md:text-[44px] md:leading-[52px] font-extrabold tracking-tight">{clinic.clinic_name}</h1>
+            {(clinic.verified || clinic.is_open_24x7) && <div className="flex flex-wrap items-center gap-2">
               {clinic.verified && <div><VerifiedBadge size="md" /></div>}
               {clinic.is_open_24x7 && (
                 <span className="px-3 py-1 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-900 font-label-sm text-label-sm font-semibold flex items-center gap-1.5 shadow-sm">
@@ -61,13 +51,8 @@ export function PlayfulLanding({ clinic, focusSlug, staffLoginHref, host }: Land
                   Open 24/7 (All the time)
                 </span>
               )}
-            </div>
-            {clinic.address && (
-              <p className="flex items-center gap-1.5 font-body-md text-body-md text-[#0F2A24]/80 font-medium -mt-1">
-                <span className="material-symbols-outlined text-[18px] text-[#0F766E] shrink-0">location_on</span>
-                {[clinic.address, clinic.city].filter(Boolean).join(', ')}
-              </p>
-            )}
+            </div>}
+            {clinic.city && <p className="font-body-md text-body-md text-[#0F2A24]/75">{clinic.city}</p>}
             {clinic.tagline && <p className="font-body-lg text-body-lg text-[#0F2A24]/75">{clinic.tagline}</p>}
             {clinic.about && <p className="font-body-md text-body-md text-[#0F2A24]/70">{clinic.about}</p>}
             {clinic.highlights.length > 0 && (
@@ -78,55 +63,14 @@ export function PlayfulLanding({ clinic, focusSlug, staffLoginHref, host }: Land
               </ul>
             )}
           </div>
-          <div className="w-28 h-28 md:w-40 md:h-40 rounded-[2rem] bg-[#DCFCE7] flex items-center justify-center shrink-0 self-center md:self-start">
-            <span className="material-symbols-outlined text-[#0F766E] !text-[64px] md:!text-[88px]">health_and_safety</span>
-          </div>
         </section>
 
-        {/* Action tiles */}
-        <section className="grid md:grid-cols-3 gap-4">
-          {maps ? (
-            <a href={maps} target="_blank" rel="noreferrer" className="rounded-[1.75rem] bg-[#DCFCE7] p-5 flex flex-col gap-2 hover:shadow-md transition-shadow">
-              <span className="material-symbols-outlined text-[#0F766E] !text-[32px]">near_me</span>
-              <p className="font-title-lg text-title-lg font-bold">Directions</p>
-              <p className="font-body-sm text-body-sm text-[#0F2A24]/70">{place || 'Open in Google Maps'}</p>
-            </a>
-          ) : <div className="rounded-[1.75rem] bg-[#DCFCE7] p-5"><p className="font-title-lg font-bold">Visit us</p><p className="font-body-sm text-[#0F2A24]/70">{clinic.city ?? ''}</p></div>}
-          {tel ? (
-            <a href={tel} className="rounded-[1.75rem] bg-[#FFEDD5] p-5 flex flex-col gap-2 hover:shadow-md transition-shadow">
-              <span className="material-symbols-outlined text-[#9A4B00] !text-[32px]">call</span>
-              <p className="font-title-lg text-title-lg font-bold">Call the clinic</p>
-              <p className="font-body-sm text-body-sm text-[#0F2A24]/70">{clinic.public_phone}</p>
-            </a>
-          ) : <div className="rounded-[1.75rem] bg-[#FFEDD5] p-5"><p className="font-title-lg font-bold">Need help?</p><p className="font-body-sm text-[#0F2A24]/70">Ask at the reception desk.</p></div>}
-          {emTel && (
-            <a href={emTel} className="rounded-[1.75rem] bg-rose-100 border border-rose-200 p-5 flex flex-col gap-2 hover:shadow-md transition-shadow">
-              <span className="material-symbols-outlined text-rose-700 !text-[32px]">emergency</span>
-              <p className="font-title-lg text-title-lg font-bold text-rose-950">24/7 Helpline</p>
-              <p className="font-body-sm text-body-sm text-rose-800">{clinic.emergency_phone}</p>
-            </a>
-          )}
-          {web && (
-            <a href={web} target="_blank" rel="noopener noreferrer" className="rounded-[1.75rem] bg-[#CCFBF1] p-5 flex flex-col gap-2 hover:shadow-md transition-shadow">
-              <span className="material-symbols-outlined text-[#0F766E] !text-[32px]">language</span>
-              <p className="font-title-lg text-title-lg font-bold">Official Website</p>
-              <p className="font-body-sm text-body-sm text-[#0F2A24]/70 truncate">{clinic.website_url}</p>
-            </a>
-          )}
-          {canBook ? (
-            <Link href={mainHref} className="rounded-[1.75rem] bg-[#0F766E] text-white p-5 flex flex-col gap-2 hover:bg-[#115E59] transition-colors">
-              <span className="material-symbols-outlined !text-[32px]">confirmation_number</span>
-              <p className="font-title-lg text-title-lg font-bold">Get a token</p>
-              <p className="font-body-sm text-body-sm text-white/85">Take your place in line from your phone.</p>
-            </Link>
-          ) : (
-            <div className="rounded-[1.75rem] bg-white p-5 flex flex-col gap-2">
-              <span className="material-symbols-outlined text-[#0F2A24]/50 !text-[32px]">schedule</span>
-              <p className="font-title-lg text-title-lg font-bold">Walk-in</p>
-              <p className="font-body-sm text-body-sm text-[#0F2A24]/70">Online tokens aren&apos;t available for this clinic yet.</p>
-            </div>
-          )}
-        </section>
+        <div className="flex flex-wrap gap-2">
+          {canBook && <Link href={mainHref} className={btn}>Get a token</Link>}
+          {tel && <a href={tel} className="inline-flex min-h-11 items-center gap-2 rounded-full bg-white px-4 text-label-md text-[#0F766E]"><span aria-hidden="true" className="material-symbols-outlined text-[18px]">call</span>Call clinic</a>}
+          {maps && <a href={maps} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-2 rounded-full bg-white px-4 text-label-md text-[#0F766E]"><span aria-hidden="true" className="material-symbols-outlined text-[18px]">near_me</span>Directions</a>}
+          {emTel && <a href={emTel} className="inline-flex min-h-11 items-center rounded-full bg-rose-100 px-4 text-label-md text-rose-800">24/7 Helpline: {clinic.emergency_phone}</a>}
+        </div>
 
         {/* Doctors */}
         {doctors.length > 0 && (
@@ -135,6 +79,8 @@ export function PlayfulLanding({ clinic, focusSlug, staffLoginHref, host }: Land
             {doctors.map((d) => <DoctorCard key={d.id} d={d} href={canBook ? tokenHref(clinic, d, host) : null} />)}
           </section>
         )}
+
+        <ClinicVisitDetails clinic={clinic} doctors={doctors} className="bg-white" />
 
         {/* Why */}
         <section className="flex flex-col gap-4">
@@ -149,51 +95,6 @@ export function PlayfulLanding({ clinic, focusSlug, staffLoginHref, host }: Land
             ))}
           </div>
         </section>
-
-        {/* Location & hours */}
-        {(place || clinic.is_open_24x7 || clinic.operating_hours || doctors.some((d) => d.hours)) && (
-          <section className="bg-white rounded-[2rem] shadow-[0_8px_30px_rgba(15,118,110,0.08)] p-6 md:p-8 grid md:grid-cols-2 gap-6">
-            <div className="flex flex-col gap-2">
-              <h2 className="font-headline-sm text-headline-sm font-extrabold">Find us</h2>
-              <p className="font-body-md text-body-md font-semibold">{clinic.clinic_name}</p>
-              {place && <p className="font-body-md text-body-md text-[#0F2A24]/70">{place}</p>}
-              <div className="flex flex-wrap gap-2 mt-2">
-                {maps && <a href={maps} target="_blank" rel="noreferrer" className="h-10 px-4 rounded-full bg-[#DCFCE7] text-[#0F766E] font-label-md text-label-md flex items-center">Open in Google Maps</a>}
-                {tel && <a href={tel} className="h-10 px-4 rounded-full bg-[#FFEDD5] text-[#9A4B00] font-label-md text-label-md flex items-center">Call front desk</a>}
-                {emTel && (
-                  <a href={emTel} className="h-10 px-4 rounded-full bg-rose-100 text-rose-800 font-label-md text-label-md flex items-center gap-1 font-semibold">
-                    <span className="material-symbols-outlined text-[18px]">emergency</span> 24/7 Helpline
-                  </a>
-                )}
-              </div>
-            </div>
-            <div className="flex flex-col gap-2">
-              <h2 className="font-headline-sm text-headline-sm font-extrabold">Hours &amp; consultations</h2>
-              {clinic.is_open_24x7 ? (
-                <div className="rounded-2xl bg-emerald-50 border border-emerald-200 px-4 py-3">
-                  <p className="font-label-sm text-label-sm text-emerald-800 font-semibold flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse" /> Facility Hours
-                  </p>
-                  <p className="font-body-md text-body-md text-emerald-950 font-bold">Open 24 Hours / 7 Days a week (All the time)</p>
-                </div>
-              ) : clinic.operating_hours ? (
-                <div className="rounded-2xl bg-[#F4FBF6] px-4 py-3">
-                  <p className="font-label-sm text-label-sm text-[#0F766E] font-semibold">Facility Hours</p>
-                  <p className="font-body-md text-body-md">{clinic.operating_hours}</p>
-                </div>
-              ) : null}
-              {doctors.filter((d) => d.hours).map((d) => (
-                <div key={d.id} className="rounded-2xl bg-[#F4FBF6] px-4 py-3">
-                  {doctors.length > 1 && <p className="font-label-sm text-label-sm text-[#0F766E]">{d.name}</p>}
-                  <p className="font-body-md text-body-md">{d.hours}</p>
-                </div>
-              ))}
-              {!clinic.is_open_24x7 && !clinic.operating_hours && !doctors.some((d) => d.hours) && (
-                <p className="font-body-md text-body-md text-[#0F2A24]/60">Hours appear here once the doctor sets them.</p>
-              )}
-            </div>
-          </section>
-        )}
 
         {/* Closing call to action */}
         {canBook ? (

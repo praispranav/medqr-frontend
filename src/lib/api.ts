@@ -132,6 +132,7 @@ export interface Tenant {
   operating_hours?: string | null;
   /** Clinic's official website URL (optional). */
   website_url?: string | null;
+  social_links?: Record<string, string>;
   /** Billing/transactional contact email — never public. */
   contact_email?: string | null;
   public_slug?: string | null;
@@ -670,6 +671,7 @@ export interface DirectoryClinicProfile {
   operating_hours?: string | null;
   /** Clinic's official website URL (optional). */
   website_url?: string | null;
+  social_links?: Record<string, string>;
   /** Decision 50 — the page the clinic designed: which look, and the words it wrote. */
   landing_template: LandingTemplate;
   tagline: string | null;
@@ -1074,7 +1076,7 @@ export const api = {
   // Public doctor/clinic directory (clinicq.fit/doctors) — clinic-wide fields: doctor/owner self-service (Decision 14).
   updateTenantPublicProfile: (
     tenantId: string,
-    patch: { is_publicly_listed?: boolean; city?: string | null; address?: string | null; public_phone?: string | null; emergency_phone?: string | null; is_open_24x7?: boolean; operating_hours?: string | null; website_url?: string | null; maps_url?: string | null; landing_template?: LandingTemplate; landing_tagline?: string | null; landing_about?: string | null; landing_highlights?: string[] },
+    patch: { is_publicly_listed?: boolean; city?: string | null; address?: string | null; public_phone?: string | null; emergency_phone?: string | null; is_open_24x7?: boolean; operating_hours?: string | null; website_url?: string | null; social_links?: Record<string, string>; maps_url?: string | null; landing_template?: LandingTemplate; landing_tagline?: string | null; landing_about?: string | null; landing_highlights?: string[] },
   ) => request<Tenant>(`/tenants/${tenantId}/public-profile`, { method: 'PATCH', body: JSON.stringify(patch) }),
   /** Billing/transactional contact email — private, skips the public-profile moderation path. */
   updateTenantContactEmail: (tenantId: string, contact_email: string | null) =>

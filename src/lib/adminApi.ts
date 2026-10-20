@@ -335,6 +335,7 @@ export const adminApi = (key: string) => ({
       is_open_24x7?: boolean;
       operating_hours?: string | null;
       website_url?: string | null;
+      social_links?: Record<string, string>;
       maps_url?: string | null;
       /** Decision 42 — super admin only: custom monthly base-plan price for this clinic. Null clears it. */
       base_plan_override_inr?: number | null;
