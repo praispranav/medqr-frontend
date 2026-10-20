@@ -476,7 +476,10 @@ function ClinicName({ api, tenant, onSaved }: { api: AdminApi; tenant: Tenant; o
     return (
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="font-headline-lg text-headline-lg">{tenant.display_name ?? tenant.subdomain}</h1>
+          <h1 className="font-headline-lg text-headline-lg">
+            {tenant.clinic_number != null && <span className="text-on-surface-variant">#{tenant.clinic_number} </span>}
+            {tenant.display_name ?? tenant.subdomain}
+          </h1>
           <p className="font-body-md text-body-md text-on-surface-variant">{tenant.subdomain}.clinicq.fit</p>
           {(() => {
             const t = tenant as Tenant & { website_url?: string | null; social_links?: Record<string, string> };

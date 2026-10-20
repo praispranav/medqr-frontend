@@ -87,7 +87,9 @@ function Analytics({ api }: { api: AdminApi }) {
                 {data.top_clinics.slice(0, 20).map((c) => (
                   <div key={c.tenant_id} className="flex items-center gap-3">
                     <div className="min-w-0 flex-1">
-                      <p className="font-label-md text-label-md truncate">{c.clinic_name}</p>
+                      <p className="font-label-md text-label-md truncate">
+                        <span className="text-on-surface-variant">#{c.clinic_number}</span> {c.clinic_name}
+                      </p>
                       <p className="font-body-sm text-body-sm text-on-surface-variant truncate">{c.city ?? '—'} · {c.subdomain}</p>
                     </div>
                     <div className="w-32 h-2 rounded-full bg-surface-container-high overflow-hidden shrink-0">

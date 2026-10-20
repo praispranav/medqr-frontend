@@ -106,6 +106,8 @@ export interface Tenant {
   directory_products?: string[];
   qr_enabled?: boolean;
   id: string;
+  /** Short, permanent, owner-facing clinic number (creation order) — never shown to the clinic itself. */
+  clinic_number?: number;
   subdomain: string;
   /** Decision 60 — "Get a token" on public pages: auto (trial/paid), on, off. */
   public_booking?: 'auto' | 'on' | 'off';

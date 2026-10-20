@@ -133,7 +133,7 @@ export interface VisitInsightsOverview {
   since: string;
   total_views: number;
   by_kind: Record<string, number>;
-  top_clinics: { tenant_id: string; clinic_name: string | null; subdomain: string; city: string | null; count: number }[];
+  top_clinics: { tenant_id: string; clinic_number: number; clinic_name: string | null; subdomain: string; city: string | null; count: number }[];
   top_cities: { city: string; count: number; clinic_count: number }[];
 }
 

@@ -201,6 +201,11 @@ function Clinics({ api, referrer }: { api: AdminApi; referrer: boolean }) {
         {visibleClinics?.map((t) => (
           <div key={t.id} className="flex items-center border-b border-surface-container last:border-0 hover:bg-surface-container-low">
           <Link href={`/owner/clinics/${t.id}`} className="flex flex-1 min-w-0 items-center gap-4 pl-5 pr-2 py-4">
+            {t.clinic_number != null && (
+              <span className="font-label-md text-label-md text-on-surface-variant shrink-0 w-10 text-right tabular-nums" title="Clinic number">
+                #{t.clinic_number}
+              </span>
+            )}
             <div className="w-10 h-10 rounded-xl bg-primary-fixed/50 text-primary flex items-center justify-center shrink-0">
               <Icon name="local_hospital" className="text-[22px]" />
             </div>
