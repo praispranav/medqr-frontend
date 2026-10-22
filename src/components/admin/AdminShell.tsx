@@ -32,6 +32,7 @@ const NAV: NavItem[] = [
   { href: '/owner/reviews', label: 'Reviews', icon: 'star' },
   { href: '/owner/module-requests', label: 'Module requests', icon: 'extension' },
   { href: '/owner/setting-requests', label: 'Setting requests', icon: 'auto_awesome' },
+  { href: '/owner/whatsapp', label: 'WhatsApp inbox', icon: 'chat' },
   { href: '/owner/support', label: 'Support', icon: 'support_agent' },
   { label: 'Platform', isCategory: true },
   { href: '/owner/analytics', label: 'Analytics', icon: 'insights' },
@@ -188,11 +189,9 @@ export function AdminShell({ active, children }: { active: string; children: (ap
         <header className="lg:hidden sticky top-0 z-30 bg-inverse-surface text-white px-4 h-14 flex items-center gap-3">
           <Icon name="admin_panel_settings" className="text-[22px]" />
           <span className="font-label-lg text-label-lg flex-1">{referrer ? 'ClinicQ partner' : 'ClinicQ admin'}</span>
-          {flatItems.map((n) => (
-            <Link key={n.href} href={n.href} className={`px-3 py-1.5 rounded-full font-label-md text-label-md ${active === n.href ? 'bg-primary-container' : 'opacity-80'}`}>
-              {n.label}
-            </Link>
-          ))}
+          <select aria-label="Admin page" value={active} onChange={(e) => { window.location.assign(e.target.value); }} className="min-h-[44px] min-w-0 max-w-[48%] rounded-lg bg-inverse-surface px-2 text-sm text-white">
+            {flatItems.map((n) => <option key={n.href} value={n.href}>{n.label}</option>)}
+          </select>
           <button onClick={signOut} aria-label="Sign out"><Icon name="logout" className="text-[20px]" /></button>
         </header>
         <main className="p-4 lg:p-8 max-w-6xl">{children(api, me)}</main>

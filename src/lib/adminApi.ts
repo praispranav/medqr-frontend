@@ -458,6 +458,10 @@ export const adminApi = (key: string) => ({
     request<QrCodeView[]>(key, '/qr-codes', { method: 'POST', body: JSON.stringify({ count, label, ...target }) }),
   updateQrCode: (id: string, body: { doctor_id?: string | null; tenant_id?: string | null; status?: 'disabled' | 'active' }) =>
     request<QrCodeView>(key, `/qr-codes/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  whatsappInbox: () => request<WhatsAppInboxOverview>(key, '/whatsapp'),
+  whatsappConversation: (id: string, before?: string) => request<WhatsAppInboxDetail>(key, `/whatsapp/${id}${before ? `?before=${encodeURIComponent(before)}` : ''}`),
+  updateWhatsAppConversation: (id: string, patch: { brand?: WhatsAppInboxBrand; status?: 'open' | 'closed'; read?: boolean }) => request<WhatsAppConversation>(key, `/whatsapp/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
+  replyWhatsApp: (id: string, text: string, requestId: string) => request<WhatsAppInboxMessage>(key, `/whatsapp/${id}/replies`, { method: 'POST', body: JSON.stringify({ text, request_id: requestId }) }),
   supportRequests: () => request<SupportRequest[]>(key, '/support'),
   updateSupport: (id: string, patch: { status?: SupportStatus; reply?: string | null }) =>
     request<SupportRequest>(key, `/support/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
@@ -620,3 +624,17 @@ export const platformAuth = {
   login: (email: string, password: string) => authRequest<PlatformAdminMe>('/login', { email, password }),
   logout: () => authRequest<{ ok: true }>('/logout', {}),
 };
+
+export type WhatsAppInboxBrand = 'unassigned' | 'clinicq' | 'frosty_caps';
+export interface WhatsAppConversation {
+  id: string; business_number: string; phone: string; name: string; brand: WhatsAppInboxBrand;
+  status: 'open' | 'closed'; unread: number; last_inbound_at: string | null; last_message_at: string;
+  preview: string; handling_mode: string;
+}
+export interface WhatsAppInboxMessage {
+  id: string; conversation_id: string; direction: 'inbound' | 'outbound'; text: string; type: string;
+  media: { url: string; content_type?: string }[]; status: string; error: string | null;
+  occurred_at: string; created_at: string; sent_by: string | null;
+}
+export interface WhatsAppInboxOverview { conversations: WhatsAppConversation[]; sending_enabled: boolean }
+export interface WhatsAppInboxDetail { conversation: WhatsAppConversation; messages: WhatsAppInboxMessage[]; has_more: boolean; reply_allowed: boolean; sending_enabled: boolean }
